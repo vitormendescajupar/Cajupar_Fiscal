@@ -1020,31 +1020,34 @@ async function processarXMLs(){
     setProgress('Fase 1/2 — Lendo e parseando XMLs...',(i+batch.length)/total*50,`${i+batch.length} de ${total} arquivos — ${parsed.length} válidos`);
   }
 
-  // FASE 2: Upsert em lote — banco resolve duplicatas automaticamente
+  // FASE 2: Upsert notas em lote
   const INS_BATCH=100;
-  const ITENS_BATCH=300;
-  setProgress('Fase 2/2 — Salvando no banco...',50,`0 de ${parsed.length} notas`);
+  const ITENS_BATCH=200;
+  setProgress('Fase 2/2 — Salvando notas...',50,`0 de ${parsed.length} notas`);
+  const notasInseridas=[];
   for(let i=0;i<parsed.length;i+=INS_BATCH){
     const batch=parsed.slice(i,i+INS_BATCH);
-
-    // Upsert notas (ignoreDuplicates: chave_acesso já existe → ignora silenciosamente)
     const {error:eN}=await db.from('notas_fiscais')
       .upsert(batch.map(r=>r.nota),{onConflict:'chave_acesso',ignoreDuplicates:true});
     if(eN){ console.error('Erro notas:',eN); err+=batch.length; continue; }
-
-    // Upsert itens: deleta os existentes da chave e reinsere (evita duplicatas em itens)
-    const chaves=batch.map(r=>r.nota.chave_acesso).filter(Boolean);
-    if(chaves.length){
-      await db.from('itens_nota').delete().in('chave_acesso',chaves);
-      const todosItens=batch.flatMap(r=>r.itens);
-      for(let j=0;j<todosItens.length;j+=ITENS_BATCH){
-        await db.from('itens_nota').insert(todosItens.slice(j,j+ITENS_BATCH));
-      }
-    }
-
     ok+=batch.length;
-    const pct=50+(i+batch.length)/Math.max(parsed.length,1)*50;
-    setProgress('Fase 2/2 — Salvando no banco...',pct,`${ok} de ${parsed.length} notas salvas`);
+    notasInseridas.push(...batch);
+    const pct=50+(i+batch.length)/Math.max(parsed.length,1)*40;
+    setProgress('Fase 2/2 — Salvando notas...',pct,`${ok} de ${parsed.length} notas`);
+  }
+
+  // FASE 3: Itens — só insere, sem deletar (notas duplicadas já foram ignoradas na fase 2)
+  const todosItens=notasInseridas.flatMap(r=>r.itens||[]);
+  if(todosItens.length){
+    setProgress('Fase 2/2 — Salvando itens...',90,`0 de ${todosItens.length} itens`);
+    let itensOk=0;
+    for(let j=0;j<todosItens.length;j+=ITENS_BATCH){
+      const sl=todosItens.slice(j,j+ITENS_BATCH);
+      const {error:eI}=await db.from('itens_nota').upsert(sl,{onConflict:'id',ignoreDuplicates:true});
+      if(eI){ console.error('Erro itens:',eI); }
+      else itensOk+=sl.length;
+      setProgress('Fase 2/2 — Salvando itens...',90+(j+sl.length)/Math.max(todosItens.length,1)*10,`${itensOk} de ${todosItens.length} itens`);
+    }
   }
 
   setProgress('✅ Concluído!',100,'');
