@@ -665,89 +665,98 @@ function openModal(title,body,buttons){
 function closeModal(){ document.getElementById('modal-overlay').classList.add('hidden'); }
 
 // ── DASHBOARD ─────────────────────────────────────────────────
+// Usa RPC para agregar no PostgreSQL — sem SELECT * massivo
 async function loadDashboard(){
   const mr=mesRef(), gr=document.getElementById('top-grupo').value, emp=document.getElementById('top-empresa').value;
-  let q=db.from('notas_fiscais').select('*');
-  if(mr) q=q.eq('mes_ref',mr);
-  else { const ano=document.getElementById('top-ano').value; q=q.like('mes_ref',`${ano}-%`); }
-  if(gr)  q=q.eq('grupo',gr);
-  if(emp) q=q.eq('estabelecimento',emp);
-  const {data,error}=await q.limit(20000);
-  if(error){toast('Erro: '+error.message,'err');return;}
-  const notas=data||[];
+  const ano=document.getElementById('top-ano').value;
 
-  const fat   =notas.reduce((s,n)=>s+Number(n.valor_total),0);
-  const icms  =notas.reduce((s,n)=>s+Number(n.valor_icms),0);
-  const pis   =notas.reduce((s,n)=>s+Number(n.valor_pis),0);
-  const cof   =notas.reduce((s,n)=>s+Number(n.valor_cofins),0);
-  const st    =notas.reduce((s,n)=>s+Number(n.valor_icms_st),0);
-  const qNFe  =notas.filter(n=>n.tipo_doc==='NF-e').length;
-  const qNFCe =notas.filter(n=>n.tipo_doc==='NFC-e').length;
+  const {data,error}=await db.rpc('get_dashboard_metrics',{
+    p_mes_ref : mr  || null,
+    p_ano     : mr  ? null : (ano||null),
+    p_grupo   : gr  || null,
+    p_empresa : emp || null
+  });
+  if(error){toast('Erro dashboard: '+error.message,'err');console.error(error);return;}
+  if(!data){toast('Sem dados para o período','err');return;}
 
-  document.getElementById('m-fat').textContent     ='R$ '+fmt(fat);
-  document.getElementById('m-fat-sub').textContent =`${notas.length} notas no período`;
-  document.getElementById('m-icms').textContent    ='R$ '+fmt(icms);
-  document.getElementById('m-piscof').textContent  ='R$ '+fmt(pis+cof);
+  const t     = data.totais || {};
+  const fat   = Number(t.fat    ||0);
+  const icms  = Number(t.icms   ||0);
+  const pis   = Number(t.pis    ||0);
+  const cof   = Number(t.cofins ||0);
+  const st    = Number(t.icms_st||0);
+  const fcpst = Number(t.fcp_st ||0);
+  const qtd   = Number(t.qtd_notas||0);
+  const qNFCe = Number(t.qtd_nfce ||0);
+  const qNFe  = Number(t.qtd_nfe  ||0);
+
+  document.getElementById('m-fat').textContent      ='R$ '+fmt(fat);
+  document.getElementById('m-fat-sub').textContent  =`${qtd} notas no período`;
+  document.getElementById('m-icms').textContent     ='R$ '+fmt(icms);
+  document.getElementById('m-piscof').textContent   ='R$ '+fmt(pis+cof);
   document.getElementById('m-piscof-sub').textContent=`PIS R$${fmt(pis)} | COF R$${fmt(cof)}`;
-  document.getElementById('m-st').textContent      ='R$ '+fmt(st);
-  document.getElementById('m-qtd').textContent     =notas.length;
-  document.getElementById('m-qtd-sub').textContent =`${qNFCe} NFC-e + ${qNFe} NF-e`;
+  document.getElementById('m-st').textContent       ='R$ '+fmt(st);
+  document.getElementById('m-qtd').textContent      =qtd;
+  document.getElementById('m-qtd-sub').textContent  =`${qNFCe} NFC-e + ${qNFe} NF-e`;
 
-  const porEmpresa={};
-  notas.forEach(n=>{porEmpresa[n.estabelecimento]=(porEmpresa[n.estabelecimento]||0)+Number(n.valor_total);});
-  const empTop=Object.entries(porEmpresa).sort((a,b)=>b[1]-a[1]).slice(0,12);
-  buildChart('chart-empresas','bar',empTop.map(([k])=>k),empTop.map(([,v])=>v),'R$',PALETTE.slice(0,empTop.length));
-
-  const porMes={};
-  notas.forEach(n=>{ if(n.mes_ref) porMes[n.mes_ref]=(porMes[n.mes_ref]||0)+Number(n.valor_total); });
-  const meses=Object.keys(porMes).sort();
   const NOMES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const empresas = data.por_empresa || [];
+  const empTop   = empresas.slice(0,12);
+  buildChart('chart-empresas','bar',
+    empTop.map(e=>e.estabelecimento),
+    empTop.map(e=>Number(e.fat)),'R$',PALETTE.slice(0,empTop.length));
+
+  const meses = data.por_mes || [];
   buildChart('chart-mensal','line',
-    meses.map(m=>`${NOMES[+m.split('-')[1]-1]}/${m.split('-')[0].slice(2)}`),
-    meses.map(m=>porMes[m]),'R$',['#f97316']
-  );
+    meses.map(m=>{const p=m.mes_ref.split('-');return `${NOMES[+p[1]-1]}/${p[0].slice(2)}`;}),
+    meses.map(m=>Number(m.fat)),'R$',['#f97316']);
 
   buildChartDoughnut('chart-impostos',
     ['ICMS','ICMS-ST','PIS','COFINS','FCP-ST'],
-    [icms,st,pis,cof,notas.reduce((s,n)=>s+Number(n.valor_fcp_st),0)],
-    ['#f97316','#ef4444','#3b82f6','#22c55e','#eab308']
-  );
+    [icms,st,pis,cof,fcpst],
+    ['#f97316','#ef4444','#3b82f6','#22c55e','#eab308']);
   buildChartDoughnut('chart-tipos',['NFC-e','NF-e'],[qNFCe,qNFe],['#22c55e','#3b82f6']);
 
-  const porEstab={};
-  notas.forEach(n=>{
-    const k=n.estabelecimento||'?';
-    if(!porEstab[k]) porEstab[k]={grupo:n.grupo,nfce:0,nfe:0,fat:0,icms:0,st:0,pis:0,cof:0};
-    n.tipo_doc==='NFC-e'?porEstab[k].nfce++:porEstab[k].nfe++;
-    porEstab[k].fat+=Number(n.valor_total); porEstab[k].icms+=Number(n.valor_icms);
-    porEstab[k].st+=Number(n.valor_icms_st); porEstab[k].pis+=Number(n.valor_pis); porEstab[k].cof+=Number(n.valor_cofins);
-  });
   const tbody=document.getElementById('tbl-resumo-body');
-  if(!Object.keys(porEstab).length){
-    tbody.innerHTML=`<tr><td colspan="9"><div class="empty-state"><div class="icon">📊</div><p>Nenhum dado para o período</p></div></td></tr>`; return;
+  if(!empresas.length){
+    tbody.innerHTML=`<tr><td colspan="9"><div class="empty-state"><div class="icon">📊</div><p>Nenhum dado para o período</p></div></td></tr>`;
+    return;
   }
-  tbody.innerHTML=Object.entries(porEstab).sort((a,b)=>b[1].fat-a[1].fat).map(([nome,d])=>`
+  tbody.innerHTML=empresas.map(e=>`
     <tr>
-      <td><span style="font-size:10px;background:var(--bg3);padding:2px 6px;border-radius:4px;font-weight:700">${d.grupo}</span></td>
-      <td>${nome}</td><td style="color:var(--green)">${d.nfce}</td><td style="color:var(--blue)">${d.nfe}</td>
-      <td style="text-align:right;font-weight:700">${fmt(d.fat)}</td>
-      <td style="text-align:right;color:var(--yellow)">${fmt(d.icms)}</td>
-      <td style="text-align:right;color:var(--red)">${fmt(d.st)}</td>
-      <td style="text-align:right">${fmt(d.pis)}</td><td style="text-align:right">${fmt(d.cof)}</td>
+      <td><span style="font-size:10px;background:var(--bg3);padding:2px 6px;border-radius:4px;font-weight:700">${e.grupo}</span></td>
+      <td>${e.estabelecimento}</td>
+      <td style="color:var(--green)">${e.nfce}</td>
+      <td style="color:var(--blue)">${e.nfe}</td>
+      <td style="text-align:right;font-weight:700">${fmt(Number(e.fat))}</td>
+      <td style="text-align:right;color:var(--yellow)">${fmt(Number(e.icms))}</td>
+      <td style="text-align:right;color:var(--red)">${fmt(Number(e.icms_st))}</td>
+      <td style="text-align:right">${fmt(Number(e.pis))}</td>
+      <td style="text-align:right">${fmt(Number(e.cofins))}</td>
     </tr>`).join('');
 }
 
 // ── RESUMO ANUAL ──────────────────────────────────────────────
 async function loadAnual(){
   const ano=document.getElementById('top-ano').value;
+  const gr =document.getElementById('top-grupo').value;
+  const emp=document.getElementById('top-empresa').value;
   document.getElementById('anual-ano-titulo').textContent=ano;
-  const {data}=await db.from('notas_fiscais').select('mes_ref,valor_total').like('mes_ref',`${ano}-%`).limit(50000);
-  const notas=data||[];
+
+  const {data,error}=await db.rpc('get_anual_metrics',{
+    p_ano    : ano,
+    p_grupo  : gr  || null,
+    p_empresa: emp || null
+  });
+  if(error){toast('Erro anual: '+error.message,'err');console.error(error);return;}
+
+  const porMesArr = data || [];
   const MESES=['01','02','03','04','05','06','07','08','09','10','11','12'];
   const NOMES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const porMes={};
   MESES.forEach((m,i)=>{porMes[`${ano}-${m}`]={nome:NOMES[i],fat:0,qtd:0};});
-  notas.forEach(n=>{if(porMes[n.mes_ref]){porMes[n.mes_ref].fat+=Number(n.valor_total);porMes[n.mes_ref].qtd++;}});
+  porMesArr.forEach(r=>{if(porMes[r.mes_ref]){porMes[r.mes_ref].fat=Number(r.fat);porMes[r.mes_ref].qtd=Number(r.qtd);}});
+
   const ctx=document.getElementById('chart-anual').getContext('2d');
   if(charts['anual']){charts['anual'].destroy();}
   charts['anual']=new Chart(ctx,{type:'bar',
