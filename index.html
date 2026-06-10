@@ -663,7 +663,7 @@ function saveConfig(){
 }
 
 // ── SUPABASE INIT ─────────────────────────────────────────────
-let supabase = null;
+let db = null;
 
 function initSupabase(){
   const cfg = getConfig();
@@ -672,7 +672,7 @@ function initSupabase(){
     document.getElementById('setup-screen').style.display='flex';
     return false;
   }
-  supabase = window.supabase.createClient(cfg.url, cfg.key);
+  db = window.supabase.createClient(cfg.url, cfg.key);
   return true;
 }
 
@@ -705,7 +705,7 @@ async function doLogin(){
   const pass  = document.getElementById('login-pass').value;
   if(!email||!pass){ showMsg('msg-login','Preencha e-mail e senha','err'); return; }
   document.getElementById('btn-login').textContent = 'Entrando...';
-  const {data,error} = await supabase.auth.signInWithPassword({email,password:pass});
+  const {data,error} = await db.auth.signInWithPassword({email,password:pass});
   document.getElementById('btn-login').textContent = 'Entrar';
   if(error){ showMsg('msg-login', error.message==='Invalid login credentials'?'E-mail ou senha incorretos':error.message,'err'); return; }
   await loadSession(data.user);
@@ -721,7 +721,7 @@ async function doRegister(){
   if(!email.endsWith('@cajupar.com')){ showMsg('msg-register','Use um e-mail @cajupar.com','err'); return; }
   if(pass.length<6){ showMsg('msg-register','Senha mínima: 6 caracteres','err'); return; }
   document.getElementById('btn-register').textContent = 'Enviando...';
-  const {error} = await supabase.auth.signUp({
+  const {error} = await db.auth.signUp({
     email, password:pass,
     options:{data:{nome, status:'pending', perfil:'viewer'}}
   });
@@ -735,20 +735,20 @@ async function doRegister(){
 }
 
 async function doLogout(){
-  await supabase.auth.signOut();
+  await db.auth.signOut();
   location.reload();
 }
 
 async function loadSession(user){
   currentUser = user;
-  const {data:prof} = await supabase.from('usuarios').select('*').eq('id',user.id).single();
+  const {data:prof} = await db.from('usuarios').select('*').eq('id',user.id).single();
   if(!prof||prof.status!=='active'){
     if(!prof||prof.status==='pending'){
       showMsg('msg-login','Seu acesso ainda não foi aprovado. Aguarde o administrador.','err');
     } else {
       showMsg('msg-login','Acesso inativo ou rejeitado.','err');
     }
-    await supabase.auth.signOut();
+    await db.auth.signOut();
     return;
   }
   currentPerfil = prof.perfil;
@@ -830,7 +830,7 @@ function closeModal(){ document.getElementById('modal-overlay').classList.add('h
 
 // ── FILTRO EMPRESA ────────────────────────────────────────────
 async function populateEmpresaFilter(){
-  const {data} = await supabase.from('empresas').select('nome,grupo').order('grupo').order('nome');
+  const {data} = await db.from('empresas').select('nome,grupo').order('grupo').order('nome');
   if(!data) return;
   ['f-empresa-notas'].forEach(id=>{
     const sel=document.getElementById(id);
@@ -846,7 +846,7 @@ function onMesChange(){ loadDashboard(); }
 async function loadDashboard(){
   const mr = mesRef();
   const gr = grupoFilter();
-  let q = supabase.from('notas_fiscais').select('*');
+  let q = db.from('notas_fiscais').select('*');
   if(mr){ q=q.eq('mes_ref',mr); }
   else { const ano=document.getElementById('top-ano').value; q=q.like('mes_ref',`${ano}-%`); }
   if(gr) q=q.eq('grupo',gr);
@@ -940,7 +940,7 @@ async function loadDashboard(){
 async function loadAnual(){
   const ano = document.getElementById('top-ano').value;
   document.getElementById('anual-ano-titulo').textContent = ano;
-  const {data} = await supabase.from('notas_fiscais')
+  const {data} = await db.from('notas_fiscais')
     .select('mes_ref,valor_total,tipo_doc')
     .like('mes_ref',`${ano}-%`)
     .limit(50000);
@@ -995,7 +995,7 @@ async function loadNotas(page=1){
   const busca = document.getElementById('f-busca-notas').value.trim();
 
   const from=(page-1)*ITEMS_PER_PAGE, to=from+ITEMS_PER_PAGE-1;
-  let q=supabase.from('notas_fiscais').select('*',{count:'exact'}).order('data_emissao',{ascending:false}).range(from,to);
+  let q=db.from('notas_fiscais').select('*',{count:'exact'}).order('data_emissao',{ascending:false}).range(from,to);
   if(mes)   q=q.eq('mes_ref',mes);
   if(grupo) q=q.eq('grupo',grupo);
   if(emp)   q=q.eq('estabelecimento',emp);
@@ -1041,7 +1041,7 @@ async function loadItens(page=1){
   const busca = document.getElementById('f-busca-itens').value.trim();
 
   const from=(page-1)*ITEMS_PER_PAGE, to=from+ITEMS_PER_PAGE-1;
-  let q=supabase.from('itens_nota').select('*',{count:'exact'}).order('data_emissao',{ascending:false}).range(from,to);
+  let q=db.from('itens_nota').select('*',{count:'exact'}).order('data_emissao',{ascending:false}).range(from,to);
   if(mes)  q=q.gte('data_emissao',mes+'-01').lte('data_emissao',mes+'-31');
   if(grupo)q=q.eq('grupo',grupo);
   if(st!=='')q=q.eq('tem_st',st==='true');
@@ -1297,14 +1297,14 @@ async function processarXMLs(){
     if(!parsed){ if(el){el.textContent='XML inválido';el.style.color='var(--red)';} err++; continue; }
 
     // Verifica duplicata
-    const {data:existente}=await supabase.from('notas_fiscais').select('chave_acesso').eq('chave_acesso',parsed.nota.chave_acesso).maybeSingle();
+    const {data:existente}=await db.from('notas_fiscais').select('chave_acesso').eq('chave_acesso',parsed.nota.chave_acesso).maybeSingle();
     if(existente){
       if(el){el.textContent='duplicada';el.style.color='var(--text3)';}
       dup++; continue;
     }
 
     // Insere nota
-    const {error:eNota}=await supabase.from('notas_fiscais').insert(parsed.nota);
+    const {error:eNota}=await db.from('notas_fiscais').insert(parsed.nota);
     if(eNota){
       if(el){el.textContent='erro DB';el.style.color='var(--red)';}
       console.error(eNota); err++; continue;
@@ -1312,7 +1312,7 @@ async function processarXMLs(){
 
     // Insere itens em batch
     for(let b=0;b<parsed.itens.length;b+=BATCH){
-      await supabase.from('itens_nota').insert(parsed.itens.slice(b,b+BATCH));
+      await db.from('itens_nota').insert(parsed.itens.slice(b,b+BATCH));
     }
 
     if(el){el.textContent='✓ importada';el.style.color='var(--green)';}
@@ -1343,7 +1343,7 @@ function loadHistorico(){
 // ── USUÁRIOS ──────────────────────────────────────────────────
 async function loadUsuarios(){
   if(currentPerfil!=='admin'){ toast('Sem permissão','err'); return; }
-  const {data}=await supabase.from('usuarios').select('*').order('created_at',{ascending:false});
+  const {data}=await db.from('usuarios').select('*').order('created_at',{ascending:false});
   const todos=data||[];
   const pending=todos.filter(u=>u.status==='pending');
   const active =todos.filter(u=>u.status==='active');
@@ -1379,19 +1379,19 @@ async function loadUsuarios(){
 }
 
 async function aprovarUser(id,perfil){
-  await supabase.from('usuarios').update({status:'active',perfil}).eq('id',id);
+  await db.from('usuarios').update({status:'active',perfil}).eq('id',id);
   toast('Usuário aprovado','ok'); loadUsuarios();
 }
 async function rejeitarUser(id){
-  await supabase.from('usuarios').update({status:'rejected'}).eq('id',id);
+  await db.from('usuarios').update({status:'rejected'}).eq('id',id);
   toast('Usuário rejeitado','info'); loadUsuarios();
 }
 async function desativarUser(id){
-  await supabase.from('usuarios').update({status:'inactive'}).eq('id',id);
+  await db.from('usuarios').update({status:'inactive'}).eq('id',id);
   toast('Usuário desativado','info'); loadUsuarios();
 }
 async function mudarPerfil(id,perfil){
-  await supabase.from('usuarios').update({perfil}).eq('id',id);
+  await db.from('usuarios').update({perfil}).eq('id',id);
   toast('Perfil atualizado','ok');
 }
 
@@ -1399,7 +1399,7 @@ async function mudarPerfil(id,perfil){
 async function exportNotasCSV(){
   const mes=document.getElementById('f-mes-notas').value;
   const grupo=document.getElementById('f-grupo-notas').value;
-  let q=supabase.from('notas_fiscais').select('*').order('data_emissao',{ascending:false}).limit(50000);
+  let q=db.from('notas_fiscais').select('*').order('data_emissao',{ascending:false}).limit(50000);
   if(mes) q=q.eq('mes_ref',mes);
   if(grupo) q=q.eq('grupo',grupo);
   const {data}=await q;
@@ -1411,7 +1411,7 @@ async function exportNotasCSV(){
 async function exportItensCSV(){
   const mes=document.getElementById('f-mes-itens').value;
   const grupo=document.getElementById('f-grupo-itens').value;
-  let q=supabase.from('itens_nota').select('*').order('data_emissao',{ascending:false}).limit(50000);
+  let q=db.from('itens_nota').select('*').order('data_emissao',{ascending:false}).limit(50000);
   if(mes) q=q.gte('data_emissao',mes+'-01').lte('data_emissao',mes+'-31');
   if(grupo) q=q.eq('grupo',grupo);
   const {data}=await q;
@@ -1481,12 +1481,12 @@ document.addEventListener('DOMContentLoaded',async()=>{
   if(!initSupabase()) return;
 
   // Verifica sessão ativa
-  const {data:{session}}=await supabase.auth.getSession();
+  const {data:{session}}=await db.auth.getSession();
   if(session){
     await loadSession(session.user);
   }
 
-  supabase.auth.onAuthStateChange(async(_,session)=>{
+  db.auth.onAuthStateChange(async(_,session)=>{
     if(session&&!currentUser) await loadSession(session.user);
   });
 });
