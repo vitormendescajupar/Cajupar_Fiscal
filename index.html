@@ -995,12 +995,12 @@ async function processarXMLs(){
   const btn=document.getElementById('btn-processar');
   btn.disabled=true; btn.textContent='⏳ Processando...';
   const total=allFiles.length;
-  let ok=0,dup=0,err=0;
+  let ok=0,err=0;
 
   // FASE 1: Parse paralelo (20 por vez)
   const PARSE_BATCH=20;
   const parsed=[];
-  setProgress('Fase 1/3 — Lendo e parseando XMLs...',0,`0 de ${total}`);
+  setProgress('Fase 1/2 — Lendo e parseando XMLs...',0,`0 de ${total}`);
   for(let i=0;i<total;i+=PARSE_BATCH){
     const batch=allFiles.slice(i,i+PARSE_BATCH);
     const results=await Promise.all(batch.map(async f=>{
@@ -1008,48 +1008,44 @@ async function processarXMLs(){
       catch(e){ return null; }
     }));
     results.forEach(r=>{ if(r) parsed.push(r); else err++; });
-    setProgress('Fase 1/3 — Lendo e parseando XMLs...',(i+batch.length)/total*40,`${i+batch.length} de ${total} arquivos`);
+    setProgress('Fase 1/2 — Lendo e parseando XMLs...',(i+batch.length)/total*50,`${i+batch.length} de ${total} arquivos — ${parsed.length} válidos`);
   }
 
-  // FASE 2: Verificação de duplicatas em lote
-  const DUP_BATCH=500;
-  const toInsert=[];
-  setProgress('Fase 2/3 — Verificando duplicatas...',40,`0 de ${parsed.length}`);
-  for(let i=0;i<parsed.length;i+=DUP_BATCH){
-    const chunk=parsed.slice(i,i+DUP_BATCH);
-    const chaves=chunk.map(r=>r.nota.chave_acesso).filter(Boolean);
-    const {data:existing}=await db.from('notas_fiscais').select('chave_acesso').in('chave_acesso',chaves);
-    const existSet=new Set((existing||[]).map(e=>e.chave_acesso));
-    chunk.forEach(r=>{ existSet.has(r.nota.chave_acesso)?dup++:toInsert.push(r); });
-    setProgress('Fase 2/3 — Verificando duplicatas...',40+(i+chunk.length)/parsed.length*20,`${i+chunk.length} verificados — ${dup} duplicadas`);
-  }
+  // FASE 2: Upsert em lote — banco resolve duplicatas automaticamente
+  const INS_BATCH=100;
+  const ITENS_BATCH=300;
+  setProgress('Fase 2/2 — Salvando no banco...',50,`0 de ${parsed.length} notas`);
+  for(let i=0;i<parsed.length;i+=INS_BATCH){
+    const batch=parsed.slice(i,i+INS_BATCH);
 
-  // FASE 3: Inserção em lote
-  const INS_BATCH=200;
-  const ITENS_BATCH=500;
-  setProgress('Fase 3/3 — Salvando no banco...',60,`0 de ${toInsert.length} notas`);
-  for(let i=0;i<toInsert.length;i+=INS_BATCH){
-    const batch=toInsert.slice(i,i+INS_BATCH);
-    // Upsert notas
-    const {error:eN}=await db.from('notas_fiscais').upsert(batch.map(r=>r.nota),{onConflict:'chave_acesso',ignoreDuplicates:true});
-    if(eN){console.error(eN);err+=batch.length;continue;}
-    // Upsert itens em sublotes
-    const todosItens=batch.flatMap(r=>r.itens);
-    for(let j=0;j<todosItens.length;j+=ITENS_BATCH){
-      await db.from('itens_nota').upsert(todosItens.slice(j,j+ITENS_BATCH),{onConflict:'id',ignoreDuplicates:true});
+    // Upsert notas (ignoreDuplicates: chave_acesso já existe → ignora silenciosamente)
+    const {error:eN}=await db.from('notas_fiscais')
+      .upsert(batch.map(r=>r.nota),{onConflict:'chave_acesso',ignoreDuplicates:true});
+    if(eN){ console.error('Erro notas:',eN); err+=batch.length; continue; }
+
+    // Upsert itens: deleta os existentes da chave e reinsere (evita duplicatas em itens)
+    const chaves=batch.map(r=>r.nota.chave_acesso).filter(Boolean);
+    if(chaves.length){
+      await db.from('itens_nota').delete().in('chave_acesso',chaves);
+      const todosItens=batch.flatMap(r=>r.itens);
+      for(let j=0;j<todosItens.length;j+=ITENS_BATCH){
+        await db.from('itens_nota').insert(todosItens.slice(j,j+ITENS_BATCH));
+      }
     }
+
     ok+=batch.length;
-    setProgress('Fase 3/3 — Salvando no banco...',60+(i+batch.length)/Math.max(toInsert.length,1)*40,`${ok} de ${toInsert.length} notas salvas`);
+    const pct=50+(i+batch.length)/Math.max(parsed.length,1)*50;
+    setProgress('Fase 2/2 — Salvando no banco...',pct,`${ok} de ${parsed.length} notas salvas`);
   }
 
-  setProgress('Concluído!',100);
+  setProgress('✅ Concluído!',100,'');
   btn.textContent='⚙️ Processar e importar'; btn.disabled=false;
   const sumEl=document.getElementById('upload-summary');
   sumEl.style.display='block';
   document.getElementById('summary-title').textContent='Processamento concluído';
-  document.getElementById('summary-body').innerHTML=`✅ Importadas: <strong>${ok}</strong> &nbsp;|&nbsp; ⚠️ Duplicadas: <strong>${dup}</strong> &nbsp;|&nbsp; ❌ Erros: <strong>${err}</strong>`;
-  document.getElementById('ultimo-proc').textContent=`${new Date().toLocaleString('pt-BR')} — ${ok} notas / ${dup} dup / ${err} err`;
-  toast(`✅ Concluído: ${ok} notas importadas, ${dup} duplicadas ignoradas`,'ok',6000);
+  document.getElementById('summary-body').innerHTML=`✅ Salvas/atualizadas: <strong>${ok}</strong> &nbsp;|&nbsp; ❌ Erros: <strong>${err}</strong><br><small style="color:var(--text3)">Duplicatas são ignoradas automaticamente pelo banco.</small>`;
+  document.getElementById('ultimo-proc').textContent=`${new Date().toLocaleString('pt-BR')} — ${ok} notas / ${err} err`;
+  toast(`✅ Concluído: ${ok} notas salvas`,'ok',6000);
   allFiles=[];
   document.getElementById('file-count-label').textContent='Pronto! Limpe para importar mais.';
 }
