@@ -4,8 +4,10 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Cajupar — Apuração Fiscal</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://apis.google.com/js/api.js" defer></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -15,27 +17,26 @@
   --green:#22c55e;--red:#ef4444;--blue:#3b82f6;--yellow:#eab308;
   --radius:10px;--shadow:0 4px 24px rgba(0,0,0,.6);
 }
-[data-theme="light"]{
-  --bg:#f0f0f0;--bg2:#fff;--bg3:#e8e8e8;--border:#ddd;
-  --text:#111;--text2:#555;--text3:#aaa;--shadow:0 4px 24px rgba(0,0,0,.12);
-}
+[data-theme="light"]{--bg:#f0f0f0;--bg2:#fff;--bg3:#e8e8e8;--border:#ddd;--text:#111;--text2:#555;--text3:#aaa;--shadow:0 4px 24px rgba(0,0,0,.12)}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
 button{cursor:pointer;font-family:inherit;font-size:14px}
-input,select,textarea{font-family:inherit;font-size:14px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px 12px;width:100%;outline:none;transition:border .2s}
+input,select{font-family:inherit;font-size:14px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px 12px;width:100%;outline:none;transition:border .2s}
 input:focus,select:focus{border-color:var(--primary)}
 a{color:var(--primary);text-decoration:none}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:3px}
 
-/* ── SETUP ────────────────────────────────────────────────── */
+/* SETUP */
 #setup-screen{display:none;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:var(--bg)}
-.setup-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:40px;max-width:500px;width:100%}
-.setup-card h2{font-size:20px;font-weight:700;margin-bottom:8px}
+.setup-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:40px;max-width:540px;width:100%}
+.setup-card h2{font-size:20px;font-weight:700;margin-bottom:6px}
 .setup-card .sub{color:var(--text2);font-size:13px;margin-bottom:24px}
+.setup-step{background:var(--bg3);border-radius:8px;padding:14px 16px;margin-bottom:10px;font-size:13px;line-height:1.7}
+.setup-step strong{color:var(--primary)}
 .setup-warn{background:#2a1a00;border:1px solid #f9731633;border-radius:8px;padding:12px 16px;font-size:13px;color:var(--yellow);margin-bottom:20px}
 
-/* ── LOGIN ────────────────────────────────────────────────── */
+/* LOGIN */
 #login-screen{display:none;min-height:100vh;background:#080808;flex-direction:row}
 .login-left{flex:1;position:relative;overflow:hidden;min-height:100vh}
 .login-left img{width:100%;height:100%;object-fit:cover;object-position:center}
@@ -47,40 +48,18 @@ a{color:var(--primary);text-decoration:none}
 .login-brand-text{display:flex;flex-direction:column}
 .login-brand-name{font-size:26px;font-weight:800;color:#fff;letter-spacing:-1px;line-height:1}
 .login-brand-sub{font-size:11px;color:rgba(255,255,255,.35);letter-spacing:2px;text-transform:uppercase;margin-top:3px}
-.login-card{background:rgba(255,255,255,.04);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:32px;width:100%;max-width:380px}
-.login-card h2{font-size:18px;font-weight:700;margin-bottom:4px;color:#fff}
-.login-card .sub{color:rgba(255,255,255,.4);font-size:13px;margin-bottom:24px}
+.login-card{background:rgba(255,255,255,.04);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:36px;width:100%;max-width:380px;text-align:center}
+.login-card h2{font-size:18px;font-weight:700;margin-bottom:8px;color:#fff}
+.login-card .sub{color:rgba(255,255,255,.4);font-size:13px;margin-bottom:28px;line-height:1.6}
 .login-brands-bottom{margin-top:32px;opacity:.25;align-self:flex-start}
 .login-brands-bottom img{max-width:320px;height:auto}
-.form-group{margin-bottom:16px}
-.form-group label{display:block;font-size:11px;color:rgba(255,255,255,.4);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.8px}
-.login-card input{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#fff;border-radius:8px;padding:11px 14px}
-.login-card input:focus{border-color:var(--primary);background:rgba(255,255,255,.08)}
-.login-card input::placeholder{color:rgba(255,255,255,.2)}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 20px;border-radius:8px;border:none;font-weight:600;transition:all .2s;white-space:nowrap}
-.btn-primary{background:var(--primary);color:#fff;width:100%;margin-top:4px;padding:12px;font-size:15px}
-.btn-primary:hover{background:var(--primary-d)}
-.btn-outline{background:transparent;color:var(--text2);border:1px solid var(--border)}
-.btn-outline:hover{border-color:var(--primary);color:var(--primary)}
-.btn-sm{padding:6px 14px;font-size:12px}
-.btn-danger{background:var(--red);color:#fff}
-.btn-danger:hover{opacity:.85}
-.btn-success{background:var(--green);color:#fff}
-.btn-success:hover{opacity:.85}
-#login-tabs{display:flex;gap:0;margin-bottom:24px;border-bottom:1px solid rgba(255,255,255,.08)}
-.login-tab{background:none;border:none;color:rgba(255,255,255,.4);padding:10px 16px;font-size:13px;font-weight:600;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;cursor:pointer}
-.login-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
-#msg-login,#msg-register{font-size:13px;padding:10px 14px;border-radius:6px;margin-top:12px;display:none}
-.msg-ok{background:#0d2a1a;color:var(--green);border:1px solid #22c55e44}
-.msg-err{background:#2a0d0d;color:var(--red);border:1px solid #ef444444}
-.login-brands{display:flex;gap:16px;align-items:center;justify-content:center;margin-top:32px;opacity:.3;flex-wrap:wrap}
-.login-brands span{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#fff;border:1px solid rgba(255,255,255,.3);padding:4px 8px;border-radius:4px}
+.msg-err{background:#2a0d0d;color:var(--red);border:1px solid #ef444444;border-radius:6px;padding:10px 14px;font-size:13px;margin-top:12px;display:none}
 
-/* ── APP ──────────────────────────────────────────────────── */
+/* APP */
 #app{display:none;flex-direction:row;min-height:100vh}
 #sidebar{width:220px;min-height:100vh;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100}
 .sidebar-logo{padding:18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
-.sidebar-logo svg{width:30px;height:30px;flex-shrink:0}
+.sidebar-logo-icon{width:30px;height:30px;background:var(--primary);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
 .sidebar-logo .site-title{font-size:14px;font-weight:800;letter-spacing:-.3px}
 .sidebar-logo .site-sub{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:1px}
 nav{flex:1;padding:10px 0;overflow-y:auto}
@@ -92,720 +71,1134 @@ nav{flex:1;padding:10px 0;overflow-y:auto}
 .sidebar-footer{padding:14px;border-top:1px solid var(--border)}
 .user-info{display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;background:var(--bg3);margin-bottom:10px}
 .user-avatar{width:30px;height:30px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
-.user-name{font-size:12px;font-weight:600;line-height:1.3}
+.user-name{font-size:12px;font-weight:600;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .user-role{font-size:11px;color:var(--text2)}
-.theme-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:6px 12px;border-radius:6px;font-size:12px;width:100%;margin-bottom:6px}
+.theme-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:6px 12px;border-radius:6px;font-size:12px;width:100%;margin-bottom:6px;cursor:pointer}
 .logout-btn{background:none;border:none;color:var(--text3);font-size:12px;width:100%;padding:4px;cursor:pointer}
 .logout-btn:hover{color:var(--red)}
+#content{margin-left:220px;flex:1;padding:24px;min-height:100vh}
+.page{display:none}
+.page.active{display:block}
 
-#main{flex:1;margin-left:220px;min-height:100vh;display:flex;flex-direction:column}
-.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:50}
-.topbar h2{font-size:15px;font-weight:700;margin-right:auto}
-.topbar select,.topbar input{width:auto;padding:6px 10px;font-size:12px}
-.topbar .btn-outline{padding:6px 12px;font-size:12px}
-.page-content{padding:20px;flex:1}
+/* TOP FILTERS */
+.top-bar{display:flex;align-items:center;gap:10px;margin-bottom:24px;flex-wrap:wrap}
+.top-bar select{width:auto;min-width:140px}
+.page-title{font-size:20px;font-weight:800;margin-right:auto}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 20px;border-radius:8px;border:none;font-weight:600;transition:all .2s;white-space:nowrap;cursor:pointer}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-d)}
+.btn-outline{background:transparent;color:var(--text2);border:1px solid var(--border)}
+.btn-outline:hover{border-color:var(--primary);color:var(--primary)}
+.btn-sm{padding:6px 14px;font-size:12px}
+.btn-danger{background:var(--red);color:#fff}
+.btn-success{background:var(--green);color:#fff}
+.btn-icon{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:8px 10px;border-radius:6px}
+.btn-icon:hover{color:var(--primary)}
 
-/* ── CARDS ────────────────────────────────────────────────── */
-.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
-.card-title{font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px}
-.metrics-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-bottom:20px}
-.metric-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;position:relative;overflow:hidden}
-.metric-card::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--accent,var(--primary))}
-.metric-label{font-size:11px;color:var(--text2);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
-.metric-value{font-size:20px;font-weight:700;line-height:1}
-.metric-sub{font-size:11px;color:var(--text3);margin-top:5px}
-.metric-card.green{--accent:var(--green)}
-.metric-card.blue{--accent:var(--blue)}
-.metric-card.yellow{--accent:var(--yellow)}
-.metric-card.red{--accent:var(--red)}
+/* METRIC CARDS */
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+.metric-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px 20px}
+.metric-label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.metric-value{font-size:22px;font-weight:800;letter-spacing:-.5px;color:var(--primary)}
+.metric-sub{font-size:11px;color:var(--text3);margin-top:4px}
 
-/* ── CHARTS ───────────────────────────────────────────────── */
-.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
-@media(max-width:900px){.charts-grid{grid-template-columns:1fr}}
-.chart-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
-.chart-card h3{font-size:11px;font-weight:700;color:var(--text2);margin-bottom:14px;text-transform:uppercase;letter-spacing:.5px}
-.chart-wrap{position:relative;height:240px}
+/* CHARTS */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+.charts-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+@media(max-width:1100px){.charts-grid{grid-template-columns:1fr}.charts-grid-4{grid-template-columns:1fr 1fr}}
+.chart-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px}
+.chart-card h3{font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px}
+.chart-wrap{position:relative;height:200px}
 
-/* ── FILTROS ──────────────────────────────────────────────── */
-.filter-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:16px}
-.filter-group{display:flex;flex-direction:column;gap:4px;min-width:130px}
-.filter-group label{font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
-.filter-group select,.filter-group input{padding:6px 10px;font-size:12px}
-.filter-actions{display:flex;gap:8px;margin-left:auto;align-items:flex-end}
-
-/* ── TABELAS ──────────────────────────────────────────────── */
-.table-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
-.table-header{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
-.table-header h3{font-size:13px;font-weight:600}
-.table-header .count{font-size:11px;color:var(--text2);background:var(--bg3);padding:3px 10px;border-radius:20px}
-.table-scroll{overflow-x:auto;max-height:600px;overflow-y:auto}
-table{width:100%;border-collapse:collapse;font-size:12px}
-th{background:var(--bg3);color:var(--text2);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:9px 12px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:1}
-td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text);white-space:nowrap}
+/* TABLES */
+.table-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px}
+.table-header{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.table-header h3{font-size:14px;font-weight:700;margin-right:4px}
+.table-count{font-size:12px;color:var(--text2);background:var(--bg3);padding:2px 8px;border-radius:10px}
+.table-filters{display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg3)}
+.table-filters select,.table-filters input{width:auto;min-width:130px;font-size:12px;padding:6px 10px}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{background:var(--bg3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);padding:10px 12px;text-align:left;position:sticky;top:0;z-index:1}
+td{padding:9px 12px;border-bottom:1px solid var(--border);font-size:13px;white-space:nowrap}
 tr:last-child td{border-bottom:none}
-tr:hover td{background:rgba(249,115,22,.03)}
-.badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700}
-.badge-nfe{background:#1e3a5f;color:#60a5fa}
-.badge-nfce{background:#1a3a2a;color:#4ade80}
-.badge-active{background:#16402a;color:var(--green)}
-.badge-pending{background:#3b2a0a;color:var(--yellow)}
-.badge-inactive,.badge-viewer{background:#1a1a1a;color:var(--text3)}
-.badge-rejected{background:#3b0f0f;color:var(--red)}
-.badge-admin{background:#3b1a0a;color:var(--primary)}
-.badge-contador{background:#1a2a3b;color:var(--blue)}
-.empty-state{text-align:center;padding:40px;color:var(--text3)}
-.empty-state .icon{font-size:32px;margin-bottom:10px}
-
-/* ── UPLOAD ───────────────────────────────────────────────── */
-.upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:36px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg2)}
-.upload-zone:hover,.upload-zone.drag{border-color:var(--primary);background:rgba(249,115,22,.04)}
-.upload-zone .icon{font-size:36px;margin-bottom:10px}
-.upload-zone p{color:var(--text2);font-size:13px}
-.upload-zone .sub{font-size:11px;color:var(--text3);margin-top:3px}
-.progress-wrap{background:var(--bg3);border-radius:6px;height:8px;overflow:hidden;margin:12px 0 4px}
-.progress-fill{height:100%;background:linear-gradient(90deg,var(--primary),#fb923c);border-radius:6px;transition:width .3s}
-.progress-label{font-size:12px;color:var(--text2);text-align:right}
-#file-list{margin-top:12px;display:flex;flex-direction:column;gap:4px;max-height:300px;overflow-y:auto}
-.file-item{display:flex;align-items:center;gap:8px;background:var(--bg3);border-radius:6px;padding:6px 10px;font-size:12px}
-.file-item .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.file-item .size{color:var(--text3);font-size:10px}
-.file-item .fstatus{font-size:11px;font-weight:600;min-width:90px;text-align:right}
-
-/* ── MODAL ────────────────────────────────────────────────── */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
-.modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:480px;width:100%;box-shadow:var(--shadow)}
-.modal h3{font-size:16px;font-weight:700;margin-bottom:8px}
-.modal .sub{color:var(--text2);font-size:13px;margin-bottom:20px}
-.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
-.hidden{display:none!important}
-
-/* ── PAGINAÇÃO ────────────────────────────────────────────── */
-.pagination{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--text2)}
-.pagination-btns{display:flex;gap:4px}
+tr:hover td{background:rgba(255,255,255,.02)}
+.pagination{display:flex;align-items:center;gap:8px;padding:12px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);flex-wrap:wrap}
+.pagination-btns{display:flex;gap:4px;margin-left:auto}
 .page-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:4px 10px;border-radius:5px;font-size:12px;cursor:pointer}
-.page-btn:hover{border-color:var(--primary);color:var(--primary)}
+.page-btn:hover:not(:disabled){border-color:var(--primary);color:var(--primary)}
 .page-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.page-btn:disabled{opacity:.4;cursor:default}
+.badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700}
+.badge-nfe{background:#1e3a5f;color:#93c5fd}
+.badge-nfce{background:#14291a;color:#86efac}
+.badge-ok{background:#14291a;color:#86efac}
+.badge-warn{background:#2a1a00;color:#fcd34d}
+.badge-err{background:#2a0d0d;color:#fca5a5}
 
-/* ── TOAST ────────────────────────────────────────────────── */
-#toast-container{position:fixed;bottom:20px;right:20px;z-index:999;display:flex;flex-direction:column;gap:8px}
-.toast{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:11px 16px;font-size:13px;box-shadow:var(--shadow);max-width:300px;animation:slideIn .3s ease}
-.toast.ok{border-left:3px solid var(--green)}
-.toast.err{border-left:3px solid var(--red)}
-.toast.info{border-left:3px solid var(--primary)}
-@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:48px 20px;color:var(--text3)}
+.empty-state .icon{font-size:36px;margin-bottom:12px}
+.empty-state p{font-size:14px}
 
-/* ── RESUMO ANUAL ─────────────────────────────────────────── */
-.anual-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
-.anual-mes{background:var(--bg3);border-radius:8px;padding:12px;cursor:pointer;border:1px solid transparent;transition:all .2s}
+/* DRIVE PAGE */
+.drive-header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.drive-status{display:flex;align-items:center;gap:8px;font-size:13px;padding:8px 14px;border-radius:8px;border:1px solid}
+.drive-status.connected{background:#0d2a1a;border-color:#22c55e44;color:var(--green)}
+.drive-status.disconnected{background:#2a1a00;border-color:#f9731633;color:var(--yellow)}
+.file-list{display:flex;flex-direction:column;gap:8px}
+.file-item{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;transition:border .2s}
+.file-item:hover{border-color:var(--primary)}
+.file-icon{font-size:22px;flex-shrink:0}
+.file-info{flex:1;min-width:0}
+.file-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-meta{font-size:11px;color:var(--text2);margin-top:2px}
+.file-loaded{font-size:11px;color:var(--green);margin-top:2px}
+.loaded-badge{background:#0d2a1a;color:var(--green);border:1px solid #22c55e33;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700}
+.progress-bar-wrap{background:var(--bg3);border-radius:6px;height:8px;overflow:hidden;margin-top:8px}
+.progress-bar-fill{height:100%;background:var(--primary);transition:width .3s;border-radius:6px}
+
+/* ANUAL */
+.anual-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+@media(max-width:900px){.anual-grid{grid-template-columns:repeat(2,1fr)}}
+.anual-mes{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:all .15s}
 .anual-mes:hover{border-color:var(--primary)}
-.anual-mes .mes-nome{font-size:11px;color:var(--text2);font-weight:700;margin-bottom:5px;text-transform:uppercase}
-.anual-mes .mes-val{font-size:15px;font-weight:700}
-.anual-mes .mes-notas{font-size:10px;color:var(--text3);margin-top:2px}
+.mes-nome{font-size:12px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.mes-val{font-size:16px;font-weight:800}
+.mes-notas{font-size:11px;color:var(--text3);margin-top:4px}
+
+/* AUDIT */
+.audit-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px}
+.audit-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px}
+.audit-card .label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px}
+.audit-card .val{font-size:18px;font-weight:800}
+.diff-pos{color:var(--green)}
+.diff-neg{color:var(--red)}
+.diff-zero{color:var(--text3)}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast-item{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 18px;font-size:13px;box-shadow:var(--shadow);transform:translateX(120%);transition:transform .3s;pointer-events:all}
+.toast-item.show{transform:translateX(0)}
+.toast-item.t-ok{border-left:3px solid var(--green)}
+.toast-item.t-err{border-left:3px solid var(--red)}
+.toast-item.t-info{border-left:3px solid var(--primary)}
+
+/* MODAL */
+#modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px}
+#modal-overlay.hidden{display:none}
+.modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:16px;max-width:480px;width:100%;padding:28px}
+.modal-box h3{font-size:16px;font-weight:700;margin-bottom:12px}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
 </style>
 </head>
 <body>
 
-<!-- SETUP -->
+<!-- ── SETUP ──────────────────────────────────────────────── -->
 <div id="setup-screen">
   <div class="setup-card">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
-      <svg width="36" height="36" viewBox="0 0 40 40"><defs><linearGradient id="lg0" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#fb923c"/><stop offset="100%" stop-color="#f97316"/></linearGradient></defs><circle cx="20" cy="20" r="20" fill="url(#lg0)"/><text x="20" y="27" text-anchor="middle" font-size="20" font-weight="900" fill="white" font-family="serif">C</text></svg>
-      <div><div style="font-size:16px;font-weight:800">Cajupar</div><div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px">Apuração Fiscal</div></div>
+    <h2>⚙️ Configuração inicial</h2>
+    <p class="sub">Informe o Google Client ID para habilitar o acesso ao Drive.</p>
+    <div class="setup-warn">⚠️ As credenciais ficam salvas só no seu navegador — nunca são enviadas a servidores.</div>
+    <div class="setup-step">
+      <strong>1.</strong> Acesse <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a><br>
+      <strong>2.</strong> Crie um projeto → ative a <strong>Google Drive API</strong><br>
+      <strong>3.</strong> Credenciais → OAuth 2.0 → Tipo: <strong>Aplicativo da Web</strong><br>
+      <strong>4.</strong> Em "Origens JavaScript autorizadas" adicione a URL do seu site GitHub Pages<br>
+      <strong>5.</strong> Copie o <strong>Client ID</strong> e cole abaixo
     </div>
-    <h2>Configuração Inicial</h2>
-    <p class="sub" style="margin-bottom:20px">Informe as credenciais do projeto Supabase. Encontre em <strong>Project Settings → API</strong>.</p>
-    <div class="setup-warn">⚠️ Credenciais salvas localmente no navegador. Cada usuário configura uma vez.</div>
-    <div class="form-group"><label>Supabase URL</label><input id="cfg-url" placeholder="https://xxxx.supabase.co"/></div>
-    <div class="form-group"><label>Supabase Anon Key</label><input id="cfg-key" placeholder="eyJhbGciOiJIUzI1NiIs..."/></div>
-    <button class="btn btn-primary" onclick="saveConfig()">Salvar e continuar</button>
+    <div style="margin-top:20px">
+      <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:6px">Google Client ID</label>
+      <input type="text" id="setup-client-id" placeholder="xxxxxxxxxxxx.apps.googleusercontent.com" style="margin-bottom:14px"/>
+      <button class="btn btn-primary" onclick="saveSetup()" style="width:100%">Salvar e continuar</button>
+    </div>
   </div>
 </div>
 
-<!-- LOGIN -->
+<!-- ── LOGIN ──────────────────────────────────────────────── -->
 <div id="login-screen">
-  <!-- ESQUERDA: imagem de fundo -->
   <div class="login-left">
-    <img src="Capa%20do%20Linkedin%20Caju%20-%20Copia.png" alt="Cajupar"/>
+    <img src="Capa%20do%20Linkedin%20Caju%20-%20Copia.png" alt="Cajupar" onerror="this.style.display='none'"/>
     <div class="login-left-overlay"></div>
   </div>
-
-  <!-- DIREITA: formulário -->
   <div class="login-right">
     <div class="login-brand">
-      <svg class="login-brand-logo" viewBox="0 0 52 52">
-        <defs><linearGradient id="lg1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#fb923c"/><stop offset="50%" stop-color="#f97316"/><stop offset="100%" stop-color="#ea580c"/></linearGradient></defs>
-        <path d="M26 2C13 2 2 13 2 26C2 39 13 50 26 50C33 50 39.5 47 44 42L37 36C34.5 39 30.5 41 26 41C18 41 11 34 11 26C11 18 18 11 26 11C30.5 11 34.5 13 37 16L44 10C39.5 5 33 2 26 2Z" fill="url(#lg1)"/>
-        <path d="M44 26C44 28 43.7 30 43.1 31.8L50 35C51.3 32.2 52 29.2 52 26C52 22.8 51.3 19.8 50 17L43.1 20.2C43.7 22 44 24 44 26Z" fill="url(#lg1)" opacity=".6"/>
-      </svg>
+      <div class="login-brand-logo" style="background:var(--primary);border-radius:12px;width:48px;height:48px;display:flex;align-items:center;justify-content:center;font-size:22px">🌶️</div>
       <div class="login-brand-text">
-        <div class="login-brand-name">CAJUPAR</div>
-        <div class="login-brand-sub">Apuração Fiscal</div>
+        <span class="login-brand-name">Cajupar</span>
+        <span class="login-brand-sub">Apuração Fiscal</span>
       </div>
     </div>
-
     <div class="login-card">
       <h2>Bem-vindo</h2>
-      <p class="sub">Dashboard Fiscal · @cajupar.com</p>
-
-      <div id="login-tabs">
-        <button class="login-tab active" onclick="showTab('login')">Entrar</button>
-        <button class="login-tab" onclick="showTab('register')">Solicitar acesso</button>
-      </div>
-
-      <div id="tab-login">
-        <div class="form-group"><label>E-mail</label><input type="email" id="login-email" placeholder="voce@cajupar.com" onkeydown="if(event.key==='Enter')doLogin()"/></div>
-        <div class="form-group"><label>Senha</label><input type="password" id="login-pass" onkeydown="if(event.key==='Enter')doLogin()"/></div>
-        <button class="btn btn-primary" onclick="doLogin()" id="btn-login">Entrar</button>
-        <div id="msg-login"></div>
-      </div>
-
-      <div id="tab-register" class="hidden">
-        <p style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px">Use seu e-mail <strong style="color:rgba(255,255,255,.7)">@cajupar.com</strong>. Aguarde aprovação do administrador.</p>
-        <div class="form-group"><label>Nome</label><input type="text" id="reg-nome" placeholder="Seu nome completo"/></div>
-        <div class="form-group"><label>E-mail</label><input type="email" id="reg-email" placeholder="voce@cajupar.com"/></div>
-        <div class="form-group"><label>Senha</label><input type="password" id="reg-pass"/></div>
-        <div class="form-group"><label>Confirmar senha</label><input type="password" id="reg-pass2" onkeydown="if(event.key==='Enter')doRegister()"/></div>
-        <button class="btn btn-primary" onclick="doRegister()" id="btn-register">Enviar solicitação</button>
-        <div id="msg-register"></div>
-      </div>
+      <p class="sub">Acesse com sua conta Google corporativa<br>(@cajupar.com) para continuar.</p>
+      <button class="btn btn-primary" style="width:100%;font-size:15px;padding:13px" onclick="doGoogleLogin()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Entrar com Google
+      </button>
+      <div id="msg-login" class="msg-err"></div>
     </div>
-
-    <!-- logos das marcas em baixo -->
     <div class="login-brands-bottom">
-      <img src="Capa%20do%20Linkedin%20Caju%20-%20Colaborador.png" alt="Marcas Cajupar"/>
+      <img src="Capa%20do%20Linkedin%20Caju%20-%20Colaborador.png" alt="Grupos" onerror="this.style.display='none'"/>
     </div>
   </div>
 </div>
 
-<!-- APP -->
+<!-- ── APP ────────────────────────────────────────────────── -->
 <div id="app">
   <div id="sidebar">
     <div class="sidebar-logo">
-      <svg width="30" height="30" viewBox="0 0 52 52"><defs><linearGradient id="lg2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#fb923c"/><stop offset="100%" stop-color="#ea580c"/></linearGradient></defs><path d="M26 2C13 2 2 13 2 26C2 39 13 50 26 50C33 50 39.5 47 44 42L37 36C34.5 39 30.5 41 26 41C18 41 11 34 11 26C11 18 18 11 26 11C30.5 11 34.5 13 37 16L44 10C39.5 5 33 2 26 2Z" fill="url(#lg2)"/></svg>
-      <div><div class="site-title">CAJUPAR</div><div class="site-sub">Fiscal</div></div>
+      <div class="sidebar-logo-icon">🌶️</div>
+      <div><div class="site-title">Cajupar</div><div class="site-sub">Fiscal</div></div>
     </div>
     <nav>
-      <div class="nav-section">Principal</div>
-      <button class="nav-item active" onclick="showPage('dashboard')" data-page="dashboard"><span class="icon">📊</span>Dashboard</button>
-      <button class="nav-item" onclick="showPage('anual')" data-page="anual"><span class="icon">📅</span>Resumo Anual</button>
-      <div class="nav-section">Notas Fiscais</div>
-      <button class="nav-item" onclick="showPage('notas')" data-page="notas"><span class="icon">🧾</span>Notas</button>
-      <button class="nav-item" onclick="showPage('itens')" data-page="itens"><span class="icon">📦</span>Itens</button>
-      <div class="nav-section">Importação</div>
-      <button class="nav-item" onclick="showPage('upload')" data-page="upload"><span class="icon">⬆️</span>Importar XMLs</button>
-      <div id="admin-nav" class="hidden">
-        <div class="nav-section">Admin</div>
-        <button class="nav-item" onclick="showPage('usuarios')" data-page="usuarios"><span class="icon">👥</span>Usuários</button>
-      </div>
+      <div class="nav-section">Análise</div>
+      <button class="nav-item active" onclick="showPage('dashboard')"><span class="icon">📊</span>Dashboard</button>
+      <button class="nav-item" onclick="showPage('anual')"><span class="icon">📅</span>Resumo Anual</button>
+      <button class="nav-item" onclick="showPage('auditoria')"><span class="icon">🔍</span>Auditoria</button>
+      <div class="nav-section">Dados</div>
+      <button class="nav-item" onclick="showPage('notas')"><span class="icon">🧾</span>Notas Fiscais</button>
+      <button class="nav-item" onclick="showPage('itens')"><span class="icon">📦</span>Itens</button>
+      <div class="nav-section">Importar</div>
+      <button class="nav-item" onclick="showPage('drive')"><span class="icon">📁</span>Google Drive</button>
     </nav>
     <div class="sidebar-footer">
       <div class="user-info">
-        <div class="user-avatar" id="avatar-letter">?</div>
-        <div><div class="user-name" id="sidebar-nome">...</div><div class="user-role" id="sidebar-role">—</div></div>
+        <div class="user-avatar" id="sb-avatar">?</div>
+        <div><div class="user-name" id="sb-name">—</div><div class="user-role" id="sb-email" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px">—</div></div>
       </div>
-      <button class="theme-btn" onclick="toggleTheme()">☀ / ☽ Tema</button>
+      <button class="theme-btn" onclick="toggleTheme()">☀️ Alternar tema</button>
       <button class="logout-btn" onclick="doLogout()">Sair da conta</button>
     </div>
   </div>
 
-  <div id="main">
-    <div class="topbar">
-      <h2 id="page-title">Dashboard</h2>
-      <select id="top-ano" onchange="loadDashboard()" style="width:80px"><option>2026</option><option>2025</option><option>2024</option></select>
-      <select id="top-mes" onchange="loadDashboard()">
-        <option value="">Todos os meses</option>
-        <option value="01">Janeiro</option><option value="02">Fevereiro</option>
-        <option value="03">Março</option><option value="04">Abril</option>
-        <option value="05">Maio</option><option value="06">Junho</option>
-        <option value="07">Julho</option><option value="08">Agosto</option>
-        <option value="09">Setembro</option><option value="10">Outubro</option>
-        <option value="11">Novembro</option><option value="12">Dezembro</option>
-      </select>
-      <select id="top-grupo" onchange="onGrupoChange()">
-        <option value="">Todos grupos</option>
-        <option>MULT</option><option>NFE</option><option>CAJU</option><option>FERM</option>
-      </select>
-      <select id="top-empresa" onchange="loadDashboard()">
-        <option value="">Todas empresas</option>
-      </select>
-      <button class="btn btn-outline" onclick="loadDashboard()" style="padding:6px 12px;font-size:12px">🔄</button>
+  <div id="content">
+
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page active">
+      <div class="top-bar">
+        <span class="page-title">Dashboard</span>
+        <select id="top-grupo" onchange="onFilterChange()"><option value="">Todos os grupos</option></select>
+        <select id="top-empresa" onchange="onFilterChange()"><option value="">Todas as empresas</option></select>
+        <select id="top-ano" onchange="onFilterChange()"></select>
+        <select id="top-mes" onchange="onFilterChange()">
+          <option value="">Ano completo</option>
+          <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
+          <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
+          <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
+          <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+        </select>
+        <button class="btn btn-icon" onclick="loadDashboard()" title="Atualizar">🔄</button>
+      </div>
+      <div class="metrics-grid">
+        <div class="metric-card"><div class="metric-label">Faturamento</div><div class="metric-value" id="m-fat">—</div><div class="metric-sub" id="m-fat-sub">notas no período</div></div>
+        <div class="metric-card"><div class="metric-label">ICMS Destacado</div><div class="metric-value" id="m-icms" style="color:var(--yellow)">—</div><div class="metric-sub" id="m-icms-sub">—</div></div>
+        <div class="metric-card"><div class="metric-label">ICMS-ST</div><div class="metric-value" id="m-st" style="color:var(--red)">—</div><div class="metric-sub" id="m-st-sub">FCP-ST incluso</div></div>
+        <div class="metric-card"><div class="metric-label">PIS + COFINS</div><div class="metric-value" id="m-piscof" style="color:var(--blue)">—</div><div class="metric-sub" id="m-piscof-sub">—</div></div>
+        <div class="metric-card"><div class="metric-label">Qtd Notas</div><div class="metric-value" id="m-qtd" style="color:var(--text)">—</div><div class="metric-sub" id="m-qtd-sub">—</div></div>
+      </div>
+      <div class="charts-grid">
+        <div class="chart-card"><h3>Faturamento por Empresa</h3><div class="chart-wrap"><canvas id="chart-empresas"></canvas></div></div>
+        <div class="chart-card"><h3>Evolução Mensal</h3><div class="chart-wrap"><canvas id="chart-mensal"></canvas></div></div>
+      </div>
+      <div class="charts-grid" style="grid-template-columns:1fr 1fr 1fr">
+        <div class="chart-card"><h3>Distribuição de Impostos</h3><div class="chart-wrap"><canvas id="chart-impostos"></canvas></div></div>
+        <div class="chart-card"><h3>Tipo de Documento</h3><div class="chart-wrap"><canvas id="chart-tipos"></canvas></div></div>
+        <div class="chart-card"><h3>Top Grupos</h3><div class="chart-wrap"><canvas id="chart-grupos"></canvas></div></div>
+      </div>
+      <div class="table-card">
+        <div class="table-header"><h3>Resumo por Empresa</h3></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Grupo</th><th>Empresa</th><th>NFC-e</th><th>NF-e</th><th>Faturamento</th><th>ICMS</th><th>ICMS-ST</th><th>FCP-ST</th><th>PIS</th><th>COFINS</th></tr></thead>
+            <tbody id="tbl-resumo-body"><tr><td colspan="10"><div class="empty-state"><div class="icon">📊</div><p>Carregue planilhas do Google Drive para ver os dados</p></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
-    <div class="page-content">
-
-      <!-- DASHBOARD -->
-      <div id="page-dashboard">
-        <div class="metrics-grid">
-          <div class="metric-card"><div class="metric-label">Faturamento</div><div class="metric-value" id="m-fat">—</div><div class="metric-sub" id="m-fat-sub">—</div></div>
-          <div class="metric-card green"><div class="metric-label">ICMS</div><div class="metric-value" id="m-icms">—</div><div class="metric-sub">destacado</div></div>
-          <div class="metric-card blue"><div class="metric-label">PIS + COFINS</div><div class="metric-value" id="m-piscof">—</div><div class="metric-sub" id="m-piscof-sub">—</div></div>
-          <div class="metric-card yellow"><div class="metric-label">ICMS-ST</div><div class="metric-value" id="m-st">—</div><div class="metric-sub">substituição tributária</div></div>
-          <div class="metric-card red"><div class="metric-label">Notas Fiscais</div><div class="metric-value" id="m-qtd">—</div><div class="metric-sub" id="m-qtd-sub">—</div></div>
-        </div>
-        <div class="charts-grid">
-          <div class="chart-card"><h3>Faturamento por Empresa</h3><div class="chart-wrap"><canvas id="chart-empresas"></canvas></div></div>
-          <div class="chart-card"><h3>Faturamento por Mês</h3><div class="chart-wrap"><canvas id="chart-mensal"></canvas></div></div>
-          <div class="chart-card"><h3>Distribuição de Impostos</h3><div class="chart-wrap"><canvas id="chart-impostos"></canvas></div></div>
-          <div class="chart-card"><h3>NF-e vs NFC-e</h3><div class="chart-wrap"><canvas id="chart-tipos"></canvas></div></div>
-        </div>
-        <div class="table-wrap">
-          <div class="table-header"><h3>Resumo por Empresa</h3></div>
-          <div class="table-scroll">
-            <table><thead><tr><th>Grupo</th><th>Empresa</th><th>NFC-e</th><th>NF-e</th><th>Faturamento (R$)</th><th>ICMS (R$)</th><th>ICMS-ST (R$)</th><th>PIS (R$)</th><th>COFINS (R$)</th></tr></thead>
-            <tbody id="tbl-resumo-body"><tr><td colspan="9"><div class="empty-state"><p>Carregando...</p></div></td></tr></tbody></table>
-          </div>
-        </div>
+    <!-- RESUMO ANUAL -->
+    <div id="page-anual" class="page">
+      <div class="top-bar">
+        <span class="page-title">Resumo Anual</span>
+        <select id="anual-grupo" onchange="loadAnual()"><option value="">Todos os grupos</option></select>
+        <select id="anual-empresa" onchange="loadAnual()"><option value="">Todas as empresas</option></select>
+        <select id="anual-ano" onchange="loadAnual()"></select>
+        <button class="btn btn-icon" onclick="loadAnual()" title="Atualizar">🔄</button>
       </div>
-
-      <!-- RESUMO ANUAL -->
-      <div id="page-anual" class="hidden">
-        <div class="charts-grid" style="margin-bottom:20px">
-          <div class="chart-card" style="grid-column:1/-1"><h3>Faturamento Mensal — <span id="anual-ano-titulo">2026</span></h3><div class="chart-wrap" style="height:280px"><canvas id="chart-anual"></canvas></div></div>
-        </div>
-        <div class="card"><div class="card-title">Meses com dados</div><div class="anual-grid" id="anual-grid"></div></div>
-      </div>
-
-      <!-- NOTAS -->
-      <div id="page-notas" class="hidden">
-        <div class="filter-bar">
-          <div class="filter-group"><label>Mês/Ano</label><input type="month" id="f-mes-notas"/></div>
-          <div class="filter-group"><label>Grupo</label><select id="f-grupo-notas"><option value="">Todos</option><option>MULT</option><option>NFE</option><option>CAJU</option><option>FERM</option></select></div>
-          <div class="filter-group"><label>Empresa</label><select id="f-empresa-notas"><option value="">Todas</option></select></div>
-          <div class="filter-group"><label>Tipo</label><select id="f-tipo-notas"><option value="">Todos</option><option>NF-e</option><option>NFC-e</option></select></div>
-          <div class="filter-group"><label>Buscar</label><input type="text" id="f-busca-notas" placeholder="Chave, número, CNPJ..." style="width:200px"/></div>
-          <div class="filter-actions">
-            <button class="btn btn-primary btn-sm" onclick="loadNotas()">🔍 Filtrar</button>
-            <button class="btn btn-outline btn-sm" onclick="exportNotasCSV()">⬇ CSV</button>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <div class="table-header"><h3>Notas Fiscais</h3><span class="count" id="notas-count">0</span></div>
-          <div class="table-scroll"><table><thead><tr><th>Tipo</th><th>Nº</th><th>Data</th><th>Empresa</th><th>Grupo</th><th>CFOPs</th><th>CNPJ/CPF Dest.</th><th>Destinatário</th><th>Vl Total (R$)</th><th>ICMS (R$)</th><th>ICMS-ST (R$)</th><th>PIS (R$)</th><th>COFINS (R$)</th><th>Pagamento</th></tr></thead><tbody id="notas-body"></tbody></table></div>
-          <div class="pagination" id="notas-pag"></div>
-        </div>
-      </div>
-
-      <!-- ITENS -->
-      <div id="page-itens" class="hidden">
-        <div class="filter-bar">
-          <div class="filter-group"><label>Mês/Ano</label><input type="month" id="f-mes-itens"/></div>
-          <div class="filter-group"><label>Grupo</label><select id="f-grupo-itens"><option value="">Todos</option><option>MULT</option><option>NFE</option><option>CAJU</option><option>FERM</option></select></div>
-          <div class="filter-group"><label>Tributação</label><select id="f-st-itens"><option value="">Todos</option><option value="true">Com ST</option><option value="false">Sem ST</option></select></div>
-          <div class="filter-group"><label>Produto/NCM</label><input type="text" id="f-busca-itens" placeholder="Descrição ou NCM..." style="width:200px"/></div>
-          <div class="filter-actions">
-            <button class="btn btn-primary btn-sm" onclick="loadItens()">🔍 Filtrar</button>
-            <button class="btn btn-outline btn-sm" onclick="exportItensCSV()">⬇ CSV</button>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <div class="table-header"><h3>Itens das Notas</h3><span class="count" id="itens-count">0</span></div>
-          <div class="table-scroll"><table><thead><tr><th>Tipo</th><th>NF</th><th>Data</th><th>Empresa</th><th>Produto</th><th>NCM</th><th>CFOP</th><th>CST</th><th>Un</th><th>Qtd</th><th>Vl Unit (R$)</th><th>Vl Total (R$)</th><th>Tributação</th><th>ICMS (R$)</th><th>ICMS-ST (R$)</th><th>PIS (R$)</th><th>COFINS (R$)</th></tr></thead><tbody id="itens-body"></tbody></table></div>
-          <div class="pagination" id="itens-pag"></div>
-        </div>
-      </div>
-
-      <!-- UPLOAD -->
-      <div id="page-upload" class="hidden">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
-          <div class="card">
-            <div class="card-title">Importar XMLs</div>
-
-            <!-- Seletor de mês para filtro -->
-            <div style="display:flex;gap:10px;margin-bottom:14px;align-items:flex-end">
-              <div class="filter-group" style="flex:1">
-                <label>Filtrar por mês (recomendado)</label>
-                <input type="month" id="upload-mes-filtro"/>
-              </div>
-              <div style="font-size:11px;color:var(--text3);padding-bottom:8px;flex:1">
-                Com o filtro, apenas XMLs do mês selecionado serão processados — mais rápido e eficiente.
-              </div>
-            </div>
-
-            <div class="upload-zone" id="drop-zone"
-                 onclick="document.getElementById('xml-input').click()"
-                 ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
-              <div class="icon">📂</div>
-              <p><strong>Selecionar pasta</strong> ou arrastar XMLs</p>
-              <p class="sub">Clique para selecionar uma pasta inteira de XMLs</p>
-            </div>
-            <!-- webkitdirectory permite selecionar pasta inteira -->
-            <input type="file" id="xml-input" accept=".xml" multiple webkitdirectory style="display:none" onchange="onFileSelect(event)"/>
-
-            <div id="file-count-label" style="font-size:12px;color:var(--text2);margin-top:10px;display:none"></div>
-            <div id="file-list"></div>
-
-            <!-- Barra de progresso -->
-            <div id="progress-section" style="display:none;margin-top:14px">
-              <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:4px">
-                <span id="prog-label">Processando...</span>
-                <span id="prog-pct">0%</span>
-              </div>
-              <div class="progress-wrap"><div class="progress-fill" id="prog-bar" style="width:0%"></div></div>
-              <div style="font-size:11px;color:var(--text3);margin-top:4px" id="prog-detail"></div>
-            </div>
-
-            <div style="display:flex;gap:10px;margin-top:14px">
-              <button class="btn btn-primary" id="btn-processar" onclick="processarXMLs()" style="flex:1" disabled>⚙️ Processar e importar</button>
-              <button class="btn btn-outline btn-sm" onclick="limparFilas()">Limpar</button>
-            </div>
-
-            <div id="upload-summary" style="display:none;background:var(--bg3);border-radius:8px;padding:14px;margin-top:14px">
-              <div style="font-size:13px;font-weight:700;margin-bottom:6px" id="summary-title"></div>
-              <div style="font-size:12px;color:var(--text2)" id="summary-body"></div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-title">Como usar</div>
-            <div style="font-size:13px;color:var(--text2);line-height:1.9">
-              <p>1. Selecione o <strong>mês de referência</strong> acima para filtrar</p>
-              <p>2. Clique na área de upload para <strong>selecionar a pasta</strong> de XMLs</p>
-              <p>3. O sistema filtra automaticamente os XMLs do mês</p>
-              <p>4. Clique em <strong>Processar e importar</strong></p>
-              <p>5. Notas duplicadas são ignoradas automaticamente</p>
-            </div>
-            <div style="margin-top:16px;background:var(--bg3);border-radius:8px;padding:12px">
-              <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Desempenho</div>
-              <div style="font-size:12px;color:var(--text2);line-height:1.8">
-                ✅ Parseia XMLs em paralelo (20 simultâneos)<br>
-                ✅ Verifica duplicatas em lote (500 por consulta)<br>
-                ✅ Insere notas em lote (200 por vez)<br>
-                ✅ Filtra por mês antes de processar
-              </div>
-            </div>
-            <div style="margin-top:12px;background:var(--bg3);border-radius:8px;padding:12px">
-              <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Último processamento</div>
-              <div style="font-size:12px;color:var(--text2)" id="ultimo-proc">Nenhum ainda.</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- USUÁRIOS -->
-      <div id="page-usuarios" class="hidden">
-        <div class="table-wrap" style="margin-bottom:16px">
-          <div class="table-header"><h3>Aguardando aprovação</h3><span class="count" id="pending-count">0</span></div>
-          <div class="table-scroll"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Solicitado em</th><th>Ações</th></tr></thead><tbody id="pending-body"></tbody></table></div>
-        </div>
-        <div class="table-wrap">
-          <div class="table-header"><h3>Usuários ativos</h3></div>
-          <div class="table-scroll"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Desde</th><th>Ações</th></tr></thead><tbody id="users-body"></tbody></table></div>
-        </div>
-      </div>
-
+      <h3 id="anual-titulo" style="margin-bottom:16px;font-size:16px">Faturamento <span id="anual-ano-titulo"></span></h3>
+      <div class="chart-card" style="margin-bottom:20px"><div class="chart-wrap" style="height:220px"><canvas id="chart-anual"></canvas></div></div>
+      <div class="anual-grid" id="anual-grid"></div>
     </div>
+
+    <!-- NOTAS -->
+    <div id="page-notas" class="page">
+      <div class="top-bar">
+        <span class="page-title">Notas Fiscais</span>
+        <button class="btn btn-sm btn-outline" onclick="exportNotasCSV()">⬇️ Exportar CSV</button>
+      </div>
+      <div class="table-card">
+        <div class="table-header">
+          <h3>Notas</h3><span class="table-count" id="notas-count">—</span>
+        </div>
+        <div class="table-filters">
+          <select id="f-mes-notas" onchange="loadNotas(1)"><option value="">Todos os meses</option></select>
+          <select id="f-grupo-notas" onchange="loadNotas(1)"><option value="">Todos os grupos</option></select>
+          <select id="f-empresa-notas" onchange="loadNotas(1)"><option value="">Todas as empresas</option></select>
+          <select id="f-tipo-notas" onchange="loadNotas(1)"><option value="">Todos os tipos</option><option value="NFC-e">NFC-e</option><option value="NF-e">NF-e</option></select>
+          <input type="text" id="f-busca-notas" placeholder="Buscar chave, número, CNPJ..." style="min-width:220px" oninput="debounce(()=>loadNotas(1),400)"/>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Tipo</th><th>Número</th><th>Data</th><th>Empresa</th><th>Grupo</th><th>CFOPs</th><th>Destinatário</th><th>Valor Total</th><th>ICMS</th><th>ICMS-ST</th><th>PIS</th><th>COFINS</th><th>Pagamento</th></tr></thead>
+            <tbody id="notas-body"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="notas-pag"></div>
+      </div>
+    </div>
+
+    <!-- ITENS -->
+    <div id="page-itens" class="page">
+      <div class="top-bar">
+        <span class="page-title">Itens</span>
+        <button class="btn btn-sm btn-outline" onclick="exportItensCSV()">⬇️ Exportar CSV</button>
+      </div>
+      <div class="table-card">
+        <div class="table-header">
+          <h3>Itens</h3><span class="table-count" id="itens-count">—</span>
+        </div>
+        <div class="table-filters">
+          <select id="f-mes-itens" onchange="loadItens(1)"><option value="">Todos os meses</option></select>
+          <select id="f-grupo-itens" onchange="loadItens(1)"><option value="">Todos os grupos</option></select>
+          <select id="f-empresa-itens" onchange="loadItens(1)"><option value="">Todas as empresas</option></select>
+          <select id="f-st-itens" onchange="loadItens(1)"><option value="">Todos</option><option value="true">Com ST</option><option value="false">Sem ST</option></select>
+          <input type="text" id="f-busca-itens" placeholder="Buscar descrição, NCM..." style="min-width:200px" oninput="debounce(()=>loadItens(1),400)"/>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Tipo</th><th>NF</th><th>Data</th><th>Empresa</th><th>Descrição</th><th>NCM</th><th>CFOP</th><th>CST/CSOSN</th><th>Un</th><th>Qtd</th><th>Vl Unit</th><th>Vl Total</th><th>Trib</th><th>ICMS</th><th>ICMS-ST</th><th>PIS</th><th>COFINS</th></tr></thead>
+            <tbody id="itens-body"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="itens-pag"></div>
+      </div>
+    </div>
+
+    <!-- AUDITORIA -->
+    <div id="page-auditoria" class="page">
+      <div class="top-bar">
+        <span class="page-title">Auditoria Fiscal</span>
+        <select id="audit-grupo" onchange="loadAuditoria()"><option value="">Todos os grupos</option></select>
+        <select id="audit-empresa" onchange="loadAuditoria()"><option value="">Todas as empresas</option></select>
+        <select id="audit-mes" onchange="loadAuditoria()"><option value="">Todos os meses</option></select>
+        <button class="btn btn-sm btn-outline" onclick="exportAuditoriaCSV()">⬇️ Exportar CSV</button>
+        <button class="btn btn-icon" onclick="loadAuditoria()" title="Atualizar">🔄</button>
+      </div>
+      <div class="table-card">
+        <div class="table-header">
+          <h3>Apuração por Empresa / Mês</h3>
+          <span class="table-count" id="audit-count">—</span>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>Grupo</th><th>Empresa</th><th>Mês</th><th>Tipo</th>
+              <th>Qtd Notas</th><th>Faturamento (R$)</th><th>Descontos (R$)</th>
+              <th>Base ICMS (R$)</th><th>ICMS Dest. (R$)</th>
+              <th>Base ST (R$)</th><th>ICMS-ST (R$)</th><th>FCP-ST (R$)</th>
+              <th>PIS (R$)</th><th>COFINS (R$)</th>
+            </tr></thead>
+            <tbody id="audit-body"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="audit-pag"></div>
+      </div>
+    </div>
+
+    <!-- DRIVE -->
+    <div id="page-drive" class="page">
+      <div class="top-bar">
+        <span class="page-title">Google Drive</span>
+        <button class="btn btn-primary" id="btn-connect-drive" onclick="connectDrive()">Conectar Google Drive</button>
+        <button class="btn btn-sm btn-outline" onclick="refreshDriveFiles()" id="btn-refresh-drive" style="display:none">🔄 Atualizar lista</button>
+        <button class="btn btn-sm btn-outline" onclick="clearAllData()">🗑️ Limpar dados locais</button>
+      </div>
+
+      <div id="drive-status-bar" class="drive-status disconnected" style="display:inline-flex;margin-bottom:20px">
+        <span>⚠️</span> Drive não conectado — clique em "Conectar" para acessar suas planilhas
+      </div>
+
+      <!-- Arquivos já carregados -->
+      <div id="loaded-section" style="display:none;margin-bottom:28px">
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text2)">📂 PLANILHAS CARREGADAS (<span id="loaded-count">0</span>)</h3>
+        <div id="loaded-list" class="file-list"></div>
+      </div>
+
+      <!-- Arquivos do Drive -->
+      <div id="drive-section" style="display:none">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <h3 style="font-size:14px;font-weight:700;color:var(--text2)">📄 PLANILHAS NO DRIVE</h3>
+          <input type="text" id="drive-search" placeholder="Filtrar por nome..." style="max-width:260px;font-size:12px;padding:6px 10px" oninput="filterDriveFiles()"/>
+        </div>
+        <div id="drive-file-list" class="file-list">
+          <div class="empty-state"><div class="icon">⏳</div><p>Carregando arquivos...</p></div>
+        </div>
+      </div>
+
+      <!-- Progress overlay -->
+      <div id="load-progress" style="display:none;margin-top:20px">
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px">
+          <div style="font-size:13px;font-weight:600;margin-bottom:10px" id="load-progress-label">Carregando...</div>
+          <div class="progress-bar-wrap"><div class="progress-bar-fill" id="load-progress-bar" style="width:0%"></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /app -->
+
+<div id="toast"></div>
+<div id="modal-overlay" class="hidden">
+  <div class="modal-box">
+    <h3 id="modal-title"></h3>
+    <div id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
   </div>
 </div>
 
-<!-- MODAL -->
-<div id="modal-overlay" class="modal-overlay hidden" onclick="if(event.target===this)closeModal()">
-  <div class="modal"><h3 id="modal-title"></h3><p class="sub" id="modal-body"></p><div class="modal-footer" id="modal-footer"></div></div>
-</div>
-<div id="toast-container"></div>
-
 <script>
-// ── CONFIG ────────────────────────────────────────────────────
-const CFG_KEY='cajupar_cfg';
-function getConfig(){ try{return JSON.parse(localStorage.getItem(CFG_KEY)||'{}')}catch(e){return{}} }
-function saveConfig(){
-  const url=document.getElementById('cfg-url').value.trim();
-  const key=document.getElementById('cfg-key').value.trim();
-  if(!url||!key){toast('Preencha URL e Key','err');return;}
-  localStorage.setItem(CFG_KEY,JSON.stringify({url,key}));
-  toast('Salvo! Recarregando...','ok');
-  setTimeout(()=>location.reload(),1000);
-}
+// ══════════════════════════════════════════════════════════════
+//  CONSTANTS
+// ══════════════════════════════════════════════════════════════
+const MAPA_CNPJ = {
+  '35631524000165':{grupo:'MULT',nome:'MULT 01'},
+  '35631524000246':{grupo:'MULT',nome:'NAZO GOIANIA'},
+  '35631524000327':{grupo:'MULT',nome:'CAMINITO SUDOESTE'},
+  '35631524000408':{grupo:'MULT',nome:'MULT 04'},
+  '35631524000599':{grupo:'MULT',nome:'CAMINITO ASA NORTE'},
+  '35631524000750':{grupo:'MULT',nome:'HOLDING FERMULT'},
+  '35631524001218':{grupo:'MULT',nome:'CAMINITO AGUAS CLARAS'},
+  '35631524001307':{grupo:'MULT',nome:'MULT 13'},
+  '35631524001480':{grupo:'MULT',nome:'CAMINITO ASA SUL'},
+  '21131221000179':{grupo:'NFE',nome:'NAZO ASA SUL'},
+  '21131221000250':{grupo:'NFE',nome:'NAZO SUSHI BAR'},
+  '21131221000330':{grupo:'NFE',nome:'NAZO AGUAS CLARAS'},
+  '21131221000411':{grupo:'NFE',nome:'NAZO SUDOESTE'},
+  '21131221000500':{grupo:'NFE',nome:'MULT EMPRESAS'},
+  '37119545000121':{grupo:'CAJU',nome:'CAJU LIMAO ASA NORTE'},
+  '37119545000393':{grupo:'CAJU',nome:'CAJU LIMAO SUDOESTE'},
+  '62723936000106':{grupo:'CAJU',nome:'CAJU ITAIM SP'},
+  '37492271000111':{grupo:'FERM',nome:'RESPONSA'},
+  '37492271000200':{grupo:'FERM',nome:'FOSTER BOSQUE'},
+  '37492271000383':{grupo:'FERM',nome:'FOSTER ASA SUL'},
+  '37492271000464':{grupo:'FERM',nome:'FERM 04'},
+  '37492271000545':{grupo:'FERM',nome:'FOSTER AGUAS CLARAS'},
+  '37492271000626':{grupo:'FERM',nome:'FOSTER SUDOESTE'},
+  '37492271000707':{grupo:'FERM',nome:'FOSTER ASA NORTE'},
+};
 
-// ── SUPABASE ──────────────────────────────────────────────────
-let db=null;
-function initSupabase(){
-  const cfg=getConfig();
-  if(!cfg.url||!cfg.key){
-    document.getElementById('login-screen').style.display='none';
-    document.getElementById('setup-screen').style.display='flex';
-    return false;
-  }
-  db=window.supabase.createClient(cfg.url,cfg.key);
-  return true;
-}
+// Mapeamento colunas Excel → campos internos (aba Notas)
+const COL_NOTAS = {
+  'Chave de Acesso':'chave_acesso','Tipo':'tipo_doc','Numero':'numero','Serie':'serie',
+  'CFOPs':'cfops','Data Emissao':'data_emissao','CNPJ Emitente':'cnpj_emit',
+  'Razao Social':'razao_social','CNPJ/CPF Destinatario':'dest_doc','Nome Destinatario':'dest_nome',
+  'Vl Produtos (R$)':'valor_produtos','Desconto (R$)':'desconto','Valor Total (R$)':'valor_total',
+  'Base ICMS (R$)':'base_icms','ICMS Destacado (R$)':'valor_icms',
+  'Base ICMS-ST (R$)':'base_icms_st','ICMS-ST (R$)':'valor_icms_st',
+  'FCP-ST (R$)':'valor_fcp_st','PIS (R$)':'valor_pis','COFINS (R$)':'valor_cofins',
+  'Pagamento':'forma_pagamento',
+};
 
-// ── ESTADO ────────────────────────────────────────────────────
-let currentUser=null,currentPerfil='viewer';
-let charts={};
-const PER_PAGE=100;
-let notasPage=1,itensPage=1;
-let allFiles=[];
+// Mapeamento colunas Excel → campos internos (aba Itens)
+const COL_ITENS = {
+  'Chave':'chave_acesso','Tipo':'tipo_doc','NF':'numero','Data':'data_emissao',
+  'CNPJ/CPF Dest':'dest_doc','Cod Produto':'codigo_produto','Descricao':'descricao',
+  'NCM':'ncm','CFOP':'cfop','CST ICMS':'cst_icms','CSOSN':'csosn',
+  'CST PIS':'cst_pis','CST COFINS':'cst_cofins','Un':'unidade','Qtd':'quantidade',
+  'Vl Unit (R$)':'valor_unitario','Vl Total (R$)':'valor_item','Desconto (R$)':'desconto_item',
+  'Tributacao':'tipo_trib','Base ICMS (R$)':'base_icms','ICMS (R$)':'valor_icms',
+  'Base ICMS-ST (R$)':'base_icms_st','ICMS-ST (R$)':'valor_icms_st',
+  'FCP-ST (R$)':'valor_fcp_st','PIS (R$)':'valor_pis','COFINS (R$)':'valor_cofins',
+};
 
-// ── AUTH ──────────────────────────────────────────────────────
-function showTab(t){
-  document.querySelectorAll('.login-tab').forEach((b,i)=>b.classList.toggle('active',(t==='login'&&i===0)||(t==='register'&&i===1)));
-  document.getElementById('tab-login').classList.toggle('hidden',t!=='login');
-  document.getElementById('tab-register').classList.toggle('hidden',t!=='register');
-}
-function showMsg(id,msg,type){
-  const el=document.getElementById(id);
-  el.textContent=msg; el.className=type==='ok'?'msg-ok':'msg-err'; el.style.display='block';
-}
-async function doLogin(){
-  const email=document.getElementById('login-email').value.trim();
-  const pass=document.getElementById('login-pass').value;
-  if(!email||!pass){showMsg('msg-login','Preencha e-mail e senha','err');return;}
-  const btn=document.getElementById('btn-login'); btn.textContent='Entrando...'; btn.disabled=true;
-  const {data,error}=await db.auth.signInWithPassword({email,password:pass});
-  btn.textContent='Entrar'; btn.disabled=false;
-  if(error){showMsg('msg-login',error.message==='Invalid login credentials'?'E-mail ou senha incorretos':error.message,'err');return;}
-  await loadSession(data.user);
-}
-async function doRegister(){
-  const nome=document.getElementById('reg-nome').value.trim();
-  const email=document.getElementById('reg-email').value.trim();
-  const pass=document.getElementById('reg-pass').value;
-  const pass2=document.getElementById('reg-pass2').value;
-  if(!nome||!email||!pass){showMsg('msg-register','Preencha todos os campos','err');return;}
-  if(pass!==pass2){showMsg('msg-register','Senhas não coincidem','err');return;}
-  if(!email.endsWith('@cajupar.com')&&!email.endsWith('@cajupar.com.br')){showMsg('msg-register','Use um e-mail @cajupar.com','err');return;}
-  if(pass.length<6){showMsg('msg-register','Senha mínima: 6 caracteres','err');return;}
-  const btn=document.getElementById('btn-register'); btn.disabled=true; btn.textContent='Enviando...';
-  const {error}=await db.auth.signUp({email,password:pass,options:{data:{nome,status:'pending',perfil:'viewer'}}});
-  btn.disabled=false; btn.textContent='Enviar solicitação';
-  if(error){showMsg('msg-register',error.message,'err');return;}
-  showMsg('msg-register','✓ Solicitação enviada! Aguarde aprovação.','ok');
-}
-async function doLogout(){ await db.auth.signOut(); location.reload(); }
+const MESES_NOME=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const PALETTE=['#f97316','#3b82f6','#22c55e','#eab308','#ef4444','#8b5cf6','#06b6d4','#ec4899','#14b8a6','#f59e0b','#64748b','#a78bfa'];
+const PER_PAGE = 50;
 
-async function loadSession(user){
-  currentUser=user;
-  const {data:prof}=await db.from('usuarios').select('*').eq('id',user.id).single();
-  if(!prof||prof.status!=='active'){
-    showMsg('msg-login',prof?.status==='pending'?'Acesso ainda não aprovado. Aguarde o administrador.':'Acesso inativo ou rejeitado.','err');
-    await db.auth.signOut(); return;
-  }
-  currentPerfil=prof.perfil;
-  document.getElementById('sidebar-nome').textContent=prof.nome;
-  document.getElementById('sidebar-role').textContent=prof.perfil;
-  document.getElementById('avatar-letter').textContent=prof.nome.charAt(0).toUpperCase();
-  if(prof.perfil==='admin') document.getElementById('admin-nav').classList.remove('hidden');
-  document.getElementById('login-screen').style.display='none';
-  document.getElementById('app').style.display='flex';
-  const now=new Date();
-  const ano=now.getFullYear(), mes=String(now.getMonth()+1).padStart(2,'0');
-  document.getElementById('top-ano').value=ano;
-  document.getElementById('top-mes').value=mes;
-  document.getElementById('f-mes-notas').value=`${ano}-${mes}`;
-  document.getElementById('f-mes-itens').value=`${ano}-${mes}`;
-  document.getElementById('upload-mes-filtro').value=`${ano}-${mes}`;
-  await populateEmpresaFilters();
-  showPage('dashboard');
-}
+// ══════════════════════════════════════════════════════════════
+//  INDEXEDDB
+// ══════════════════════════════════════════════════════════════
+let idb = null;
 
-// ── FILTROS EMPRESA ───────────────────────────────────────────
-async function populateEmpresaFilters(){
-  const {data}=await db.from('empresas').select('nome,grupo').order('grupo').order('nome');
-  if(!data) return;
-  ['top-empresa','f-empresa-notas'].forEach(id=>{
-    const sel=document.getElementById(id); if(!sel) return;
-    const cur=sel.value;
-    sel.innerHTML='<option value="">Todas</option>';
-    data.forEach(e=>{const o=document.createElement('option');o.value=e.nome;o.textContent=e.nome;sel.appendChild(o);});
-    if(cur) sel.value=cur;
+function openIDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open('cajupar_v2', 2);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('notas')) {
+        const s = db.createObjectStore('notas', {keyPath:'chave_acesso'});
+        s.createIndex('idx_mes','mes_ref'); s.createIndex('idx_grupo','grupo');
+        s.createIndex('idx_empresa','empresa'); s.createIndex('idx_tipo','tipo_doc');
+        s.createIndex('idx_grupo_mes',['grupo','mes_ref']);
+        s.createIndex('idx_empresa_mes',['empresa','mes_ref']);
+      }
+      if (!db.objectStoreNames.contains('itens')) {
+        const s = db.createObjectStore('itens', {autoIncrement:true,keyPath:'_id'});
+        s.createIndex('idx_mes','mes_ref'); s.createIndex('idx_grupo','grupo');
+        s.createIndex('idx_empresa','empresa'); s.createIndex('idx_st','tem_st');
+        s.createIndex('idx_empresa_mes',['empresa','mes_ref']);
+      }
+      if (!db.objectStoreNames.contains('metricas')) {
+        const s = db.createObjectStore('metricas', {keyPath:'key'});
+        s.createIndex('idx_mes','mes_ref'); s.createIndex('idx_grupo','grupo');
+      }
+      if (!db.objectStoreNames.contains('arquivos')) {
+        db.createObjectStore('arquivos', {keyPath:'drive_id'});
+      }
+    };
+    req.onsuccess = e => res(e.target.result);
+    req.onerror  = e => rej(e.target.error);
   });
 }
 
-function onGrupoChange(){
-  const gr=document.getElementById('top-grupo').value;
-  const sel=document.getElementById('top-empresa');
-  sel.querySelectorAll('option').forEach(o=>{
-    if(!o.value) return;
-    o.style.display=(!gr||o.dataset.grupo===gr)?'':'none';
+function idbTx(stores, mode='readonly') {
+  return idb.transaction(stores, mode);
+}
+
+function idbAll(store, indexName, indexValue) {
+  return new Promise((res, rej) => {
+    const tx  = idbTx(store);
+    const s   = tx.objectStore(store);
+    const req = indexName ? s.index(indexName).getAll(indexValue) : s.getAll();
+    req.onsuccess = () => res(req.result);
+    req.onerror   = () => rej(req.error);
   });
-  sel.value='';
-  loadDashboard();
 }
 
-// ── NAVEGAÇÃO ─────────────────────────────────────────────────
-const pageTitles={dashboard:'Dashboard',anual:'Resumo Anual',notas:'Notas Fiscais',itens:'Itens',upload:'Importar XMLs',usuarios:'Usuários'};
-function showPage(page){
-  document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
-  document.querySelectorAll('#main .page-content>[id^="page-"]').forEach(d=>d.classList.toggle('hidden',d.id!==`page-${page}`));
-  document.getElementById('page-title').textContent=pageTitles[page]||page;
-  if(page==='dashboard') loadDashboard();
-  if(page==='anual')     loadAnual();
-  if(page==='notas')     loadNotas();
-  if(page==='itens')     loadItens();
-  if(page==='usuarios')  loadUsuarios();
-}
-
-// ── THEME ─────────────────────────────────────────────────────
-function toggleTheme(){
-  const t=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
-  document.documentElement.setAttribute('data-theme',t);
-  localStorage.setItem('cajupar_theme',t);
-  Object.values(charts).forEach(c=>c&&c.destroy()); charts={};
-  loadDashboard();
-}
-
-// ── HELPERS ───────────────────────────────────────────────────
-const fmt=v=>new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(v||0);
-const fmtDate=s=>{ if(!s)return'—'; return new Date(s+'T00:00:00').toLocaleDateString('pt-BR'); };
-const fmtDT=s=>{ if(!s)return'—'; return new Date(s).toLocaleString('pt-BR'); };
-const mesRef=()=>{ const a=document.getElementById('top-ano').value,m=document.getElementById('top-mes').value; return m?`${a}-${m}`:null; };
-
-function toast(msg,type='info',dur=3500){
-  const c=document.getElementById('toast-container');
-  const t=document.createElement('div'); t.className=`toast ${type}`; t.textContent=msg; c.appendChild(t);
-  setTimeout(()=>t.remove(),dur);
-}
-function openModal(title,body,buttons){
-  document.getElementById('modal-title').textContent=title;
-  document.getElementById('modal-body').innerHTML=body;
-  const f=document.getElementById('modal-footer'); f.innerHTML='';
-  buttons.forEach(b=>{const el=document.createElement('button');el.className=`btn ${b.cls||'btn-outline'}`;el.textContent=b.label;el.onclick=b.action;f.appendChild(el);});
-  document.getElementById('modal-overlay').classList.remove('hidden');
-}
-function closeModal(){ document.getElementById('modal-overlay').classList.add('hidden'); }
-
-// ── DASHBOARD ─────────────────────────────────────────────────
-// Usa RPC para agregar no PostgreSQL — sem SELECT * massivo
-async function loadDashboard(){
-  const mr=mesRef(), gr=document.getElementById('top-grupo').value, emp=document.getElementById('top-empresa').value;
-  const ano=document.getElementById('top-ano').value;
-
-  const {data,error}=await db.rpc('get_dashboard_metrics',{
-    p_mes_ref : mr  || null,
-    p_ano     : mr  ? null : (ano||null),
-    p_grupo   : gr  || null,
-    p_empresa : emp || null
+function idbPut(store, data) {
+  return new Promise((res, rej) => {
+    const tx  = idbTx(store, 'readwrite');
+    const s   = tx.objectStore(store);
+    if (Array.isArray(data)) { data.forEach(d => s.put(d)); }
+    else s.put(data);
+    tx.oncomplete = () => res();
+    tx.onerror    = () => rej(tx.error);
   });
-  if(error){toast('Erro dashboard: '+error.message,'err');console.error(error);return;}
-  if(!data){toast('Sem dados para o período','err');return;}
+}
 
-  const t     = data.totais || {};
-  const fat   = Number(t.fat    ||0);
-  const icms  = Number(t.icms   ||0);
-  const pis   = Number(t.pis    ||0);
-  const cof   = Number(t.cofins ||0);
-  const st    = Number(t.icms_st||0);
-  const fcpst = Number(t.fcp_st ||0);
-  const qtd   = Number(t.qtd_notas||0);
-  const qNFCe = Number(t.qtd_nfce ||0);
-  const qNFe  = Number(t.qtd_nfe  ||0);
+function idbDelete(store, key) {
+  return new Promise((res, rej) => {
+    const tx = idbTx(store, 'readwrite');
+    tx.objectStore(store).delete(key);
+    tx.oncomplete = () => res();
+    tx.onerror    = () => rej(tx.error);
+  });
+}
 
-  document.getElementById('m-fat').textContent      ='R$ '+fmt(fat);
-  document.getElementById('m-fat-sub').textContent  =`${qtd} notas no período`;
-  document.getElementById('m-icms').textContent     ='R$ '+fmt(icms);
-  document.getElementById('m-piscof').textContent   ='R$ '+fmt(pis+cof);
-  document.getElementById('m-piscof-sub').textContent=`PIS R$${fmt(pis)} | COF R$${fmt(cof)}`;
-  document.getElementById('m-st').textContent       ='R$ '+fmt(st);
-  document.getElementById('m-qtd').textContent      =qtd;
-  document.getElementById('m-qtd-sub').textContent  =`${qNFCe} NFC-e + ${qNFe} NF-e`;
+function idbDeleteByIndex(store, indexName, indexValue) {
+  return new Promise((res, rej) => {
+    const tx = idbTx(store, 'readwrite');
+    const s  = tx.objectStore(store);
+    const req = s.index(indexName).openCursor(IDBKeyRange.only(indexValue));
+    req.onsuccess = e => {
+      const cursor = e.target.result;
+      if (cursor) { cursor.delete(); cursor.continue(); }
+    };
+    tx.oncomplete = () => res();
+    tx.onerror    = () => rej(tx.error);
+  });
+}
 
-  const NOMES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const empresas = data.por_empresa || [];
-  const empTop   = empresas.slice(0,12);
-  buildChart('chart-empresas','bar',
-    empTop.map(e=>e.estabelecimento),
-    empTop.map(e=>Number(e.fat)),'R$',PALETTE.slice(0,empTop.length));
+function idbClearAll() {
+  return new Promise((res, rej) => {
+    const stores = ['notas','itens','metricas','arquivos'];
+    const tx = idb.transaction(stores, 'readwrite');
+    stores.forEach(s => tx.objectStore(s).clear());
+    tx.oncomplete = () => res();
+    tx.onerror    = () => rej(tx.error);
+  });
+}
 
-  const meses = data.por_mes || [];
-  buildChart('chart-mensal','line',
-    meses.map(m=>{const p=m.mes_ref.split('-');return `${NOMES[+p[1]-1]}/${p[0].slice(2)}`;}),
-    meses.map(m=>Number(m.fat)),'R$',['#f97316']);
+function idbCount(store) {
+  return new Promise((res) => {
+    const req = idbTx(store).objectStore(store).count();
+    req.onsuccess = () => res(req.result);
+    req.onerror   = () => res(0);
+  });
+}
 
-  buildChartDoughnut('chart-impostos',
-    ['ICMS','ICMS-ST','PIS','COFINS','FCP-ST'],
-    [icms,st,pis,cof,fcpst],
-    ['#f97316','#ef4444','#3b82f6','#22c55e','#eab308']);
-  buildChartDoughnut('chart-tipos',['NFC-e','NF-e'],[qNFCe,qNFe],['#22c55e','#3b82f6']);
+// ══════════════════════════════════════════════════════════════
+//  GOOGLE IDENTITY / DRIVE
+// ══════════════════════════════════════════════════════════════
+let tokenClient = null;
+let gAccessToken = null;
+let driveFiles   = [];
 
-  const tbody=document.getElementById('tbl-resumo-body');
-  if(!empresas.length){
-    tbody.innerHTML=`<tr><td colspan="9"><div class="empty-state"><div class="icon">📊</div><p>Nenhum dado para o período</p></div></td></tr>`;
+function initGoogleClient() {
+  const cfg = getConfig();
+  if (!cfg.clientId) return;
+  gapi.load('client', async () => {
+    await gapi.client.init({});
+    await gapi.client.load('https://www.googleapis.com/discovery/v1/apis/drive/v3/rest');
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: cfg.clientId,
+      scope: 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email',
+      callback: handleTokenResponse,
+    });
+  });
+}
+
+function handleTokenResponse(resp) {
+  if (resp.error) { toast('Erro autenticação Google: ' + resp.error, 'err'); return; }
+  gAccessToken = resp.access_token;
+  // Get user info
+  fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    headers: { Authorization: 'Bearer ' + gAccessToken }
+  }).then(r => r.json()).then(info => {
+    const email = info.email || '';
+    if (!email.endsWith('@cajupar.com') && !email.endsWith('@gmail.com')) {
+      // Allow during dev — in production restrict to @cajupar.com only
+    }
+    localStorage.setItem('caju_user_email', email);
+    localStorage.setItem('caju_user_name',  info.name || email.split('@')[0]);
+    showApp();
+  });
+}
+
+function doGoogleLogin() {
+  const cfg = getConfig();
+  if (!cfg.clientId) { showSetup(); return; }
+  if (!tokenClient) {
+    initGoogleClient();
+    setTimeout(() => tokenClient && tokenClient.requestAccessToken({prompt:''}), 1200);
     return;
   }
-  tbody.innerHTML=empresas.map(e=>`
-    <tr>
-      <td><span style="font-size:10px;background:var(--bg3);padding:2px 6px;border-radius:4px;font-weight:700">${e.grupo}</span></td>
-      <td>${e.estabelecimento}</td>
-      <td style="color:var(--green)">${e.nfce}</td>
-      <td style="color:var(--blue)">${e.nfe}</td>
-      <td style="text-align:right;font-weight:700">${fmt(Number(e.fat))}</td>
-      <td style="text-align:right;color:var(--yellow)">${fmt(Number(e.icms))}</td>
-      <td style="text-align:right;color:var(--red)">${fmt(Number(e.icms_st))}</td>
-      <td style="text-align:right">${fmt(Number(e.pis))}</td>
-      <td style="text-align:right">${fmt(Number(e.cofins))}</td>
-    </tr>`).join('');
+  tokenClient.requestAccessToken({prompt:''});
 }
 
-// ── RESUMO ANUAL ──────────────────────────────────────────────
-async function loadAnual(){
-  const ano=document.getElementById('top-ano').value;
-  const gr =document.getElementById('top-grupo').value;
-  const emp=document.getElementById('top-empresa').value;
-  document.getElementById('anual-ano-titulo').textContent=ano;
+function connectDrive() {
+  if (!tokenClient) { toast('Inicializando Google...', 'info'); initGoogleClient(); setTimeout(() => tokenClient && tokenClient.requestAccessToken({prompt:''}), 1200); return; }
+  tokenClient.requestAccessToken({prompt:''});
+}
 
-  const {data,error}=await db.rpc('get_anual_metrics',{
-    p_ano    : ano,
-    p_grupo  : gr  || null,
-    p_empresa: emp || null
+async function listDriveFilesAPI(query) {
+  let q = "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' and trashed=false";
+  if (query) q += ` and name contains '${query.replace(/'/g,"\\'")'`;
+  const resp = await gapi.client.drive.files.list({
+    q, pageSize: 200,
+    fields: 'files(id,name,parents,modifiedTime,size)',
+    orderBy: 'modifiedTime desc'
   });
-  if(error){toast('Erro anual: '+error.message,'err');console.error(error);return;}
+  return resp.result.files || [];
+}
 
-  const porMesArr = data || [];
-  const MESES=['01','02','03','04','05','06','07','08','09','10','11','12'];
-  const NOMES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const porMes={};
-  MESES.forEach((m,i)=>{porMes[`${ano}-${m}`]={nome:NOMES[i],fat:0,qtd:0};});
-  porMesArr.forEach(r=>{if(porMes[r.mes_ref]){porMes[r.mes_ref].fat=Number(r.fat);porMes[r.mes_ref].qtd=Number(r.qtd);}});
+async function refreshDriveFiles() {
+  if (!gAccessToken) { toast('Conecte o Drive primeiro', 'err'); return; }
+  document.getElementById('drive-section').style.display = 'block';
+  document.getElementById('drive-file-list').innerHTML = '<div class="empty-state"><div class="icon">⏳</div><p>Carregando...</p></div>';
+  try {
+    driveFiles = await listDriveFilesAPI('');
+    renderDriveFiles(driveFiles);
+    updateDriveStatus(true);
+    document.getElementById('btn-refresh-drive').style.display = '';
+    document.getElementById('btn-connect-drive').textContent = '🔄 Reconectar';
+  } catch(e) { toast('Erro ao listar Drive: ' + e.message, 'err'); }
+}
 
-  const ctx=document.getElementById('chart-anual').getContext('2d');
-  if(charts['anual']){charts['anual'].destroy();}
-  charts['anual']=new Chart(ctx,{type:'bar',
-    data:{labels:NOMES,datasets:[{label:'Faturamento',data:MESES.map(m=>porMes[`${ano}-${m}`].fat),backgroundColor:PALETTE.slice(0,12),borderRadius:6,borderSkipped:false}]},
-    options:{...chartOpts('R$'),...{plugins:{legend:{display:false}}}}
-  });
-  document.getElementById('anual-grid').innerHTML=MESES.map((m,i)=>{
-    const d=porMes[`${ano}-${m}`];
-    return `<div class="anual-mes" onclick="jumpToMes('${ano}','${m}')">
-      <div class="mes-nome">${NOMES[i]}</div>
-      <div class="mes-val" style="color:${d.fat>0?'var(--primary)':'var(--text3)'}">${d.fat>0?'R$ '+fmt(d.fat):'—'}</div>
-      <div class="mes-notas">${d.qtd>0?d.qtd+' notas':''}</div>
+function filterDriveFiles() {
+  const q = document.getElementById('drive-search').value.toLowerCase();
+  renderDriveFiles(driveFiles.filter(f => f.name.toLowerCase().includes(q)));
+}
+
+async function renderDriveFiles(files) {
+  const loaded  = await idbAll('arquivos');
+  const loadSet = new Set(loaded.map(a => a.drive_id));
+  const el = document.getElementById('drive-file-list');
+  if (!files.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📂</div><p>Nenhuma planilha .xlsx encontrada no Drive</p></div>'; return; }
+  el.innerHTML = files.map(f => {
+    const isLoaded = loadSet.has(f.id);
+    const date = new Date(f.modifiedTime).toLocaleDateString('pt-BR');
+    const size = f.size ? (Number(f.size)/1024/1024).toFixed(1) + ' MB' : '—';
+    return `<div class="file-item" id="fi-${f.id}">
+      <div class="file-icon">📊</div>
+      <div class="file-info">
+        <div class="file-name">${f.name}</div>
+        <div class="file-meta">Modificado: ${date} &nbsp;|&nbsp; ${size}</div>
+        ${isLoaded ? '<div class="file-loaded">✅ Já carregada</div>' : ''}
+      </div>
+      ${isLoaded
+        ? `<button class="btn btn-sm btn-danger" onclick="removeArquivo('${f.id}','${f.name.replace(/'/g,'')}')">Remover</button>`
+        : `<button class="btn btn-sm btn-primary" onclick="loadDriveFile('${f.id}','${f.name.replace(/'/g,'')}')">Carregar</button>`}
     </div>`;
   }).join('');
 }
-function jumpToMes(ano,mes){
-  document.getElementById('top-ano').value=ano; document.getElementById('top-mes').value=mes;
+
+async function renderLoadedFiles() {
+  const loaded = await idbAll('arquivos');
+  const el = document.getElementById('loaded-list');
+  document.getElementById('loaded-section').style.display = loaded.length ? 'block' : 'none';
+  document.getElementById('loaded-count').textContent = loaded.length;
+  if (!loaded.length) { el.innerHTML = ''; return; }
+  el.innerHTML = loaded.sort((a,b) => b.loaded_at - a.loaded_at).map(a => `
+    <div class="file-item">
+      <div class="file-icon">✅</div>
+      <div class="file-info">
+        <div class="file-name">${a.nome}</div>
+        <div class="file-meta">${a.empresa} &nbsp;|&nbsp; ${a.mes_ref} &nbsp;|&nbsp; ${a.qtd_notas} notas &nbsp;|&nbsp; ${a.qtd_itens} itens</div>
+        <div class="file-loaded">Carregado em ${new Date(a.loaded_at).toLocaleString('pt-BR')}</div>
+      </div>
+      <button class="btn btn-sm btn-danger" onclick="removeArquivo('${a.drive_id}','${a.nome.replace(/'/g,'')}')">Remover</button>
+    </div>`).join('');
+}
+
+async function loadDriveFile(fileId, fileName) {
+  const prog = document.getElementById('load-progress');
+  const pLabel = document.getElementById('load-progress-label');
+  const pBar   = document.getElementById('load-progress-bar');
+  prog.style.display = 'block';
+  pLabel.textContent = `Baixando ${fileName}...`;
+  pBar.style.width = '10%';
+
+  try {
+    // Download file
+    const resp = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+      { headers: { Authorization: 'Bearer ' + gAccessToken } }
+    );
+    if (!resp.ok) throw new Error('Erro HTTP ' + resp.status);
+    const buf = await resp.arrayBuffer();
+    pBar.style.width = '30%'; pLabel.textContent = 'Parseando Excel...';
+
+    // Parse Excel
+    const result = parseExcelFile(buf, fileName);
+    pBar.style.width = '50%'; pLabel.textContent = `Salvando ${result.notas.length} notas...`;
+
+    // Save to IndexedDB
+    await idbPut('notas', result.notas);
+    pBar.style.width = '70%'; pLabel.textContent = `Salvando ${result.itens.length} itens...`;
+
+    // Save itens in batches
+    const BATCH = 500;
+    for (let i = 0; i < result.itens.length; i += BATCH) {
+      await idbPut('itens', result.itens.slice(i, i + BATCH));
+      pBar.style.width = String(70 + (i / Math.max(result.itens.length,1)) * 20) + '%';
+    }
+
+    // Save metricas (per tipo_doc)
+    for (const m of result.metricas) {
+      await idbPut('metricas', m);
+    }
+    pBar.style.width = '95%'; pLabel.textContent = 'Registrando arquivo...';
+
+    // Register file
+    await idbPut('arquivos', {
+      drive_id: fileId, nome: fileName,
+      empresa: result.empresa, grupo: result.grupo, mes_ref: result.mes_ref,
+      qtd_notas: result.notas.length, qtd_itens: result.itens.length,
+      loaded_at: Date.now()
+    });
+
+    pBar.style.width = '100%';
+    await new Promise(r => setTimeout(r, 400));
+    prog.style.display = 'none';
+    toast(`✅ ${fileName} carregado — ${result.notas.length} notas`, 'ok');
+
+    // Refresh UI
+    await renderLoadedFiles();
+    await renderDriveFiles(driveFiles);
+    populateFilterOptions();
+  } catch(e) {
+    prog.style.display = 'none';
+    toast('Erro ao carregar arquivo: ' + e.message, 'err');
+    console.error(e);
+  }
+}
+
+async function removeArquivo(driveId, nome) {
+  const arq = await idbAll('arquivos');
+  const a   = arq.find(x => x.drive_id === driveId);
+  if (!a) return;
+  showModal(`Remover ${nome}?`, `Isso apagará os dados locais desta planilha (${a.qtd_notas} notas). Os dados no Drive não são afetados.`, [
+    {label:'Cancelar', cls:'btn-outline', action: closeModal},
+    {label:'Remover', cls:'btn-danger', action: async () => {
+      closeModal();
+      // Delete notas and itens for this empresa+mes
+      await idbDeleteByIndex('notas', 'idx_empresa_mes', [a.empresa, a.mes_ref]);
+      await idbDeleteByIndex('itens', 'idx_empresa_mes', [a.empresa, a.mes_ref]);
+      // Delete metricas
+      const mets = await idbAll('metricas');
+      for (const m of mets.filter(x => x.empresa === a.empresa && x.mes_ref === a.mes_ref)) {
+        await idbDelete('metricas', m.key);
+      }
+      await idbDelete('arquivos', driveId);
+      toast(`Dados de ${nome} removidos`, 'info');
+      await renderLoadedFiles();
+      await renderDriveFiles(driveFiles);
+      populateFilterOptions();
+    }}
+  ]);
+}
+
+function updateDriveStatus(connected) {
+  const el = document.getElementById('drive-status-bar');
+  if (connected) {
+    el.className = 'drive-status connected';
+    el.innerHTML = '<span>✅</span> Drive conectado';
+  } else {
+    el.className = 'drive-status disconnected';
+    el.innerHTML = '<span>⚠️</span> Drive não conectado — clique em "Conectar" para acessar suas planilhas';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  EXCEL PARSING
+// ══════════════════════════════════════════════════════════════
+function mapRow(row, colMap) {
+  const out = {};
+  for (const [col, field] of Object.entries(colMap)) {
+    if (col in row) out[field] = row[col];
+  }
+  return out;
+}
+
+function parseExcelFile(buf, fileName) {
+  const wb = XLSX.read(buf, {type:'array', cellDates:true});
+
+  // Try to read 'Notas' sheet
+  const sheetNotas = wb.Sheets['Notas'] || wb.Sheets[wb.SheetNames.find(n => n.includes('Nota')) || wb.SheetNames[1]] || wb.Sheets[wb.SheetNames[0]];
+  const sheetItens = wb.Sheets['Itens'] || wb.Sheets[wb.SheetNames.find(n => n.includes('Iten'))] || null;
+  const sheetResumo= wb.Sheets['Resumo'] || wb.Sheets[wb.SheetNames[0]];
+
+  const rawNotas  = XLSX.utils.sheet_to_json(sheetNotas,  {raw:false}) || [];
+  const rawItens  = sheetItens ? XLSX.utils.sheet_to_json(sheetItens, {raw:false}) : [];
+  const rawResumo = sheetResumo ? XLSX.utils.sheet_to_json(sheetResumo, {raw:false}) : [];
+
+  // Infer empresa & mes from file name: EMPRESA_NAME_MM.YYYY.xlsx
+  let empresa = '', mes_ref = '', grupo = '';
+  const nameMatch = fileName.replace('.xlsx','').match(/^(.+?)_(\d{2})\.(\d{4})$/);
+  if (nameMatch) {
+    empresa = nameMatch[1].replace(/_/g,' ').trim();
+    mes_ref = `${nameMatch[3]}-${nameMatch[2]}`;
+  }
+
+  // Try to get CNPJ from first nota row to determine grupo
+  if (rawNotas.length > 0) {
+    const cnpj = (rawNotas[0]['CNPJ Emitente'] || '').replace(/\D/g,'');
+    if (MAPA_CNPJ[cnpj]) {
+      grupo   = MAPA_CNPJ[cnpj].grupo;
+      empresa = empresa || MAPA_CNPJ[cnpj].nome;
+    }
+  }
+
+  // Map notas
+  const notas = rawNotas.map(row => {
+    const n = mapRow(row, COL_NOTAS);
+    n.empresa  = empresa;
+    n.grupo    = grupo;
+    n.mes_ref  = mes_ref;
+    // Normalize numeric fields
+    for (const f of ['valor_produtos','desconto','valor_total','base_icms','valor_icms','base_icms_st','valor_icms_st','valor_fcp_st','valor_pis','valor_cofins']) {
+      n[f] = parseFloat(String(n[f]||'0').replace(/[^\d.,-]/g,'').replace(',','.')) || 0;
+    }
+    // Normalize date
+    if (n.data_emissao && typeof n.data_emissao === 'string') {
+      const p = n.data_emissao.split('/');
+      if (p.length === 3) n.data_emissao = `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+    }
+    return n;
+  }).filter(n => n.chave_acesso);
+
+  // Map itens
+  let _itemId = Date.now();
+  const itens = rawItens.map(row => {
+    const it = mapRow(row, COL_ITENS);
+    it.empresa  = empresa;
+    it.grupo    = grupo;
+    it.mes_ref  = mes_ref;
+    it._id      = _itemId++;
+    it.tem_st   = (Number(it.valor_icms_st||0) > 0) || (Number(it.base_icms_st||0) > 0);
+    for (const f of ['quantidade','valor_unitario','valor_item','desconto_item','base_icms','valor_icms','base_icms_st','valor_icms_st','valor_fcp_st','valor_pis','valor_cofins']) {
+      it[f] = parseFloat(String(it[f]||'0').replace(/[^\d.,-]/g,'').replace(',','.')) || 0;
+    }
+    return it;
+  });
+
+  // Build metricas from Resumo sheet (per tipo_doc) + notas aggregation
+  const metricas = [];
+  if (rawResumo.length) {
+    rawResumo.forEach(row => {
+      const tipo = row['Tipo'] || '';
+      if (!tipo) return;
+      metricas.push({
+        key: `${empresa}__${mes_ref}__${tipo}`,
+        empresa, grupo, mes_ref, tipo_doc: tipo,
+        qtd_notas: Number(row['Qtd Notas']||0),
+        fat:       parseFloat(String(row['Faturamento (R$)']||'0').replace(',','.'))||0,
+        desconto:  parseFloat(String(row['Descontos (R$)']||'0').replace(',','.'))||0,
+        icms:      parseFloat(String(row['ICMS Destacado (R$)']||'0').replace(',','.'))||0,
+        icms_st:   parseFloat(String(row['ICMS-ST (R$)']||'0').replace(',','.'))||0,
+        fcp_st:    parseFloat(String(row['FCP-ST (R$)']||'0').replace(',','.'))||0,
+        pis:       parseFloat(String(row['PIS (R$)']||'0').replace(',','.'))||0,
+        cofins:    parseFloat(String(row['COFINS (R$)']||'0').replace(',','.'))||0,
+      });
+    });
+  }
+  // If Resumo not present or empty, aggregate from notas
+  if (!metricas.length) {
+    const tipos = {};
+    notas.forEach(n => {
+      const t = n.tipo_doc || 'NF-e';
+      if (!tipos[t]) tipos[t] = {qtd:0,fat:0,desc:0,icms:0,st:0,fcp:0,pis:0,cof:0};
+      tipos[t].qtd++; tipos[t].fat+=n.valor_total; tipos[t].desc+=n.desconto;
+      tipos[t].icms+=n.valor_icms; tipos[t].st+=n.valor_icms_st; tipos[t].fcp+=n.valor_fcp_st;
+      tipos[t].pis+=n.valor_pis; tipos[t].cof+=n.valor_cofins;
+    });
+    for (const [tipo, v] of Object.entries(tipos)) {
+      metricas.push({
+        key:`${empresa}__${mes_ref}__${tipo}`, empresa, grupo, mes_ref, tipo_doc:tipo,
+        qtd_notas:v.qtd, fat:v.fat, desconto:v.desc, icms:v.icms, icms_st:v.st, fcp_st:v.fcp, pis:v.pis, cofins:v.cof,
+      });
+    }
+  }
+
+  return { notas, itens, metricas, empresa, grupo, mes_ref };
+}
+
+// ══════════════════════════════════════════════════════════════
+//  FILTER OPTIONS
+// ══════════════════════════════════════════════════════════════
+async function populateFilterOptions() {
+  const mets = await idbAll('metricas');
+  const grupos  = [...new Set(mets.map(m => m.grupo).filter(Boolean))].sort();
+  const empresas= [...new Set(mets.map(m => m.empresa).filter(Boolean))].sort();
+  const meses   = [...new Set(mets.map(m => m.mes_ref).filter(Boolean))].sort().reverse();
+  const anos    = [...new Set(mets.map(m => m.mes_ref ? m.mes_ref.split('-')[0] : null).filter(Boolean))].sort().reverse();
+
+  const NOMES = {'01':'Jan','02':'Fev','03':'Mar','04':'Abr','05':'Mai','06':'Jun','07':'Jul','08':'Ago','09':'Set','10':'Out','11':'Nov','12':'Dez'};
+
+  function fillSelect(id, items, labelFn, addAll='Todos') {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const cur = el.value;
+    el.innerHTML = (addAll ? `<option value="">${addAll}</option>` : '') + items.map(v => `<option value="${v}">${labelFn ? labelFn(v) : v}</option>`).join('');
+    if (cur && items.includes(cur)) el.value = cur;
+  }
+
+  const mesLabel = v => { const [a,m]=v.split('-'); return `${NOMES[m]||m} / ${a}`; };
+  const anoLabel = v => v;
+
+  ['top-grupo','f-grupo-notas','f-grupo-itens','audit-grupo','anual-grupo'].forEach(id => fillSelect(id, grupos, null, 'Todos os grupos'));
+  ['top-empresa','f-empresa-notas','f-empresa-itens','audit-empresa','anual-empresa'].forEach(id => fillSelect(id, empresas, null, 'Todas as empresas'));
+  ['f-mes-notas','f-mes-itens','audit-mes'].forEach(id => fillSelect(id, meses, mesLabel, 'Todos os meses'));
+
+  // Ano selects
+  ['top-ano','anual-ano'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const cur = el.value || (anos[0] || new Date().getFullYear().toString());
+    el.innerHTML = anos.map(a => `<option value="${a}">${a}</option>`).join('');
+    el.value = cur;
+  });
+}
+
+function onFilterChange() {
+  const grupo  = document.getElementById('top-grupo').value;
+  const emp    = document.getElementById('top-empresa').value;
+  // Sync empresa filter based on grupo
+  populateFilterOptions().then(() => {
+    if (grupo) document.getElementById('top-grupo').value = grupo;
+    if (emp)   document.getElementById('top-empresa').value = emp;
+    loadDashboard();
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  DASHBOARD
+// ══════════════════════════════════════════════════════════════
+const charts = {};
+
+async function loadDashboard() {
+  const gr   = document.getElementById('top-grupo').value;
+  const emp  = document.getElementById('top-empresa').value;
+  const ano  = document.getElementById('top-ano').value;
+  const mes  = document.getElementById('top-mes').value;
+  const mr   = mes ? `${ano}-${mes}` : null;
+
+  let mets = await idbAll('metricas');
+  if (!mets.length) {
+    // Show empty state
+    document.getElementById('m-fat').textContent = '—';
+    document.getElementById('m-icms').textContent = '—';
+    document.getElementById('m-st').textContent = '—';
+    document.getElementById('m-piscof').textContent = '—';
+    document.getElementById('m-qtd').textContent = '—';
+    document.getElementById('tbl-resumo-body').innerHTML = `<tr><td colspan="10"><div class="empty-state"><div class="icon">📁</div><p>Carregue planilhas do Google Drive para ver os dados</p></div></td></tr>`;
+    return;
+  }
+
+  // Filter
+  if (mr)  mets = mets.filter(m => m.mes_ref === mr);
+  else     mets = mets.filter(m => m.mes_ref && m.mes_ref.startsWith(ano + '-'));
+  if (gr)  mets = mets.filter(m => m.grupo   === gr);
+  if (emp) mets = mets.filter(m => m.empresa === emp);
+
+  const sum = (f) => mets.reduce((s, m) => s + Number(m[f]||0), 0);
+  const fat    = sum('fat'), icms = sum('icms'), pis = sum('pis');
+  const cof    = sum('cofins'), st = sum('icms_st'), fcp = sum('fcp_st');
+  const qtd    = mets.reduce((s,m) => s + Number(m.qtd_notas||0), 0);
+  const qNFCe  = mets.filter(m => m.tipo_doc==='NFC-e').reduce((s,m) => s + Number(m.qtd_notas||0), 0);
+  const qNFe   = mets.filter(m => m.tipo_doc==='NF-e').reduce((s,m) => s + Number(m.qtd_notas||0), 0);
+
+  document.getElementById('m-fat').textContent        = 'R$ ' + fmt(fat);
+  document.getElementById('m-fat-sub').textContent    = qtd + ' notas no período';
+  document.getElementById('m-icms').textContent       = 'R$ ' + fmt(icms);
+  document.getElementById('m-icms-sub').textContent   = fmt(fat>0?(icms/fat*100):0) + '% do fat.';
+  document.getElementById('m-st').textContent         = 'R$ ' + fmt(st);
+  document.getElementById('m-st-sub').textContent     = 'FCP-ST: R$ ' + fmt(fcp);
+  document.getElementById('m-piscof').textContent     = 'R$ ' + fmt(pis + cof);
+  document.getElementById('m-piscof-sub').textContent = `PIS R$${fmt(pis)} | COF R$${fmt(cof)}`;
+  document.getElementById('m-qtd').textContent        = qtd;
+  document.getElementById('m-qtd-sub').textContent    = `${qNFCe} NFC-e + ${qNFe} NF-e`;
+
+  // Aggregated per-empresa (sum across tipos)
+  const porEmp = {};
+  mets.forEach(m => {
+    const k = m.empresa || '?';
+    if (!porEmp[k]) porEmp[k] = {grupo:m.grupo,nfce:0,nfe:0,fat:0,icms:0,st:0,pis:0,cof:0};
+    if (m.tipo_doc==='NFC-e') porEmp[k].nfce += Number(m.qtd_notas||0);
+    else porEmp[k].nfe += Number(m.qtd_notas||0);
+    porEmp[k].fat += Number(m.fat||0); porEmp[k].icms += Number(m.icms||0);
+    porEmp[k].st  += Number(m.icms_st||0); porEmp[k].pis  += Number(m.pis||0);
+    porEmp[k].cof += Number(m.cofins||0);
+  });
+  const empArr = Object.entries(porEmp).sort((a,b) => b[1].fat - a[1].fat);
+
+  // Per-mes (sum across tipos and empresas)
+  const porMes = {};
+  mets.forEach(m => { porMes[m.mes_ref] = (porMes[m.mes_ref]||0) + Number(m.fat||0); });
+  const mesArr = Object.entries(porMes).sort((a,b) => a[0].localeCompare(b[0]));
+
+  // Per-grupo
+  const porGrupo = {};
+  mets.forEach(m => { porGrupo[m.grupo||'?'] = (porGrupo[m.grupo||'?']||0) + Number(m.fat||0); });
+  const grupoArr = Object.entries(porGrupo).sort((a,b) => b[1]-a[1]);
+
+  buildChart('chart-empresas','bar', empArr.slice(0,12).map(([k])=>k), empArr.slice(0,12).map(([,v])=>v.fat), 'R$', PALETTE.slice(0,12));
+  buildChart('chart-mensal','line', mesArr.map(([k])=>{const[a,m]=k.split('-');return `${MESES_NOME[+m-1]}/${a.slice(2)}`;}), mesArr.map(([,v])=>v), 'R$', ['#f97316']);
+  buildChartDoughnut('chart-impostos',['ICMS','ICMS-ST','PIS','COFINS','FCP-ST'],[icms,st,pis,cof,fcp],['#f97316','#ef4444','#3b82f6','#22c55e','#eab308']);
+  buildChartDoughnut('chart-tipos',['NFC-e','NF-e'],[qNFCe,qNFe],['#22c55e','#3b82f6']);
+  buildChartDoughnut('chart-grupos', grupoArr.map(([k])=>k), grupoArr.map(([,v])=>v), PALETTE);
+
+  const tbody = document.getElementById('tbl-resumo-body');
+  if (!empArr.length) { tbody.innerHTML=`<tr><td colspan="10"><div class="empty-state"><div class="icon">📊</div><p>Nenhum dado para o período</p></div></td></tr>`; return; }
+  tbody.innerHTML = empArr.map(([nome, d]) => `
+    <tr>
+      <td><span style="font-size:10px;background:var(--bg3);padding:2px 6px;border-radius:4px;font-weight:700">${d.grupo}</span></td>
+      <td>${nome}</td>
+      <td style="color:var(--green)">${d.nfce}</td><td style="color:var(--blue)">${d.nfe}</td>
+      <td style="text-align:right;font-weight:700">${fmt(d.fat)}</td>
+      <td style="text-align:right;color:var(--yellow)">${fmt(d.icms)}</td>
+      <td style="text-align:right;color:var(--red)">${fmt(d.st)}</td>
+      <td style="text-align:right;color:var(--text2)">${fmt(d.cof+d.pis)}</td>
+      <td style="text-align:right">${fmt(d.pis)}</td><td style="text-align:right">${fmt(d.cof)}</td>
+    </tr>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  RESUMO ANUAL
+// ══════════════════════════════════════════════════════════════
+async function loadAnual() {
+  const ano  = document.getElementById('anual-ano').value || new Date().getFullYear().toString();
+  const gr   = document.getElementById('anual-grupo').value;
+  const emp  = document.getElementById('anual-empresa').value;
+  document.getElementById('anual-ano-titulo').textContent = ano;
+
+  let mets = await idbAll('metricas');
+  mets = mets.filter(m => m.mes_ref && m.mes_ref.startsWith(ano + '-'));
+  if (gr)  mets = mets.filter(m => m.grupo   === gr);
+  if (emp) mets = mets.filter(m => m.empresa === emp);
+
+  const MESES = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+  const porMes = {};
+  MESES.forEach((m,i) => { porMes[`${ano}-${m}`] = {nome:MESES_NOME[i], fat:0, qtd:0}; });
+  mets.forEach(m => {
+    if (porMes[m.mes_ref]) {
+      porMes[m.mes_ref].fat += Number(m.fat||0);
+      porMes[m.mes_ref].qtd += Number(m.qtd_notas||0);
+    }
+  });
+
+  const ctx = document.getElementById('chart-anual').getContext('2d');
+  if (charts['anual']) charts['anual'].destroy();
+  charts['anual'] = new Chart(ctx, {
+    type:'bar',
+    data:{labels:MESES_NOME,datasets:[{label:'Faturamento',data:MESES.map(m=>porMes[`${ano}-${m}`].fat),backgroundColor:PALETTE.slice(0,12),borderRadius:6,borderSkipped:false}]},
+    options:{...chartOpts('R$'), plugins:{legend:{display:false}}}
+  });
+
+  document.getElementById('anual-grid').innerHTML = MESES.map((m,i) => {
+    const d = porMes[`${ano}-${m}`];
+    return `<div class="anual-mes" onclick="jumpToMes('${ano}','${m}')">
+      <div class="mes-nome">${MESES_NOME[i]}</div>
+      <div class="mes-val" style="color:${d.fat>0?'var(--primary)':'var(--text3)'}">
+        ${d.fat>0 ? 'R$ '+fmt(d.fat) : '—'}
+      </div>
+      <div class="mes-notas">${d.qtd>0 ? d.qtd+' notas' : ''}</div>
+    </div>`;
+  }).join('');
+}
+
+function jumpToMes(ano, mes) {
+  document.getElementById('top-ano').value = ano;
+  document.getElementById('top-mes').value = mes;
   showPage('dashboard');
 }
 
-// ── NOTAS ─────────────────────────────────────────────────────
-async function loadNotas(page=1){
-  notasPage=page;
-  const mes=document.getElementById('f-mes-notas').value,
-        grupo=document.getElementById('f-grupo-notas').value,
-        emp=document.getElementById('f-empresa-notas').value,
-        tipo=document.getElementById('f-tipo-notas').value,
-        busca=document.getElementById('f-busca-notas').value.trim();
-  const from=(page-1)*PER_PAGE,to=from+PER_PAGE-1;
-  let q=db.from('notas_fiscais').select('*',{count:'exact'}).order('data_emissao',{ascending:false}).range(from,to);
-  if(mes)   q=q.eq('mes_ref',mes);
-  if(grupo) q=q.eq('grupo',grupo);
-  if(emp)   q=q.eq('estabelecimento',emp);
-  if(tipo)  q=q.eq('tipo_doc',tipo);
-  if(busca) q=q.or(`chave_acesso.ilike.%${busca}%,numero.ilike.%${busca}%,cnpj_emit.ilike.%${busca}%,dest_doc.ilike.%${busca}%`);
-  const {data,count,error}=await q;
-  if(error){toast('Erro: '+error.message,'err');return;}
-  const notas=data||[];
-  document.getElementById('notas-count').textContent=`${count||0} notas`;
-  const tbody=document.getElementById('notas-body');
-  if(!notas.length){tbody.innerHTML=`<tr><td colspan="14"><div class="empty-state"><div class="icon">🧾</div><p>Nenhuma nota encontrada</p></div></td></tr>`;document.getElementById('notas-pag').innerHTML='';return;}
-  tbody.innerHTML=notas.map(n=>`<tr>
-    <td><span class="badge ${n.tipo_doc==='NF-e'?'badge-nfe':'badge-nfce'}">${n.tipo_doc}</span></td>
+// ══════════════════════════════════════════════════════════════
+//  NOTAS TABLE
+// ══════════════════════════════════════════════════════════════
+let notasPage = 1;
+let notasCache = [];
+
+async function loadNotas(page = 1) {
+  notasPage = page;
+  const mes   = document.getElementById('f-mes-notas').value;
+  const grupo = document.getElementById('f-grupo-notas').value;
+  const emp   = document.getElementById('f-empresa-notas').value;
+  const tipo  = document.getElementById('f-tipo-notas').value;
+  const busca = document.getElementById('f-busca-notas').value.trim().toLowerCase();
+
+  let all = await idbAll('notas');
+  if (mes)   all = all.filter(n => n.mes_ref === mes);
+  if (grupo) all = all.filter(n => n.grupo   === grupo);
+  if (emp)   all = all.filter(n => n.empresa === emp);
+  if (tipo)  all = all.filter(n => n.tipo_doc === tipo);
+  if (busca) all = all.filter(n =>
+    (n.chave_acesso||'').toLowerCase().includes(busca) ||
+    (n.numero||'').toLowerCase().includes(busca) ||
+    (n.cnpj_emit||'').includes(busca) ||
+    (n.dest_doc||'').includes(busca) ||
+    (n.dest_nome||'').toLowerCase().includes(busca)
+  );
+  all.sort((a,b) => (b.data_emissao||'').localeCompare(a.data_emissao||''));
+  notasCache = all;
+
+  document.getElementById('notas-count').textContent = all.length + ' notas';
+  const slice = all.slice((page-1)*PER_PAGE, page*PER_PAGE);
+  const tbody = document.getElementById('notas-body');
+  if (!slice.length) {
+    tbody.innerHTML = `<tr><td colspan="13"><div class="empty-state"><div class="icon">🧾</div><p>Nenhuma nota encontrada</p></div></td></tr>`;
+    document.getElementById('notas-pag').innerHTML = '';
+    return;
+  }
+  tbody.innerHTML = slice.map(n => `<tr>
+    <td><span class="badge ${n.tipo_doc==='NF-e'?'badge-nfe':'badge-nfce'}">${n.tipo_doc||'—'}</span></td>
     <td>${n.numero||'—'}</td><td>${fmtDate(n.data_emissao)}</td>
-    <td title="${n.estabelecimento}">${(n.estabelecimento||'').slice(0,18)}</td>
+    <td title="${n.empresa}">${(n.empresa||'').slice(0,18)}</td>
     <td><span style="font-size:10px;background:var(--bg3);padding:1px 5px;border-radius:3px">${n.grupo||'—'}</span></td>
     <td style="font-size:11px">${n.cfops||'—'}</td>
-    <td style="font-size:11px">${n.dest_doc||'—'}</td>
-    <td title="${n.dest_nome}">${(n.dest_nome||'').slice(0,16)||'—'}</td>
+    <td title="${n.dest_nome}">${(n.dest_nome||'—').slice(0,16)}</td>
     <td style="text-align:right;font-weight:700">${fmt(n.valor_total)}</td>
     <td style="text-align:right;color:var(--yellow)">${fmt(n.valor_icms)}</td>
     <td style="text-align:right;color:var(--red)">${fmt(n.valor_icms_st)}</td>
@@ -813,54 +1206,192 @@ async function loadNotas(page=1){
     <td style="text-align:right">${fmt(n.valor_cofins)}</td>
     <td style="font-size:11px;color:var(--text2)">${n.forma_pagamento||'—'}</td>
   </tr>`).join('');
-  renderPag('notas-pag',count,page,PER_PAGE,loadNotas);
+  renderPag('notas-pag', all.length, page, PER_PAGE, loadNotas);
 }
 
-// ── ITENS ─────────────────────────────────────────────────────
-async function loadItens(page=1){
-  itensPage=page;
-  const mes=document.getElementById('f-mes-itens').value,
-        grupo=document.getElementById('f-grupo-itens').value,
-        st=document.getElementById('f-st-itens').value,
-        busca=document.getElementById('f-busca-itens').value.trim();
-  const from=(page-1)*PER_PAGE,to=from+PER_PAGE-1;
-  let q=db.from('itens_nota').select('*',{count:'exact'}).order('data_emissao',{ascending:false}).range(from,to);
-  if(mes)  q=q.gte('data_emissao',mes+'-01').lte('data_emissao',mes+'-31');
-  if(grupo)q=q.eq('grupo',grupo);
-  if(st!=='')q=q.eq('tem_st',st==='true');
-  if(busca)q=q.or(`descricao.ilike.%${busca}%,ncm.ilike.%${busca}%`);
-  const {data,count,error}=await q;
-  if(error){toast('Erro: '+error.message,'err');return;}
-  const itens=data||[];
-  document.getElementById('itens-count').textContent=`${count||0} itens`;
-  const tbody=document.getElementById('itens-body');
-  if(!itens.length){tbody.innerHTML=`<tr><td colspan="17"><div class="empty-state"><div class="icon">📦</div><p>Nenhum item</p></div></td></tr>`;document.getElementById('itens-pag').innerHTML='';return;}
-  tbody.innerHTML=itens.map(i=>`<tr>
+// ══════════════════════════════════════════════════════════════
+//  ITENS TABLE
+// ══════════════════════════════════════════════════════════════
+let itensPage = 1;
+let itensCache = [];
+
+async function loadItens(page = 1) {
+  itensPage = page;
+  const mes   = document.getElementById('f-mes-itens').value;
+  const grupo = document.getElementById('f-grupo-itens').value;
+  const emp   = document.getElementById('f-empresa-itens').value;
+  const st    = document.getElementById('f-st-itens').value;
+  const busca = document.getElementById('f-busca-itens').value.trim().toLowerCase();
+
+  let all = await idbAll('itens');
+  if (mes)   all = all.filter(i => i.mes_ref === mes);
+  if (grupo) all = all.filter(i => i.grupo   === grupo);
+  if (emp)   all = all.filter(i => i.empresa === emp);
+  if (st !== '') all = all.filter(i => String(i.tem_st) === st);
+  if (busca) all = all.filter(i =>
+    (i.descricao||'').toLowerCase().includes(busca) ||
+    (i.ncm||'').includes(busca) || (i.cfop||'').includes(busca)
+  );
+  all.sort((a,b) => (b.data_emissao||'').localeCompare(a.data_emissao||''));
+  itensCache = all;
+
+  document.getElementById('itens-count').textContent = all.length + ' itens';
+  const slice = all.slice((page-1)*PER_PAGE, page*PER_PAGE);
+  const tbody = document.getElementById('itens-body');
+  if (!slice.length) {
+    tbody.innerHTML = `<tr><td colspan="17"><div class="empty-state"><div class="icon">📦</div><p>Nenhum item encontrado</p></div></td></tr>`;
+    document.getElementById('itens-pag').innerHTML = '';
+    return;
+  }
+  tbody.innerHTML = slice.map(i => `<tr>
     <td><span class="badge ${i.tipo_doc==='NF-e'?'badge-nfe':'badge-nfce'}">${i.tipo_doc||''}</span></td>
     <td>${i.numero||'—'}</td><td>${fmtDate(i.data_emissao)}</td>
-    <td>${(i.estabelecimento||'').slice(0,16)}</td>
-    <td title="${i.descricao}">${(i.descricao||'').length>24?(i.descricao||'').slice(0,24)+'…':i.descricao||'—'}</td>
+    <td>${(i.empresa||'').slice(0,14)}</td>
+    <td title="${i.descricao}">${(i.descricao||'—').length>22?(i.descricao||'').slice(0,22)+'…':i.descricao||'—'}</td>
     <td>${i.ncm||'—'}</td><td>${i.cfop||'—'}</td>
     <td>${i.cst_icms||i.csosn||'—'}</td><td>${i.unidade||'—'}</td>
     <td style="text-align:right">${Number(i.quantidade||0).toFixed(2)}</td>
     <td style="text-align:right">${fmt(i.valor_unitario)}</td>
     <td style="text-align:right;font-weight:700">${fmt(i.valor_item)}</td>
-    <td><span class="badge ${i.tem_st?'badge-nfe':'badge-inactive'}">${i.tipo_trib||'—'}</span></td>
+    <td><span class="badge ${i.tem_st?'badge-warn':''}"> ${i.tipo_trib||'—'}</span></td>
     <td style="text-align:right;color:var(--yellow)">${fmt(i.valor_icms)}</td>
     <td style="text-align:right;color:var(--red)">${fmt(i.valor_icms_st)}</td>
     <td style="text-align:right">${fmt(i.valor_pis)}</td>
     <td style="text-align:right">${fmt(i.valor_cofins)}</td>
   </tr>`).join('');
-  renderPag('itens-pag',count,page,PER_PAGE,loadItens);
+  renderPag('itens-pag', all.length, page, PER_PAGE, loadItens);
 }
 
-function renderPag(id,total,page,perPage,fn){
-  const pages=Math.ceil((total||0)/perPage);
-  const el=document.getElementById(id);
-  if(pages<=1){el.innerHTML='';return;}
-  let btns='';
-  for(let p=Math.max(1,page-2);p<=Math.min(pages,page+2);p++) btns+=`<button class="page-btn${p===page?' active':''}" onclick="${fn.name}(${p})">${p}</button>`;
-  el.innerHTML=`<span>Página ${page} de ${pages} — ${total} registros</span><div class="pagination-btns">
+// ══════════════════════════════════════════════════════════════
+//  AUDITORIA
+// ══════════════════════════════════════════════════════════════
+let auditCache = [];
+let auditPage = 1;
+
+async function loadAuditoria() {
+  auditPage = 1;
+  const gr  = document.getElementById('audit-grupo').value;
+  const emp = document.getElementById('audit-empresa').value;
+  const mes = document.getElementById('audit-mes').value;
+
+  let mets = await idbAll('metricas');
+  if (gr)  mets = mets.filter(m => m.grupo   === gr);
+  if (emp) mets = mets.filter(m => m.empresa === emp);
+  if (mes) mets = mets.filter(m => m.mes_ref === mes);
+  mets.sort((a,b) => {
+    const cEmp = (a.empresa||'').localeCompare(b.empresa||'');
+    if (cEmp) return cEmp;
+    return (b.mes_ref||'').localeCompare(a.mes_ref||'');
+  });
+  auditCache = mets;
+  renderAuditoria();
+}
+
+function renderAuditoria(page = 1) {
+  auditPage = page;
+  const mets = auditCache;
+  document.getElementById('audit-count').textContent = mets.length + ' registros';
+  const slice = mets.slice((page-1)*PER_PAGE, page*PER_PAGE);
+  const tbody = document.getElementById('audit-body');
+  if (!slice.length) {
+    tbody.innerHTML = `<tr><td colspan="14"><div class="empty-state"><div class="icon">🔍</div><p>Carregue planilhas para visualizar a auditoria</p></div></td></tr>`;
+    document.getElementById('audit-pag').innerHTML = '';
+    return;
+  }
+  tbody.innerHTML = slice.map(m => {
+    const mesNome = m.mes_ref ? (() => { const [a,mn]=m.mes_ref.split('-'); return `${MESES_NOME[+mn-1]}/${a}`; })() : '—';
+    return `<tr>
+      <td><span style="font-size:10px;background:var(--bg3);padding:2px 6px;border-radius:4px;font-weight:700">${m.grupo}</span></td>
+      <td>${m.empresa}</td>
+      <td>${mesNome}</td>
+      <td><span class="badge ${m.tipo_doc==='NF-e'?'badge-nfe':'badge-nfce'}">${m.tipo_doc}</span></td>
+      <td style="text-align:right">${m.qtd_notas}</td>
+      <td style="text-align:right;font-weight:700">${fmt(m.fat)}</td>
+      <td style="text-align:right;color:var(--text2)">${fmt(m.desconto||0)}</td>
+      <td style="text-align:right">${fmt(m.base_icms||m.fat)}</td>
+      <td style="text-align:right;color:var(--yellow)">${fmt(m.icms)}</td>
+      <td style="text-align:right">${fmt(m.base_st||0)}</td>
+      <td style="text-align:right;color:var(--red)">${fmt(m.icms_st)}</td>
+      <td style="text-align:right;color:var(--red)">${fmt(m.fcp_st)}</td>
+      <td style="text-align:right;color:var(--blue)">${fmt(m.pis)}</td>
+      <td style="text-align:right;color:var(--blue)">${fmt(m.cofins)}</td>
+    </tr>`;
+  }).join('');
+  renderPag('audit-pag', mets.length, page, PER_PAGE, renderAuditoria);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  EXPORT CSV
+// ══════════════════════════════════════════════════════════════
+function exportCSV(rows, filename) {
+  if (!rows.length) { toast('Nenhum dado para exportar', 'err'); return; }
+  const keys = Object.keys(rows[0]).filter(k => k !== '_id');
+  const csv = [keys.join(';'), ...rows.map(r => keys.map(k => JSON.stringify(r[k]??'')).join(';'))].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('﻿' + csv);
+  a.download = filename;
+  a.click();
+  toast('CSV exportado', 'ok');
+}
+
+function exportNotasCSV() { exportCSV(notasCache, 'cajupar_notas.csv'); }
+function exportItensCSV()  { exportCSV(itensCache, 'cajupar_itens.csv'); }
+function exportAuditoriaCSV() { exportCSV(auditCache, 'cajupar_auditoria.csv'); }
+
+// ══════════════════════════════════════════════════════════════
+//  CHARTS
+// ══════════════════════════════════════════════════════════════
+function chartOpts(prefix) {
+  const tick = {color:'#888', font:{size:10}};
+  return {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>`${prefix} ${fmt(ctx.parsed.y??ctx.parsed)}`}}},
+    scales:{x:{ticks:{...tick,maxRotation:35},grid:{color:'#1a1a1a'}},y:{ticks:{...tick,callback:v=>`${prefix} ${fmt(v)}`},grid:{color:'#1a1a1a'}}}
+  };
+}
+function buildChart(id, type, labels, data, prefix, colors) {
+  const ctx = document.getElementById(id)?.getContext('2d');
+  if (!ctx) return;
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(ctx, {
+    type, data:{labels,datasets:[{data, backgroundColor:colors, borderColor:type==='line'?colors[0]:'transparent', borderWidth:type==='line'?2:0, tension:.35, fill:false, pointRadius:3, borderRadius:type!=='line'?5:0, borderSkipped:false}]},
+    options: chartOpts(prefix)
+  });
+}
+function buildChartDoughnut(id, labels, data, colors) {
+  const ctx = document.getElementById(id)?.getContext('2d');
+  if (!ctx) return;
+  if (charts[id]) charts[id].destroy();
+  const total = data.reduce((s,v) => s+v, 0);
+  charts[id] = new Chart(ctx, {
+    type:'doughnut',
+    data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:0,hoverOffset:6}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'right',labels:{color:'#888',font:{size:10},padding:8}},tooltip:{callbacks:{label:ctx=>`${ctx.label}: R$ ${fmt(ctx.parsed)} (${total>0?(ctx.parsed/total*100).toFixed(1):'0'}%)`}}}}
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  UI UTILITIES
+// ══════════════════════════════════════════════════════════════
+function fmt(v)  { return Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtDate(d) {
+  if (!d) return '—';
+  if (d instanceof Date) return d.toLocaleDateString('pt-BR');
+  if (typeof d === 'string' && d.includes('-')) {
+    const [y,m,day] = d.split('-');
+    return `${(day||'').padStart(2,'0')}/${(m||'').padStart(2,'0')}/${y}`;
+  }
+  return d;
+}
+
+function renderPag(id, total, page, perPage, fn) {
+  const pages = Math.ceil((total||0)/perPage);
+  const el = document.getElementById(id);
+  if (pages <= 1) { el.innerHTML = ''; return; }
+  let btns = '';
+  for (let p = Math.max(1,page-2); p <= Math.min(pages,page+2); p++)
+    btns += `<button class="page-btn${p===page?' active':''}" onclick="${fn.name}(${p})">${p}</button>`;
+  el.innerHTML = `<span>Página ${page} de ${pages} — ${total} registros</span><div class="pagination-btns">
     <button class="page-btn" onclick="${fn.name}(1)" ${page===1?'disabled':''}>«</button>
     <button class="page-btn" onclick="${fn.name}(${page-1})" ${page===1?'disabled':''}>‹</button>
     ${btns}
@@ -869,298 +1400,169 @@ function renderPag(id,total,page,perPage,fn){
   </div>`;
 }
 
-// ── XML PROCESSING ────────────────────────────────────────────
-const MAPA_EMPRESAS={
-  "35631524000165":{grupo:"MULT",nome:"MULT 01"},"35631524000246":{grupo:"MULT",nome:"NAZO GOIANIA"},
-  "35631524000327":{grupo:"MULT",nome:"CAMINITO SUDOESTE"},"35631524000408":{grupo:"MULT",nome:"MULT 04"},
-  "35631524000599":{grupo:"MULT",nome:"CAMINITO ASA NORTE"},"35631524000750":{grupo:"MULT",nome:"HOLDING FERMULT"},
-  "35631524001218":{grupo:"MULT",nome:"CAMINITO AGUAS CLARAS"},"35631524001307":{grupo:"MULT",nome:"MULT 13"},
-  "35631524001480":{grupo:"MULT",nome:"CAMINITO ASA SUL"},"21131221000179":{grupo:"NFE",nome:"NAZO ASA SUL"},
-  "21131221000250":{grupo:"NFE",nome:"NAZO SUSHI BAR"},"21131221000330":{grupo:"NFE",nome:"NAZO AGUAS CLARAS"},
-  "21131221000411":{grupo:"NFE",nome:"NAZO SUDOESTE"},"21131221000500":{grupo:"NFE",nome:"MULT EMPRESAS"},
-  "37119545000121":{grupo:"CAJU",nome:"CAJU LIMAO ASA NORTE"},"37119545000393":{grupo:"CAJU",nome:"CAJU LIMAO SUDOESTE"},
-  "62723936000106":{grupo:"CAJU",nome:"CAJU ITAIM SP"},"37492271000111":{grupo:"FERM",nome:"RESPONSA"},
-  "37492271000200":{grupo:"FERM",nome:"FOSTER BOSQUE"},"37492271000383":{grupo:"FERM",nome:"FOSTER ASA SUL"},
-  "37492271000464":{grupo:"FERM",nome:"FERM 04"},"37492271000545":{grupo:"FERM",nome:"FOSTER AGUAS CLARAS"},
-  "37492271000626":{grupo:"FERM",nome:"FOSTER SUDOESTE"},"37492271000707":{grupo:"FERM",nome:"FOSTER ASA NORTE"}
-};
-const NS_NF='http://www.portalfiscal.inf.br/nfe';
-const NCM_ST=new Set(["2202","22021000","22029000","2203","22030000","19053100","19053200","21069090","3402","33059000"]);
-const CST_ST=new Set(["10","30","60","70"]);
-const CSOSN_ST=new Set(["201","202","203","500"]);
-const MAPA_PAG={"01":"Dinheiro","02":"Cheque","03":"Cred","04":"Deb","05":"Loja","10":"VA","11":"VR","15":"Boleto","90":"Sem Pag","99":"Outros"};
-
-function gNS(el,tag){return el.getElementsByTagNameNS(NS_NF,tag)[0]||null;}
-function gT(el,tag){const n=gNS(el,tag);return n?n.textContent.trim():'';}
-function gF(el,tag){return parseFloat(gT(el,tag))||0;}
-
-function temST(ncm,cst,csosn){
-  const n=ncm.replace(/\D/g,'');
-  for(const x of NCM_ST){const xl=x.replace(/\D/g,'');if(n.startsWith(xl)||xl.startsWith(n.slice(0,xl.length)))return true;}
-  return CST_ST.has(cst.trim())||CSOSN_ST.has(csosn.trim());
+let _debounceTimers = {};
+function debounce(fn, delay, key='default') {
+  clearTimeout(_debounceTimers[key]);
+  _debounceTimers[key] = setTimeout(fn, delay);
 }
 
-function parseXML(xmlString){
-  const doc=new DOMParser().parseFromString(xmlString,'text/xml');
-  if(doc.querySelector('parsererror')) return null;
-  const infNFe=doc.getElementsByTagNameNS(NS_NF,'infNFe')[0];
-  if(!infNFe) return null;
-  const ide=gNS(infNFe,'ide'),emit=gNS(infNFe,'emit'),dest=gNS(infNFe,'dest'),total=gNS(infNFe,'ICMSTot');
-  const tipoDoc=gT(ide,'mod')==='55'?'NF-e':'NFC-e';
-  const rawDate=gT(ide,'dhEmi')||gT(ide,'dEmi');
-  let dataEmissao=null;
-  try{dataEmissao=rawDate.includes('T')?rawDate.slice(0,10):rawDate.slice(0,10);}catch(e){}
-  const cnpj=gT(emit,'CNPJ');
-  const emp=MAPA_EMPRESAS[cnpj.replace(/\D/g,'')]||{grupo:'OUTROS',nome:cnpj};
-  const destDoc=gT(dest,'CNPJ')||gT(dest,'CPF');
-  const destNome=gT(dest,'xNome');
-  const pags=[...infNFe.getElementsByTagNameNS(NS_NF,'detPag')].map(dp=>MAPA_PAG[gT(dp,'tPag')]||gT(dp,'tPag'));
-  const dets=[...infNFe.getElementsByTagNameNS(NS_NF,'det')];
-  const cfops=new Set();
-  const itens=[];
-  for(const det of dets){
-    const prod=gNS(det,'prod'),imp=gNS(det,'imposto');
-    if(!prod) continue;
-    const cfop=gT(prod,'CFOP'); cfops.add(cfop);
-    let cstI='',csosn='',vBC=0,vICMS=0,vBCST=0,vICMSST=0,vFCPST=0;
-    const icmsEl=imp?gNS(imp,'ICMS'):null;
-    if(icmsEl){const f=icmsEl.children[0];if(f){cstI=gT(f,'CST');csosn=gT(f,'CSOSN');vBC=gF(f,'vBC');vICMS=gF(f,'vICMS');vBCST=gF(f,'vBCST');vICMSST=gF(f,'vICMSST');vFCPST=gF(f,'vFCPST')+gF(f,'vFCPSTRet');}}
-    let cstP='',cstC='',vPIS=0,vCOF=0;
-    const pisEl=imp?gNS(imp,'PIS'):null;if(pisEl){const f=pisEl.children[0];if(f){cstP=gT(f,'CST');vPIS=gF(f,'vPIS');}}
-    const cofEl=imp?gNS(imp,'COFINS'):null;if(cofEl){const f=cofEl.children[0];if(f){cstC=gT(f,'CST');vCOF=gF(f,'vCOFINS');}}
-    const ncm=gT(prod,'NCM'),st=temST(ncm,cstI,csosn);
-    itens.push({chave_acesso:infNFe.getAttribute('Id').replace('NFe',''),tipo_doc:tipoDoc,numero:gT(ide,'nNF'),
-      data_emissao:dataEmissao,cnpj_emit:cnpj,grupo:emp.grupo,estabelecimento:emp.nome,
-      codigo_produto:gT(prod,'cProd'),descricao:gT(prod,'xProd'),ncm,cfop,cst_icms:cstI,csosn,cst_pis:cstP,cst_cofins:cstC,
-      unidade:gT(prod,'uCom'),quantidade:parseFloat(gT(prod,'qCom'))||0,valor_unitario:parseFloat(gT(prod,'vUnCom'))||0,
-      valor_item:gF(prod,'vProd'),desconto_item:gF(prod,'vDesc'),tipo_trib:st?'Com ST':'Sem ST',tem_st:st,
-      base_icms:vBC,valor_icms:vICMS,base_icms_st:vBCST,valor_icms_st:vICMSST,valor_fcp_st:vFCPST,valor_pis:vPIS,valor_cofins:vCOF});
-  }
-  return {nota:{chave_acesso:infNFe.getAttribute('Id').replace('NFe',''),tipo_doc:tipoDoc,numero:gT(ide,'nNF'),serie:gT(ide,'serie'),
-    cfops:[...cfops].sort().join(' / '),data_emissao:dataEmissao,mes_ref:dataEmissao?dataEmissao.slice(0,7):'',
-    cnpj_emit:cnpj,razao_social:gT(emit,'xNome'),dest_doc:destDoc,dest_nome:destNome,grupo:emp.grupo,estabelecimento:emp.nome,
-    valor_produtos:gF(total,'vProd'),desconto:gF(total,'vDesc'),valor_total:gF(total,'vNF'),
-    base_icms:gF(total,'vBC'),valor_icms:gF(total,'vICMS'),base_icms_st:gF(total,'vBCST'),valor_icms_st:gF(total,'vST'),
-    valor_fcp_st:gF(total,'vFCPST'),valor_pis:gF(total,'vPIS'),valor_cofins:gF(total,'vCOFINS'),forma_pagamento:pags.join(' / ')},
-    itens};
+let _toastId = 0;
+function toast(msg, type='info', dur=4000) {
+  const id = ++_toastId;
+  const el = document.createElement('div');
+  el.className = `toast-item t-${type}`;
+  el.textContent = msg;
+  el.onclick = () => el.remove();
+  document.getElementById('toast').appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, dur);
 }
 
-// ── UPLOAD UI ─────────────────────────────────────────────────
-function onDragOver(e){e.preventDefault();document.getElementById('drop-zone').classList.add('drag');}
-function onDragLeave(){document.getElementById('drop-zone').classList.remove('drag');}
-function onDrop(e){
-  e.preventDefault();document.getElementById('drop-zone').classList.remove('drag');
-  addFiles([...e.dataTransfer.files].filter(f=>f.name.endsWith('.xml')));
+function showModal(title, body, buttons) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = `<p style="color:var(--text2);font-size:13px">${body}</p>`;
+  const f = document.getElementById('modal-footer'); f.innerHTML = '';
+  buttons.forEach(b => {
+    const el = document.createElement('button');
+    el.className = `btn ${b.cls||'btn-outline'}`; el.textContent = b.label; el.onclick = b.action;
+    f.appendChild(el);
+  });
+  document.getElementById('modal-overlay').classList.remove('hidden');
 }
-function onFileSelect(e){
-  addFiles([...e.target.files].filter(f=>f.name.endsWith('.xml'))); e.target.value='';
-}
+function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
 
-function addFiles(files){
-  // Filtra por mês se definido
-  const mesFiltro=document.getElementById('upload-mes-filtro').value; // ex: "2026-05"
-  let filtered=files;
-  if(mesFiltro){
-    const [ano,mes]=mesFiltro.split('-');
-    const pastaRef=`${mes}.${ano}`; // ex: "05.2026"
-    filtered=files.filter(f=>{
-      const path=(f.webkitRelativePath||f.name).replace(/\\/g,'/');
-      return path.includes(pastaRef)||path.includes(mesFiltro);
-    });
-    if(filtered.length<files.length) toast(`Filtro ${pastaRef}: ${filtered.length} de ${files.length} arquivos selecionados`,'info');
-  }
-  allFiles=[...allFiles,...filtered];
-  const lbl=document.getElementById('file-count-label');
-  lbl.style.display='block';
-  lbl.textContent=`${allFiles.length} arquivo(s) XML selecionado(s)${mesFiltro?' (filtrado por '+mesFiltro+')':''}`;
-  // Mostra amostra dos primeiros 5
-  const fl=document.getElementById('file-list');
-  const preview=allFiles.slice(0,5);
-  fl.innerHTML=preview.map((f,i)=>`<div class="file-item"><span>📄</span><span class="name">${f.webkitRelativePath||f.name}</span><span class="size">${(f.size/1024).toFixed(0)}KB</span></div>`).join('');
-  if(allFiles.length>5) fl.innerHTML+=`<div style="font-size:11px;color:var(--text3);padding:6px 10px">...e mais ${allFiles.length-5} arquivo(s)</div>`;
-  document.getElementById('btn-processar').disabled=allFiles.length===0;
+function toggleTheme() {
+  const t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem('caju_theme', t);
 }
 
-function limparFilas(){
-  allFiles=[];
-  document.getElementById('file-list').innerHTML='';
-  document.getElementById('file-count-label').style.display='none';
-  document.getElementById('btn-processar').disabled=true;
-  document.getElementById('upload-summary').style.display='none';
-  document.getElementById('progress-section').style.display='none';
+// ══════════════════════════════════════════════════════════════
+//  SETUP / AUTH
+// ══════════════════════════════════════════════════════════════
+function getConfig() {
+  return {
+    clientId: localStorage.getItem('caju_client_id') || ''
+  };
 }
 
-function setProgress(label,pct,detail){
-  document.getElementById('progress-section').style.display='block';
-  document.getElementById('prog-label').textContent=label;
-  document.getElementById('prog-pct').textContent=Math.round(pct)+'%';
-  document.getElementById('prog-bar').style.width=pct+'%';
-  if(detail!==undefined) document.getElementById('prog-detail').textContent=detail;
+function saveSetup() {
+  const id = document.getElementById('setup-client-id').value.trim();
+  if (!id) { toast('Informe o Client ID', 'err'); return; }
+  localStorage.setItem('caju_client_id', id);
+  location.reload();
 }
 
-// ── PROCESSAMENTO OTIMIZADO ───────────────────────────────────
-async function processarXMLs(){
-  if(!allFiles.length) return;
-  const btn=document.getElementById('btn-processar');
-  btn.disabled=true; btn.textContent='⏳ Processando...';
-  const total=allFiles.length;
-  let ok=0,err=0;
+function showSetup() {
+  document.getElementById('setup-screen').style.display = 'flex';
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'none';
+  const cfg = getConfig();
+  if (cfg.clientId) document.getElementById('setup-client-id').value = cfg.clientId;
+}
 
-  // FASE 1: Parse paralelo (20 por vez)
-  const PARSE_BATCH=20;
-  const parsed=[];
-  setProgress('Fase 1/2 — Lendo e parseando XMLs...',0,`0 de ${total}`);
-  for(let i=0;i<total;i+=PARSE_BATCH){
-    const batch=allFiles.slice(i,i+PARSE_BATCH);
-    const results=await Promise.all(batch.map(async f=>{
-      try{ const txt=await f.text(); return parseXML(txt); }
-      catch(e){ return null; }
-    }));
-    results.forEach(r=>{ if(r) parsed.push(r); else err++; });
-    setProgress('Fase 1/2 — Lendo e parseando XMLs...',(i+batch.length)/total*50,`${i+batch.length} de ${total} arquivos — ${parsed.length} válidos`);
+function showLoginScreen() {
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+
+function showApp() {
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+
+  const name  = localStorage.getItem('caju_user_name')  || 'Usuário';
+  const email = localStorage.getItem('caju_user_email') || '';
+  document.getElementById('sb-avatar').textContent = name.charAt(0).toUpperCase();
+  document.getElementById('sb-name').textContent   = name;
+  document.getElementById('sb-email').textContent  = email;
+
+  populateFilterOptions().then(() => loadDashboard());
+  renderLoadedFiles();
+  // Auto-connect Drive if access token available
+  if (gAccessToken) { refreshDriveFiles(); }
+}
+
+function doLogout() {
+  if (gAccessToken) google.accounts.oauth2.revoke(gAccessToken);
+  gAccessToken = null;
+  localStorage.removeItem('caju_user_name');
+  localStorage.removeItem('caju_user_email');
+  showLoginScreen();
+}
+
+async function clearAllData() {
+  showModal('Limpar todos os dados locais?',
+    'Isso apaga todas as notas, itens e métricas carregadas do IndexedDB. As planilhas no Drive não são afetadas.',
+    [
+      {label:'Cancelar', cls:'btn-outline', action:closeModal},
+      {label:'Limpar tudo', cls:'btn-danger', action: async () => {
+        closeModal();
+        await idbClearAll();
+        toast('Dados locais apagados', 'ok');
+        populateFilterOptions();
+        loadDashboard();
+        renderLoadedFiles();
+      }}
+    ]
+  );
+}
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name)?.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(b => {
+    if (b.getAttribute('onclick')?.includes("'"+name+"'")) b.classList.add('active');
+  });
+  if (name === 'dashboard')  loadDashboard();
+  if (name === 'anual')      loadAnual();
+  if (name === 'notas')      loadNotas(1);
+  if (name === 'itens')      loadItens(1);
+  if (name === 'auditoria')  loadAuditoria();
+  if (name === 'drive')      renderLoadedFiles();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════════
+async function init() {
+  // Apply saved theme
+  const theme = localStorage.getItem('caju_theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', theme);
+
+  // Open IndexedDB
+  idb = await openIDB();
+
+  const cfg   = getConfig();
+  const email = localStorage.getItem('caju_user_email');
+
+  if (!cfg.clientId) {
+    showSetup();
+    return;
   }
 
-  // FASE 2: Upsert notas em lote
-  const INS_BATCH=100;
-  const ITENS_BATCH=200;
-  setProgress('Fase 2/2 — Salvando notas...',50,`0 de ${parsed.length} notas`);
-  const notasInseridas=[];
-  for(let i=0;i<parsed.length;i+=INS_BATCH){
-    const batch=parsed.slice(i,i+INS_BATCH);
-    const {error:eN}=await db.from('notas_fiscais')
-      .upsert(batch.map(r=>r.nota),{onConflict:'chave_acesso',ignoreDuplicates:true});
-    if(eN){ console.error('Erro notas:',eN); err+=batch.length; continue; }
-    ok+=batch.length;
-    notasInseridas.push(...batch);
-    const pct=50+(i+batch.length)/Math.max(parsed.length,1)*40;
-    setProgress('Fase 2/2 — Salvando notas...',pct,`${ok} de ${parsed.length} notas`);
-  }
+  // Initialize Google (loads gapi + tokenClient)
+  window._gapiLoaded = false;
+  window._gsiLoaded  = false;
 
-  // FASE 3: Itens — só insere, sem deletar (notas duplicadas já foram ignoradas na fase 2)
-  const todosItens=notasInseridas.flatMap(r=>r.itens||[]);
-  if(todosItens.length){
-    setProgress('Fase 2/2 — Salvando itens...',90,`0 de ${todosItens.length} itens`);
-    let itensOk=0;
-    for(let j=0;j<todosItens.length;j+=ITENS_BATCH){
-      const sl=todosItens.slice(j,j+ITENS_BATCH);
-      const {error:eI}=await db.from('itens_nota').upsert(sl,{onConflict:'id',ignoreDuplicates:true});
-      if(eI){ console.error('Erro itens:',eI); }
-      else itensOk+=sl.length;
-      setProgress('Fase 2/2 — Salvando itens...',90+(j+sl.length)/Math.max(todosItens.length,1)*10,`${itensOk} de ${todosItens.length} itens`);
+  function tryInit() {
+    if (typeof gapi !== 'undefined' && typeof google !== 'undefined') {
+      initGoogleClient();
+      if (email) {
+        showApp();
+      } else {
+        showLoginScreen();
+      }
+    } else {
+      setTimeout(tryInit, 200);
     }
   }
-
-  setProgress('✅ Concluído!',100,'');
-  btn.textContent='⚙️ Processar e importar'; btn.disabled=false;
-  const sumEl=document.getElementById('upload-summary');
-  sumEl.style.display='block';
-  document.getElementById('summary-title').textContent='Processamento concluído';
-  document.getElementById('summary-body').innerHTML=`✅ Salvas/atualizadas: <strong>${ok}</strong> &nbsp;|&nbsp; ❌ Erros: <strong>${err}</strong><br><small style="color:var(--text3)">Duplicatas são ignoradas automaticamente pelo banco.</small>`;
-  document.getElementById('ultimo-proc').textContent=`${new Date().toLocaleString('pt-BR')} — ${ok} notas / ${err} err`;
-  toast(`✅ Concluído: ${ok} notas salvas`,'ok',6000);
-  allFiles=[];
-  document.getElementById('file-count-label').textContent='Pronto! Limpe para importar mais.';
+  tryInit();
 }
 
-// ── USUÁRIOS ──────────────────────────────────────────────────
-async function loadUsuarios(){
-  if(currentPerfil!=='admin'){toast('Sem permissão','err');return;}
-  const {data}=await db.from('usuarios').select('*').order('created_at',{ascending:false});
-  const todos=data||[];
-  const pending=todos.filter(u=>u.status==='pending');
-  const active=todos.filter(u=>u.status==='active');
-  document.getElementById('pending-count').textContent=pending.length;
-  document.getElementById('pending-body').innerHTML=pending.length
-    ?pending.map(u=>`<tr><td>${u.nome}</td><td>${u.email}</td><td>${fmtDT(u.created_at)}</td>
-      <td style="display:flex;gap:6px">
-        <button class="btn btn-success btn-sm" onclick="aprovarUser('${u.id}')">✓ Aprovar</button>
-        <button class="btn btn-danger btn-sm" onclick="rejeitarUser('${u.id}')">✗ Rejeitar</button>
-      </td></tr>`).join('')
-    :`<tr><td colspan="4"><div class="empty-state"><p>Nenhuma pendência</p></div></td></tr>`;
-  document.getElementById('users-body').innerHTML=active.length
-    ?active.map(u=>`<tr><td>${u.nome}</td><td>${u.email}</td>
-      <td><span class="badge badge-${u.perfil}">${u.perfil}</span></td>
-      <td>${fmtDT(u.created_at)}</td>
-      <td style="display:flex;gap:6px">
-        <select style="width:auto;padding:3px 8px;font-size:11px" onchange="mudarPerfil('${u.id}',this.value)">
-          <option ${u.perfil==='viewer'?'selected':''}>viewer</option>
-          <option ${u.perfil==='contador'?'selected':''}>contador</option>
-          <option ${u.perfil==='admin'?'selected':''}>admin</option>
-        </select>
-        <button class="btn btn-danger btn-sm" onclick="desativarUser('${u.id}')">Desativar</button>
-      </td></tr>`).join('')
-    :`<tr><td colspan="5"><div class="empty-state"><p>Nenhum ativo</p></div></td></tr>`;
-}
-async function aprovarUser(id){await db.from('usuarios').update({status:'active',perfil:'contador'}).eq('id',id);toast('Aprovado','ok');loadUsuarios();}
-async function rejeitarUser(id){await db.from('usuarios').update({status:'rejected'}).eq('id',id);toast('Rejeitado','info');loadUsuarios();}
-async function desativarUser(id){await db.from('usuarios').update({status:'inactive'}).eq('id',id);toast('Desativado','info');loadUsuarios();}
-async function mudarPerfil(id,perfil){await db.from('usuarios').update({perfil}).eq('id',id);toast('Perfil atualizado','ok');}
-
-// ── EXPORT CSV ────────────────────────────────────────────────
-async function exportNotasCSV(){
-  const mes=document.getElementById('f-mes-notas').value,grupo=document.getElementById('f-grupo-notas').value;
-  let q=db.from('notas_fiscais').select('*').order('data_emissao',{ascending:false}).limit(50000);
-  if(mes) q=q.eq('mes_ref',mes); if(grupo) q=q.eq('grupo',grupo);
-  const {data}=await q;
-  if(!data?.length){toast('Nenhum dado','err');return;}
-  const cols=['chave_acesso','tipo_doc','numero','serie','cfops','data_emissao','cnpj_emit','razao_social','dest_doc','dest_nome','grupo','estabelecimento','valor_total','base_icms','valor_icms','valor_icms_st','valor_fcp_st','valor_pis','valor_cofins','forma_pagamento'];
-  downloadCSV([cols.join(';'),...data.map(r=>cols.map(c=>`"${r[c]??''}"`).join(';'))].join('\n'),`notas_${mes||'todos'}.csv`);
-}
-async function exportItensCSV(){
-  const mes=document.getElementById('f-mes-itens').value,grupo=document.getElementById('f-grupo-itens').value;
-  let q=db.from('itens_nota').select('*').order('data_emissao',{ascending:false}).limit(50000);
-  if(mes) q=q.gte('data_emissao',mes+'-01').lte('data_emissao',mes+'-31'); if(grupo) q=q.eq('grupo',grupo);
-  const {data}=await q;
-  if(!data?.length){toast('Nenhum dado','err');return;}
-  const cols=['chave_acesso','tipo_doc','numero','data_emissao','cnpj_emit','estabelecimento','grupo','descricao','ncm','cfop','cst_icms','csosn','unidade','quantidade','valor_unitario','valor_item','tipo_trib','tem_st','valor_icms','valor_icms_st','valor_pis','valor_cofins'];
-  downloadCSV([cols.join(';'),...data.map(r=>cols.map(c=>`"${r[c]??''}"`).join(';'))].join('\n'),`itens_${mes||'todos'}.csv`);
-}
-function downloadCSV(content,filename){
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob(['﻿'+content],{type:'text/csv;charset=utf-8;'}));
-  a.download=filename; a.click();
-}
-
-// ── GRÁFICOS ──────────────────────────────────────────────────
-const PALETTE=['#f97316','#22c55e','#3b82f6','#eab308','#ef4444','#a855f7','#14b8a6','#f43f5e','#84cc16','#06b6d4','#fb923c','#4ade80'];
-const isDark=()=>document.documentElement.getAttribute('data-theme')!=='light';
-function chartOpts(pfx=''){
-  const col=isDark()?'rgba(255,255,255,.5)':'rgba(0,0,0,.5)';
-  const grid=isDark()?'rgba(255,255,255,.05)':'rgba(0,0,0,.07)';
-  return{responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const v=ctx.parsed.y??ctx.parsed;return pfx?` ${pfx} ${fmt(v)}`:` ${fmt(v)}`;},}}},
-    scales:{x:{ticks:{color:col,font:{size:10}},grid:{color:grid}},y:{ticks:{color:col,font:{size:10},callback:v=>fmt(v)},grid:{color:grid}}}};
-}
-function buildChart(id,type,labels,data,pfx,colors){
-  const ctx=document.getElementById(id)?.getContext('2d'); if(!ctx) return;
-  if(charts[id]){charts[id].destroy();}
-  charts[id]=new Chart(ctx,{type,
-    data:{labels,datasets:[{label:pfx,data,backgroundColor:colors,borderColor:type==='line'?colors[0]:colors,
-      borderWidth:type==='line'?2:0,fill:type==='line'?{target:'origin',above:colors[0]+'22'}:false,
-      tension:.4,pointRadius:3,borderRadius:type==='bar'?6:0,borderSkipped:false}]},
-    options:chartOpts(pfx)});
-}
-function buildChartDoughnut(id,labels,data,colors){
-  const ctx=document.getElementById(id)?.getContext('2d'); if(!ctx) return;
-  if(charts[id]){charts[id].destroy();}
-  const total=data.reduce((a,b)=>a+b,0);
-  charts[id]=new Chart(ctx,{type:'doughnut',
-    data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:2,borderColor:isDark()?'#111':'#fff'}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',
-      plugins:{legend:{display:true,position:'right',labels:{color:isDark()?'#aaa':'#333',font:{size:10},boxWidth:10}},
-        tooltip:{callbacks:{label:ctx=>`${ctx.label}: R$ ${fmt(ctx.parsed)} (${total?((ctx.parsed/total)*100).toFixed(1):0}%)`}}}}});
-}
-
-// ── INIT ──────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded',async()=>{
-  const t=localStorage.getItem('cajupar_theme');
-  if(t) document.documentElement.setAttribute('data-theme',t);
-  if(!initSupabase()) return;
-  document.getElementById('login-screen').style.display='flex';
-  const {data:{session}}=await db.auth.getSession();
-  if(session) await loadSession(session.user);
-  db.auth.onAuthStateChange(async(_,session)=>{ if(session&&!currentUser) await loadSession(session.user); });
-});
+window.addEventListener('load', init);
 </script>
 </body>
 </html>
