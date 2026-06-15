@@ -684,7 +684,7 @@ function connectDrive() {
 
 async function listDriveFilesAPI(query) {
   let q = "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' and trashed=false";
-  if (query) q += ` and name contains '${query.replace(/'/g,"\\'")'`;
+  if (query) q += ` and name contains '${query.replace(/'/g, "\\'")}'`;
   const resp = await gapi.client.drive.files.list({
     q, pageSize: 200,
     fields: 'files(id,name,parents,modifiedTime,size)',
