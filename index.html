@@ -146,6 +146,23 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .drive-status{display:flex;align-items:center;gap:8px;font-size:13px;padding:8px 14px;border-radius:8px;border:1px solid}
 .drive-status.connected{background:#0d2a1a;border-color:#22c55e44;color:var(--green)}
 .drive-status.disconnected{background:#2a1a00;border-color:#f9731633;color:var(--yellow)}
+
+/* AUDIT TABS */
+.audit-tabs{display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid var(--border)}
+.audit-tab-btn{background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;padding:10px 20px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap}
+.audit-tab-btn:hover{color:var(--text)}
+.audit-tab-btn.active{color:var(--primary);border-bottom-color:var(--primary)}
+.audit-input{background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);color:var(--text);border-radius:5px;padding:4px 8px;font-size:12px;font-weight:600;width:110px;text-align:right;outline:none;transition:border .15s}
+.audit-input:focus{border-color:var(--primary);background:rgba(249,115,22,.15)}
+.edit-col{background:rgba(249,115,22,.06);color:var(--primary)!important}
+.diff-pos{color:var(--red);font-weight:700}
+.diff-neg{color:var(--green);font-weight:700}
+.diff-zero{color:var(--green);font-weight:700}
+.audit-group-row td{padding:4px 12px;font-size:11px;font-weight:700;color:var(--primary);background:rgba(249,115,22,.06);letter-spacing:.5px}
+.audit-total-row td{padding:8px 12px;font-weight:800;background:var(--bg3);border-top:2px solid var(--border)}
+.params-bar{display:flex;gap:14px;flex-wrap:wrap;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;align-items:center}
+.param-item{display:flex;align-items:center;gap:6px;color:var(--text2)}
+.param-item strong{color:var(--text)}
 .file-list{display:flex;flex-direction:column;gap:8px}
 .file-item{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;transition:border .2s}
 .file-item:hover{border-color:var(--primary)}
@@ -390,29 +407,150 @@ tr:hover td{background:rgba(255,255,255,.02)}
       <div class="top-bar">
         <span class="page-title">Auditoria Fiscal</span>
         <select id="audit-grupo" onchange="loadAuditoria()"><option value="">Todos os grupos</option></select>
-        <select id="audit-empresa" onchange="loadAuditoria()"><option value="">Todas as empresas</option></select>
         <select id="audit-mes" onchange="loadAuditoria()"><option value="">Todos os meses</option></select>
-        <button class="btn btn-sm btn-outline" onclick="exportAuditoriaCSV()">⬇️ Exportar CSV</button>
         <button class="btn btn-icon" onclick="loadAuditoria()" title="Atualizar">🔄</button>
       </div>
-      <div class="table-card">
-        <div class="table-header">
-          <h3>Apuração por Empresa / Mês</h3>
-          <span class="table-count" id="audit-count">—</span>
-        </div>
-        <div class="tbl-wrap">
-          <table>
-            <thead><tr>
-              <th>Grupo</th><th>Empresa</th><th>Mês</th><th>Tipo</th>
-              <th>Qtd Notas</th><th>Faturamento (R$)</th><th>Descontos (R$)</th>
-              <th>Base ICMS (R$)</th><th>ICMS Dest. (R$)</th>
-              <th>Base ST (R$)</th><th>ICMS-ST (R$)</th><th>FCP-ST (R$)</th>
-              <th>PIS (R$)</th><th>COFINS (R$)</th>
+
+      <!-- Sub-abas -->
+      <div class="audit-tabs">
+        <button class="audit-tab-btn active" id="atab-fat"    onclick="showAuditTab('fat')">💰 Faturamento</button>
+        <button class="audit-tab-btn"        id="atab-icms"   onclick="showAuditTab('icms')">📋 ICMS</button>
+        <button class="audit-tab-btn"        id="atab-piscof" onclick="showAuditTab('piscof')">📊 PIS/COFINS</button>
+        <button class="audit-tab-btn"        id="atab-irpj"   onclick="showAuditTab('irpj')">🏛️ IRPJ/CSLL</button>
+      </div>
+
+      <!-- Parâmetros -->
+      <div class="params-bar">
+        <span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Parâmetros</span>
+        <span class="param-item">ICMS regime especial: <strong>2,0%</strong></span>
+        <span class="param-item">Fundo Univ.: <strong>0,02%</strong></span>
+        <span class="param-item">FAC: <strong>0,03%</strong></span>
+        <span class="param-item">PIS: <strong>0,65%</strong></span>
+        <span class="param-item">COFINS: <strong>3,0%</strong></span>
+        <span class="param-item">IRPJ presunção: <strong>8%</strong> | alíquota: <strong>15% + adic. 10%</strong></span>
+        <span class="param-item">CSLL presunção: <strong>12%</strong> | alíquota: <strong>9%</strong></span>
+        <span style="margin-left:auto;font-size:11px;color:var(--primary)">✏️ Campos laranja são editáveis — salvo automaticamente</span>
+      </div>
+
+      <!-- FAT -->
+      <div id="audit-sec-fat" class="audit-section">
+        <div class="table-card">
+          <div class="table-header">
+            <h3>Comparativo de Faturamento — Fiscal × Everest</h3>
+            <span style="font-size:11px;color:var(--text2)">BC = Fat.Fiscal − Gorjeta − iFood − ICMS − Monofásico</span>
+          </div>
+          <div class="tbl-wrap">
+            <table><thead><tr>
+              <th>Grupo</th><th>Empresa</th><th>Mês</th>
+              <th>Fat. Fiscal (R$)</th>
+              <th class="edit-col">Fat. Everest ✏️</th>
+              <th>Δ Fat. (R$)</th>
+              <th class="edit-col">Gorjeta ✏️</th>
+              <th class="edit-col">iFood ✏️</th>
+              <th>ICMS dest. (R$)</th>
+              <th>Monofásico (R$)</th>
+              <th>BC PIS/COF (R$)</th>
+              <th>PIS calc. (R$)</th>
+              <th>COFINS calc. (R$)</th>
+              <th class="edit-col">PIS pago ✏️</th>
+              <th class="edit-col">COFINS pago ✏️</th>
+              <th>Δ PIS (R$)</th>
+              <th>Δ COFINS (R$)</th>
             </tr></thead>
-            <tbody id="audit-body"></tbody>
-          </table>
+            <tbody id="body-fat"></tbody>
+            <tfoot id="foot-fat"></tfoot>
+            </table>
+          </div>
         </div>
-        <div class="pagination" id="audit-pag"></div>
+      </div>
+
+      <!-- ICMS -->
+      <div id="audit-sec-icms" class="audit-section" style="display:none">
+        <div class="table-card">
+          <div class="table-header">
+            <h3>Apuração ICMS — Regime Especial 2% (Bares/Restaurantes)</h3>
+            <span style="font-size:11px;color:var(--text2)">BC = Receita − Gorjeta − Vendas c/ ST − Monofásico − Devoluções &nbsp;|&nbsp; ICMS = BC × 2%</span>
+          </div>
+          <div class="tbl-wrap">
+            <table><thead><tr>
+              <th>Grupo</th><th>Empresa</th><th>Mês</th>
+              <th>Receita Bruta (R$)</th>
+              <th class="edit-col">Gorjeta ✏️</th>
+              <th>Vendas c/ ST (R$)</th>
+              <th>Monofásico (R$)</th>
+              <th class="edit-col">Devoluções ✏️</th>
+              <th>BC ICMS (R$)</th>
+              <th>ICMS 2% (R$)</th>
+              <th>F.Univ 0,02% (R$)</th>
+              <th>FAC 0,03% (R$)</th>
+              <th>Fundos (R$)</th>
+              <th class="edit-col">ICMS pago ✏️</th>
+              <th>Δ ICMS (R$)</th>
+            </tr></thead>
+            <tbody id="body-icms"></tbody>
+            <tfoot id="foot-icms"></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- PIS/COFINS -->
+      <div id="audit-sec-piscof" class="audit-section" style="display:none">
+        <div class="table-card">
+          <div class="table-header">
+            <h3>Apuração PIS/COFINS — Regime Cumulativo</h3>
+            <span style="font-size:11px;color:var(--text2)">PIS = BC × 0,65% &nbsp;|&nbsp; COFINS = BC × 3% &nbsp;|&nbsp; BC = Fat − Gorjeta − iFood − ICMS − Monofásico</span>
+          </div>
+          <div class="tbl-wrap">
+            <table><thead><tr>
+              <th>Grupo</th><th>Empresa</th><th>Mês</th>
+              <th>Fat. Fiscal (R$)</th>
+              <th class="edit-col">Gorjeta ✏️</th>
+              <th class="edit-col">iFood ✏️</th>
+              <th>ICMS dest. (R$)</th>
+              <th>Monofásico (R$)</th>
+              <th>BC PIS/COF (R$)</th>
+              <th>PIS 0,65% (R$)</th>
+              <th>COFINS 3% (R$)</th>
+              <th class="edit-col">PIS pago ✏️</th>
+              <th class="edit-col">COFINS pago ✏️</th>
+              <th>Δ PIS (R$)</th>
+              <th>Δ COFINS (R$)</th>
+            </tr></thead>
+            <tbody id="body-piscof"></tbody>
+            <tfoot id="foot-piscof"></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- IRPJ/CSLL -->
+      <div id="audit-sec-irpj" class="audit-section" style="display:none">
+        <div class="table-card">
+          <div class="table-header">
+            <h3>Apuração IRPJ/CSLL — Lucro Presumido (Trimestral)</h3>
+            <span style="font-size:11px;color:var(--text2)">BC IRPJ = Fat × 8% | IRPJ = 15% + adic. 10% &nbsp;|&nbsp; BC CSLL = Fat × 12% | CSLL = 9%</span>
+          </div>
+          <div class="tbl-wrap">
+            <table><thead><tr>
+              <th>Grupo</th><th>Empresa</th><th>Trimestre</th>
+              <th>Fat. Trim. (R$)</th>
+              <th>BC IRPJ 8% (R$)</th>
+              <th>IRPJ 15% (R$)</th>
+              <th>Adic. 10% (R$)</th>
+              <th>IRPJ total (R$)</th>
+              <th class="edit-col">IRPJ pago ✏️</th>
+              <th>Δ IRPJ (R$)</th>
+              <th>BC CSLL 12% (R$)</th>
+              <th>CSLL 9% (R$)</th>
+              <th class="edit-col">CSLL pago ✏️</th>
+              <th>Δ CSLL (R$)</th>
+            </tr></thead>
+            <tbody id="body-irpj"></tbody>
+            <tfoot id="foot-irpj"></tfoot>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1081,10 +1219,16 @@ function parseExcelFile(buf, fileName) {
     it.grupo    = grupo;
     it.mes_ref  = mes_ref;
     it._id      = _itemId++;
-    it.tem_st   = (Number(it.valor_icms_st||0) > 0) || (Number(it.base_icms_st||0) > 0);
     for (const f of ['quantidade','valor_unitario','valor_item','desconto_item','base_icms','valor_icms','base_icms_st','valor_icms_st','valor_fcp_st','valor_pis','valor_cofins']) {
       it[f] = parseBRNum(it[f]);
     }
+    // tem_st AFTER normalization — also detect by CST codes
+    const cstIcms = String(it.cst_icms||'').trim();
+    const csosn   = String(it.csosn||'').trim();
+    it.tem_st = (it.valor_icms_st > 0) || (it.base_icms_st > 0) || cstIcms === '60' || csosn === '500';
+    // monofasico PIS/COFINS
+    const MONO_CST_PIS = ['04','70','71','72','73','74','75'];
+    it.monofasico = MONO_CST_PIS.includes(String(it.cst_pis||'').trim());
     return it;
   });
 
@@ -1153,7 +1297,7 @@ async function populateFilterOptions() {
   const anoLabel = v => v;
 
   ['top-grupo','f-grupo-notas','f-grupo-itens','audit-grupo','anual-grupo'].forEach(id => fillSelect(id, grupos, null, 'Todos os grupos'));
-  ['top-empresa','f-empresa-notas','f-empresa-itens','audit-empresa','anual-empresa'].forEach(id => fillSelect(id, empresas, null, 'Todas as empresas'));
+  ['top-empresa','f-empresa-notas','f-empresa-itens','anual-empresa'].forEach(id => fillSelect(id, empresas, null, 'Todas as empresas'));
   ['f-mes-notas','f-mes-itens','audit-mes'].forEach(id => fillSelect(id, meses, mesLabel, 'Todos os meses'));
 
   // Ano selects
@@ -1429,59 +1573,342 @@ async function loadItens(page = 1) {
 // ══════════════════════════════════════════════════════════════
 //  AUDITORIA
 // ══════════════════════════════════════════════════════════════
-let auditCache = [];
-let auditPage = 1;
+let auditRows = [];
+
+const AP = { // Parâmetros de apuração
+  ICMS:0.02, FUND_UNIV:0.0002, FAC:0.0003,
+  PIS:0.0065, COF:0.03,
+  IRPJ_PRES:0.08, IRPJ_RATE:0.15, IRPJ_ADIC:0.10, IRPJ_LIM:60000,
+  CSLL_PRES:0.12, CSLL_RATE:0.09,
+};
+
+// localStorage helpers para inputs editáveis
+function ai(emp, per, field) {
+  return parseFloat(localStorage.getItem(`caj_ai_${emp}__${per}__${field}`)) || 0;
+}
+function aiSet(emp, per, field, val) {
+  const v = parseFloat(val) || 0;
+  localStorage.setItem(`caj_ai_${emp}__${per}__${field}`, v);
+  refreshAuditTables();
+}
+
+function showAuditTab(tab) {
+  ['fat','icms','piscof','irpj'].forEach(t => {
+    document.getElementById('audit-sec-'+t).style.display = t===tab?'block':'none';
+    const b = document.getElementById('atab-'+t);
+    if (b) b.classList.toggle('active', t===tab);
+  });
+}
+
+function aiInput(emp, per, field) {
+  const v = ai(emp, per, field);
+  const eid = `_ai_${btoa(emp+per+field).replace(/[^a-z0-9]/gi,'')}`;
+  return `<input type="number" class="audit-input" id="${eid}"
+    value="${v||''}" placeholder="0,00" step="0.01" min="0"
+    onchange="aiSet('${emp.replace(/'/g,"\\'")}','${per.replace(/'/g,"\\'")}','${field}',this.value)"
+    onclick="this.select()"/>`;
+}
+
+function fmtD(v) {
+  if (Math.abs(v) < 0.005) return `<span class="diff-zero">✓</span>`;
+  const cls = v > 0 ? 'diff-pos' : 'diff-neg';
+  return `<span class="${cls}">${v>0?'+':''}${fmt(v)}</span>`;
+}
+
+function mesLabel(mr) {
+  if (!mr) return '—';
+  const [a,m] = mr.split('-');
+  return `${MESES_NOME[+m-1]}/${a}`;
+}
+
+function grpRow(cols, grupo) {
+  return `<tr class="audit-group-row"><td colspan="${cols}">▸ ${grupo}</td></tr>`;
+}
 
 async function loadAuditoria() {
-  auditPage = 1;
   const gr  = document.getElementById('audit-grupo').value;
-  const emp = document.getElementById('audit-empresa').value;
   const mes = document.getElementById('audit-mes').value;
 
   let mets = await idbAll('metricas');
   if (gr)  mets = mets.filter(m => m.grupo   === gr);
-  if (emp) mets = mets.filter(m => m.empresa === emp);
   if (mes) mets = mets.filter(m => m.mes_ref === mes);
-  mets.sort((a,b) => {
-    const cEmp = (a.empresa||'').localeCompare(b.empresa||'');
-    if (cEmp) return cEmp;
-    return (b.mes_ref||'').localeCompare(a.mes_ref||'');
+
+  // Agregar NFC-e + NF-e por empresa+mes
+  const byKey = {};
+  mets.forEach(m => {
+    const k = `${m.empresa}||${m.mes_ref}`;
+    if (!byKey[k]) byKey[k] = {empresa:m.empresa,grupo:m.grupo,mes_ref:m.mes_ref,
+      fat:0,desconto:0,icms:0,icms_st:0,pis:0,cofins:0,qtd:0};
+    const r = byKey[k];
+    r.fat+=m.fat||0; r.desconto+=m.desconto||0; r.icms+=m.icms||0;
+    r.icms_st+=m.icms_st||0; r.pis+=m.pis||0; r.cofins+=m.cofins||0; r.qtd+=m.qtd_notas||0;
   });
-  auditCache = mets;
-  renderAuditoria();
+
+  // Calcular monofásico e vendas c/ ST a partir dos itens
+  let itens = await idbAll('itens');
+  if (gr) itens = itens.filter(i => i.grupo === gr);
+  if (mes) itens = itens.filter(i => i.mes_ref === mes);
+
+  const MONO = new Set(['04','70','71','72','73','74','75']);
+  const monoMap = {}, stMap = {};
+  itens.forEach(it => {
+    const k = `${it.empresa}||${it.mes_ref}`;
+    if (it.monofasico || MONO.has(String(it.cst_pis||'').trim())) {
+      monoMap[k] = (monoMap[k]||0) + (it.valor_item||0);
+    }
+    if (it.tem_st) {
+      stMap[k] = (stMap[k]||0) + (it.valor_item||0);
+    }
+  });
+
+  auditRows = Object.values(byKey).map(r => {
+    const k = `${r.empresa}||${r.mes_ref}`;
+    return {...r, fat_mono: monoMap[k]||0, fat_st: stMap[k]||0};
+  });
+
+  auditRows.sort((a,b) => {
+    const cg = a.grupo.localeCompare(b.grupo);
+    if (cg) return cg;
+    const ce = a.empresa.localeCompare(b.empresa);
+    if (ce) return ce;
+    return b.mes_ref.localeCompare(a.mes_ref);
+  });
+
+  refreshAuditTables();
 }
 
-function renderAuditoria(page = 1) {
-  auditPage = page;
-  const mets = auditCache;
-  document.getElementById('audit-count').textContent = mets.length + ' registros';
-  const slice = mets.slice((page-1)*PER_PAGE, page*PER_PAGE);
-  const tbody = document.getElementById('audit-body');
-  if (!slice.length) {
-    tbody.innerHTML = `<tr><td colspan="14"><div class="empty-state"><div class="icon">🔍</div><p>Carregue planilhas para visualizar a auditoria</p></div></td></tr>`;
-    document.getElementById('audit-pag').innerHTML = '';
-    return;
-  }
-  tbody.innerHTML = slice.map(m => {
-    const mesNome = m.mes_ref ? (() => { const [a,mn]=m.mes_ref.split('-'); return `${MESES_NOME[+mn-1]}/${a}`; })() : '—';
-    return `<tr>
-      <td><span style="font-size:10px;background:var(--bg3);padding:2px 6px;border-radius:4px;font-weight:700">${m.grupo}</span></td>
-      <td>${m.empresa}</td>
-      <td>${mesNome}</td>
-      <td><span class="badge ${m.tipo_doc==='NF-e'?'badge-nfe':'badge-nfce'}">${m.tipo_doc}</span></td>
-      <td style="text-align:right">${m.qtd_notas}</td>
-      <td style="text-align:right;font-weight:700">${fmt(m.fat)}</td>
-      <td style="text-align:right;color:var(--text2)">${fmt(m.desconto||0)}</td>
-      <td style="text-align:right">${fmt(m.base_icms||m.fat)}</td>
-      <td style="text-align:right;color:var(--yellow)">${fmt(m.icms)}</td>
-      <td style="text-align:right">${fmt(m.base_st||0)}</td>
-      <td style="text-align:right;color:var(--red)">${fmt(m.icms_st)}</td>
-      <td style="text-align:right;color:var(--red)">${fmt(m.fcp_st)}</td>
-      <td style="text-align:right;color:var(--blue)">${fmt(m.pis)}</td>
-      <td style="text-align:right;color:var(--blue)">${fmt(m.cofins)}</td>
+function refreshAuditTables() {
+  renderAuditFat();
+  renderAuditICMS();
+  renderAuditPISCOF();
+  renderAuditIRPJ();
+}
+
+// ── FATURAMENTO ──────────────────────────────────────────────
+function renderAuditFat() {
+  const tbody = document.getElementById('body-fat'); if (!tbody) return;
+  let rows='', lastG='';
+  let tFat=0,tEv=0,tGorj=0,tIf=0,tIcms=0,tMono=0,tBC=0,tPis=0,tCof=0,tDPis=0,tDCof=0;
+  auditRows.forEach(r => {
+    const gorj=ai(r.empresa,r.mes_ref,'gorj'), ifood=ai(r.empresa,r.mes_ref,'ifood');
+    const ev=ai(r.empresa,r.mes_ref,'ev');
+    const dPis=ai(r.empresa,r.mes_ref,'darf_pis'), dCof=ai(r.empresa,r.mes_ref,'darf_cof');
+    const dFat=ev-r.fat;
+    const bc=Math.max(0,r.fat-gorj-ifood-r.icms-r.fat_mono);
+    const pisC=bc*AP.PIS, cofC=bc*AP.COF;
+    const difP=dPis-pisC, difC=dCof-cofC;
+    tFat+=r.fat;tEv+=ev;tGorj+=gorj;tIf+=ifood;tIcms+=r.icms;tMono+=r.fat_mono;
+    tBC+=bc;tPis+=pisC;tCof+=cofC;tDPis+=difP;tDCof+=difC;
+    if(r.grupo!==lastG){rows+=grpRow(17,r.grupo);lastG=r.grupo;}
+    rows+=`<tr>
+      <td style="font-size:11px;opacity:.5">${r.grupo}</td>
+      <td style="font-weight:600;white-space:nowrap">${r.empresa}</td>
+      <td style="white-space:nowrap">${mesLabel(r.mes_ref)}</td>
+      <td style="text-align:right;font-weight:700">${fmt(r.fat)}</td>
+      <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'ev')}</td>
+      <td style="text-align:right">${ev?fmtD(dFat):'—'}</td>
+      <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'gorj')}</td>
+      <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'ifood')}</td>
+      <td style="text-align:right;color:var(--yellow)">${fmt(r.icms)}</td>
+      <td style="text-align:right;color:var(--text2)">${fmt(r.fat_mono)}</td>
+      <td style="text-align:right;font-weight:700">${fmt(bc)}</td>
+      <td style="text-align:right;color:var(--blue)">${fmt(pisC)}</td>
+      <td style="text-align:right;color:var(--blue)">${fmt(cofC)}</td>
+      <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'darf_pis')}</td>
+      <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'darf_cof')}</td>
+      <td style="text-align:right">${dPis?fmtD(difP):'—'}</td>
+      <td style="text-align:right">${dCof?fmtD(difC):'—'}</td>
     </tr>`;
-  }).join('');
-  renderPag('audit-pag', mets.length, page, PER_PAGE, renderAuditoria);
+  });
+  tbody.innerHTML = rows || `<tr><td colspan="17"><div class="empty-state"><div class="icon">📂</div><p>Carregue planilhas via Google Drive para ver a auditoria</p></div></td></tr>`;
+  document.getElementById('foot-fat').innerHTML = `<tr class="audit-total-row">
+    <td colspan="3">TOTAL GERAL</td>
+    <td style="text-align:right">${fmt(tFat)}</td>
+    <td style="text-align:right">${fmt(tEv)}</td>
+    <td style="text-align:right">${tEv?fmtD(tEv-tFat):'—'}</td>
+    <td style="text-align:right">${fmt(tGorj)}</td>
+    <td style="text-align:right">${fmt(tIf)}</td>
+    <td style="text-align:right">${fmt(tIcms)}</td>
+    <td style="text-align:right">${fmt(tMono)}</td>
+    <td style="text-align:right">${fmt(tBC)}</td>
+    <td style="text-align:right">${fmt(tPis)}</td>
+    <td style="text-align:right">${fmt(tCof)}</td>
+    <td></td><td></td>
+    <td style="text-align:right">${fmtD(tDPis)}</td>
+    <td style="text-align:right">${fmtD(tDCof)}</td>
+  </tr>`;
+}
+
+// ── ICMS ─────────────────────────────────────────────────────
+function renderAuditICMS() {
+  const tbody = document.getElementById('body-icms'); if (!tbody) return;
+  let rows='', lastG='';
+  let tFat=0,tGorj=0,tST=0,tMono=0,tDev=0,tBC=0,tIcms=0,tFu=0,tFac=0,tPago=0,tDif=0;
+  auditRows.forEach(r => {
+    const gorj=ai(r.empresa,r.mes_ref,'gorj'), dev=ai(r.empresa,r.mes_ref,'dev');
+    const pago=ai(r.empresa,r.mes_ref,'darf_icms');
+    const bc=Math.max(0,r.fat-gorj-r.fat_st-r.fat_mono-dev);
+    const icmsC=bc*AP.ICMS, fu=bc*AP.FUND_UNIV, fac=bc*AP.FAC;
+    const dif=pago-icmsC;
+    tFat+=r.fat;tGorj+=gorj;tST+=r.fat_st;tMono+=r.fat_mono;tDev+=dev;
+    tBC+=bc;tIcms+=icmsC;tFu+=fu;tFac+=fac;tPago+=pago;tDif+=dif;
+    if(r.grupo!==lastG){rows+=grpRow(15,r.grupo);lastG=r.grupo;}
+    rows+=`<tr>
+      <td style="font-size:11px;opacity:.5">${r.grupo}</td>
+      <td style="font-weight:600;white-space:nowrap">${r.empresa}</td>
+      <td style="white-space:nowrap">${mesLabel(r.mes_ref)}</td>
+      <td style="text-align:right;font-weight:700">${fmt(r.fat)}</td>
+      <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'gorj')}</td>
+      <td style="text-align:right;color:var(--text2)">${fmt(r.fat_st)}</td>
+      <td style="text-align:right;color:var(--text2)">${fmt(r.fat_mono)}</td>
+      <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'dev')}</td>
+      <td style="text-align:right;font-weight:700">${fmt(bc)}</td>
+      <td style="text-align:right;font-weight:700;color:var(--yellow)">${fmt(icmsC)}</td>
+      <td style="text-align:right;color:var(--text2);font-size:11px">${fmt(fu)}</td>
+      <td style="text-align:right;color:var(--text2);font-size:11px">${fmt(fac)}</td>
+      <td style="text-align:right;color:var(--text2)">${fmt(fu+fac)}</td>
+      <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'darf_icms')}</td>
+      <td style="text-align:right">${pago?fmtD(dif):'—'}</td>
+    </tr>`;
+  });
+  tbody.innerHTML = rows || `<tr><td colspan="15"><div class="empty-state"><div class="icon">📂</div><p>Sem dados</p></div></td></tr>`;
+  document.getElementById('foot-icms').innerHTML = `<tr class="audit-total-row">
+    <td colspan="3">TOTAL GERAL</td>
+    <td style="text-align:right">${fmt(tFat)}</td>
+    <td style="text-align:right">${fmt(tGorj)}</td>
+    <td style="text-align:right">${fmt(tST)}</td>
+    <td style="text-align:right">${fmt(tMono)}</td>
+    <td style="text-align:right">${fmt(tDev)}</td>
+    <td style="text-align:right">${fmt(tBC)}</td>
+    <td style="text-align:right">${fmt(tIcms)}</td>
+    <td style="text-align:right">${fmt(tFu)}</td>
+    <td style="text-align:right">${fmt(tFac)}</td>
+    <td style="text-align:right">${fmt(tFu+tFac)}</td>
+    <td style="text-align:right">${fmt(tPago)}</td>
+    <td style="text-align:right">${fmtD(tDif)}</td>
+  </tr>`;
+}
+
+// ── PIS/COFINS ───────────────────────────────────────────────
+function renderAuditPISCOF() {
+  const tbody = document.getElementById('body-piscof'); if (!tbody) return;
+  let rows='', lastG='';
+  let tFat=0,tGorj=0,tIf=0,tIcms=0,tMono=0,tBC=0,tPis=0,tCof=0,tDPis=0,tDCof=0;
+  auditRows.forEach(r => {
+    const gorj=ai(r.empresa,r.mes_ref,'gorj'), ifood=ai(r.empresa,r.mes_ref,'ifood');
+    const dPis=ai(r.empresa,r.mes_ref,'darf_pis'), dCof=ai(r.empresa,r.mes_ref,'darf_cof');
+    const bc=Math.max(0,r.fat-gorj-ifood-r.icms-r.fat_mono);
+    const pisC=bc*AP.PIS, cofC=bc*AP.COF;
+    const difP=dPis-pisC, difC=dCof-cofC;
+    tFat+=r.fat;tGorj+=gorj;tIf+=ifood;tIcms+=r.icms;tMono+=r.fat_mono;
+    tBC+=bc;tPis+=pisC;tCof+=cofC;tDPis+=difP;tDCof+=difC;
+    if(r.grupo!==lastG){rows+=grpRow(15,r.grupo);lastG=r.grupo;}
+    rows+=`<tr>
+      <td style="font-size:11px;opacity:.5">${r.grupo}</td>
+      <td style="font-weight:600;white-space:nowrap">${r.empresa}</td>
+      <td style="white-space:nowrap">${mesLabel(r.mes_ref)}</td>
+      <td style="text-align:right;font-weight:700">${fmt(r.fat)}</td>
+      <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'gorj')}</td>
+      <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'ifood')}</td>
+      <td style="text-align:right;color:var(--yellow)">${fmt(r.icms)}</td>
+      <td style="text-align:right;color:var(--text2)">${fmt(r.fat_mono)}</td>
+      <td style="text-align:right;font-weight:700">${fmt(bc)}</td>
+      <td style="text-align:right;color:var(--blue);font-weight:700">${fmt(pisC)}</td>
+      <td style="text-align:right;color:var(--blue);font-weight:700">${fmt(cofC)}</td>
+      <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'darf_pis')}</td>
+      <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'darf_cof')}</td>
+      <td style="text-align:right">${dPis?fmtD(difP):'—'}</td>
+      <td style="text-align:right">${dCof?fmtD(difC):'—'}</td>
+    </tr>`;
+  });
+  tbody.innerHTML = rows || `<tr><td colspan="15"><div class="empty-state"><div class="icon">📂</div><p>Sem dados</p></div></td></tr>`;
+  document.getElementById('foot-piscof').innerHTML = `<tr class="audit-total-row">
+    <td colspan="3">TOTAL GERAL</td>
+    <td style="text-align:right">${fmt(tFat)}</td>
+    <td style="text-align:right">${fmt(tGorj)}</td>
+    <td style="text-align:right">${fmt(tIf)}</td>
+    <td style="text-align:right">${fmt(tIcms)}</td>
+    <td style="text-align:right">${fmt(tMono)}</td>
+    <td style="text-align:right">${fmt(tBC)}</td>
+    <td style="text-align:right">${fmt(tPis)}</td>
+    <td style="text-align:right">${fmt(tCof)}</td>
+    <td></td><td></td>
+    <td style="text-align:right">${fmtD(tDPis)}</td>
+    <td style="text-align:right">${fmtD(tDCof)}</td>
+  </tr>`;
+}
+
+// ── IRPJ/CSLL ────────────────────────────────────────────────
+function renderAuditIRPJ() {
+  const tbody = document.getElementById('body-irpj'); if (!tbody) return;
+
+  // Agregar por empresa + trimestre
+  const byTrim = {};
+  auditRows.forEach(r => {
+    const [ano,mes] = r.mes_ref.split('-').map(Number);
+    const trim = Math.ceil(mes/3);
+    const per  = `${ano}-T${trim}`;
+    const k    = `${r.empresa}||${per}`;
+    if (!byTrim[k]) byTrim[k]={empresa:r.empresa,grupo:r.grupo,per,trimLabel:`${trim}º Trim/${ano}`,fat:0};
+    byTrim[k].fat += r.fat;
+  });
+
+  const trimRows = Object.values(byTrim).sort((a,b)=>
+    a.grupo.localeCompare(b.grupo)||a.empresa.localeCompare(b.empresa)||a.per.localeCompare(b.per));
+
+  let rows='', lastG='';
+  let tFat=0,tBCi=0,tI15=0,tAd=0,tIt=0,tPIrpj=0,tDIrpj=0,tBCc=0,tCsll=0,tPCsll=0,tDCsll=0;
+
+  trimRows.forEach(r => {
+    const pIrpj=ai(r.empresa,r.per,'darf_irpj'), pCsll=ai(r.empresa,r.per,'darf_csll');
+    const bcI=r.fat*AP.IRPJ_PRES;
+    const i15=bcI*AP.IRPJ_RATE;
+    const adi=Math.max(0,bcI-AP.IRPJ_LIM)*AP.IRPJ_ADIC;
+    const itot=i15+adi;
+    const bcC=r.fat*AP.CSLL_PRES;
+    const csll=bcC*AP.CSLL_RATE;
+    const dI=pIrpj-itot, dC=pCsll-csll;
+    tFat+=r.fat;tBCi+=bcI;tI15+=i15;tAd+=adi;tIt+=itot;tPIrpj+=pIrpj;tDIrpj+=dI;
+    tBCc+=bcC;tCsll+=csll;tPCsll+=pCsll;tDCsll+=dC;
+    if(r.grupo!==lastG){rows+=grpRow(14,r.grupo);lastG=r.grupo;}
+    rows+=`<tr>
+      <td style="font-size:11px;opacity:.5">${r.grupo}</td>
+      <td style="font-weight:600;white-space:nowrap">${r.empresa}</td>
+      <td style="white-space:nowrap;font-weight:600">${r.trimLabel}</td>
+      <td style="text-align:right;font-weight:700">${fmt(r.fat)}</td>
+      <td style="text-align:right;color:var(--text2)">${fmt(bcI)}</td>
+      <td style="text-align:right">${fmt(i15)}</td>
+      <td style="text-align:right">${fmt(adi)}</td>
+      <td style="text-align:right;font-weight:700;color:var(--yellow)">${fmt(itot)}</td>
+      <td style="text-align:right">${aiInput(r.empresa,r.per,'darf_irpj')}</td>
+      <td style="text-align:right">${pIrpj?fmtD(dI):'—'}</td>
+      <td style="text-align:right;color:var(--text2)">${fmt(bcC)}</td>
+      <td style="text-align:right;font-weight:700;color:var(--blue)">${fmt(csll)}</td>
+      <td style="text-align:right">${aiInput(r.empresa,r.per,'darf_csll')}</td>
+      <td style="text-align:right">${pCsll?fmtD(dC):'—'}</td>
+    </tr>`;
+  });
+
+  tbody.innerHTML = rows || `<tr><td colspan="14"><div class="empty-state"><div class="icon">📂</div><p>Sem dados</p></div></td></tr>`;
+  document.getElementById('foot-irpj').innerHTML = `<tr class="audit-total-row">
+    <td colspan="3">TOTAL GERAL</td>
+    <td style="text-align:right">${fmt(tFat)}</td>
+    <td style="text-align:right">${fmt(tBCi)}</td>
+    <td style="text-align:right">${fmt(tI15)}</td>
+    <td style="text-align:right">${fmt(tAd)}</td>
+    <td style="text-align:right">${fmt(tIt)}</td>
+    <td></td>
+    <td style="text-align:right">${fmtD(tDIrpj)}</td>
+    <td style="text-align:right">${fmt(tBCc)}</td>
+    <td style="text-align:right">${fmt(tCsll)}</td>
+    <td></td>
+    <td style="text-align:right">${fmtD(tDCsll)}</td>
+  </tr>`;
+}
+
+function exportAuditoriaCSV() {
+  if (!auditRows.length) { toast('Sem dados para exportar', 'err'); return; }
+  exportCSV(auditRows, 'cajupar_auditoria.csv');
 }
 
 // ══════════════════════════════════════════════════════════════
