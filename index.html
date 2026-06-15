@@ -421,34 +421,61 @@ tr:hover td{background:rgba(255,255,255,.02)}
       <div class="top-bar">
         <span class="page-title">Google Drive</span>
         <button class="btn btn-primary" id="btn-connect-drive" onclick="connectDrive()">Conectar Google Drive</button>
-        <button class="btn btn-sm btn-outline" onclick="refreshDriveFiles()" id="btn-refresh-drive" style="display:none">🔄 Atualizar lista</button>
         <button class="btn btn-sm btn-outline" onclick="clearAllData()">🗑️ Limpar dados locais</button>
       </div>
 
       <div id="drive-status-bar" class="drive-status disconnected" style="display:inline-flex;margin-bottom:20px">
-        <span>⚠️</span> Drive não conectado — clique em "Conectar" para acessar suas planilhas
+        <span>⚠️</span> Drive não conectado — clique em "Conectar"
+      </div>
+
+      <!-- Configurar pasta raiz -->
+      <div id="folder-config-section" style="display:none;margin-bottom:24px">
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:600px">
+          <h3 style="font-size:14px;font-weight:700;margin-bottom:8px">📁 Pasta raiz das planilhas</h3>
+          <p style="font-size:12px;color:var(--text2);margin-bottom:14px">
+            Cole o link da pasta <strong>saida</strong> no Google Drive.<br>
+            Para obter: abra a pasta no Drive → copie a URL do navegador.
+          </p>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="folder-url-input" placeholder="https://drive.google.com/drive/folders/1ABC...xyz" style="flex:1;font-size:12px"/>
+            <button class="btn btn-primary btn-sm" onclick="saveFolderConfig()" style="white-space:nowrap">Salvar pasta</button>
+          </div>
+          <div id="folder-config-status" style="font-size:12px;margin-top:8px;color:var(--text2)"></div>
+        </div>
+      </div>
+
+      <!-- Seletor hierárquico: Grupo > Empresa > Mês -->
+      <div id="folder-nav-section" style="display:none;margin-bottom:24px">
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:700px">
+          <h3 style="font-size:14px;font-weight:700;margin-bottom:16px">📊 Selecionar planilha para carregar</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end">
+            <div>
+              <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">GRUPO</label>
+              <select id="nav-grupo" onchange="onNavGrupo()" style="width:100%"><option value="">Selecione...</option></select>
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">EMPRESA</label>
+              <select id="nav-empresa" onchange="onNavEmpresa()" style="width:100%" disabled><option value="">Selecione...</option></select>
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">MÊS</label>
+              <select id="nav-mes" style="width:100%" disabled><option value="">Selecione...</option></select>
+            </div>
+            <button class="btn btn-primary" id="btn-nav-carregar" onclick="carregarSelecionado()" disabled>Carregar</button>
+          </div>
+          <div id="nav-status" style="font-size:12px;color:var(--text2);margin-top:10px"></div>
+        </div>
       </div>
 
       <!-- Arquivos já carregados -->
       <div id="loaded-section" style="display:none;margin-bottom:28px">
-        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text2)">📂 PLANILHAS CARREGADAS (<span id="loaded-count">0</span>)</h3>
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text2)">✅ PLANILHAS CARREGADAS (<span id="loaded-count">0</span>)</h3>
         <div id="loaded-list" class="file-list"></div>
       </div>
 
-      <!-- Arquivos do Drive -->
-      <div id="drive-section" style="display:none">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-          <h3 style="font-size:14px;font-weight:700;color:var(--text2)">📄 PLANILHAS NO DRIVE</h3>
-          <input type="text" id="drive-search" placeholder="Filtrar por nome..." style="max-width:260px;font-size:12px;padding:6px 10px" oninput="filterDriveFiles()"/>
-        </div>
-        <div id="drive-file-list" class="file-list">
-          <div class="empty-state"><div class="icon">⏳</div><p>Carregando arquivos...</p></div>
-        </div>
-      </div>
-
-      <!-- Progress overlay -->
+      <!-- Progress -->
       <div id="load-progress" style="display:none;margin-top:20px">
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px">
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:600px">
           <div style="font-size:13px;font-weight:600;margin-bottom:10px" id="load-progress-label">Carregando...</div>
           <div class="progress-bar-wrap"><div class="progress-bar-fill" id="load-progress-bar" style="width:0%"></div></div>
         </div>
@@ -652,17 +679,24 @@ function initGoogleClient() {
 function handleTokenResponse(resp) {
   if (resp.error) { toast('Erro autenticação Google: ' + resp.error, 'err'); return; }
   gAccessToken = resp.access_token;
-  // Get user info
   fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
     headers: { Authorization: 'Bearer ' + gAccessToken }
   }).then(r => r.json()).then(info => {
     const email = info.email || '';
-    if (!email.endsWith('@cajupar.com') && !email.endsWith('@gmail.com')) {
-      // Allow during dev — in production restrict to @cajupar.com only
-    }
     localStorage.setItem('caju_user_email', email);
     localStorage.setItem('caju_user_name',  info.name || email.split('@')[0]);
     showApp();
+    // Mostrar seções do Drive
+    updateDriveStatus(true);
+    document.getElementById('folder-config-section').style.display = 'block';
+    const rootId = localStorage.getItem('caju_root_folder');
+    if (rootId) {
+      document.getElementById('folder-url-input').value = rootId;
+      document.getElementById('folder-config-status').textContent = `✅ Pasta configurada (ID: ${rootId})`;
+      initFolderNav();
+    }
+    document.getElementById('btn-connect-drive').textContent = '🔄 Reconectar';
+    toast('Drive conectado como ' + email, 'ok');
   });
 }
 
@@ -678,60 +712,146 @@ function doGoogleLogin() {
 }
 
 function connectDrive() {
-  if (!tokenClient) { toast('Inicializando Google...', 'info'); initGoogleClient(); setTimeout(() => tokenClient && tokenClient.requestAccessToken({prompt:''}), 1200); return; }
+  if (!tokenClient) { toast('Inicializando Google...', 'info'); initGoogleClient(); setTimeout(() => { if(tokenClient) tokenClient.requestAccessToken({prompt:''}); }, 1200); return; }
   tokenClient.requestAccessToken({prompt:''});
 }
 
-async function listDriveFilesAPI(query) {
-  let q = "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' and trashed=false";
-  if (query) q += ` and name contains '${query.replace(/'/g, "\\'")}'`;
+// ── NAVEGAÇÃO DE PASTAS ───────────────────────────────────────
+// Cache de IDs de pastas para não refazer queries
+const folderCache = {};
+
+function extractFolderId(urlOrId) {
+  // Aceita URL completa ou só o ID
+  const m = urlOrId.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : urlOrId.trim();
+}
+
+function saveFolderConfig() {
+  const val = document.getElementById('folder-url-input').value.trim();
+  if (!val) { toast('Cole o link da pasta', 'err'); return; }
+  const folderId = extractFolderId(val);
+  if (!folderId || folderId.length < 10) { toast('Link inválido — copie direto do navegador com a pasta aberta no Drive', 'err'); return; }
+  localStorage.setItem('caju_root_folder', folderId);
+  document.getElementById('folder-config-status').textContent = `✅ Pasta configurada (ID: ${folderId})`;
+  toast('Pasta salva! Carregando grupos...', 'ok');
+  initFolderNav();
+}
+
+async function listSubfolders(parentId) {
+  if (folderCache[parentId]) return folderCache[parentId];
   const resp = await gapi.client.drive.files.list({
-    q, pageSize: 200,
-    fields: 'files(id,name,parents,modifiedTime,size)',
-    orderBy: 'modifiedTime desc'
+    q: `'${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+    fields: 'files(id,name)', orderBy: 'name', pageSize: 200
+  });
+  const files = resp.result.files || [];
+  folderCache[parentId] = files;
+  return files;
+}
+
+async function listXlsxInFolder(parentId) {
+  const resp = await gapi.client.drive.files.list({
+    q: `'${parentId}' in parents and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' and trashed=false`,
+    fields: 'files(id,name,modifiedTime,size)', orderBy: 'name', pageSize: 50
   });
   return resp.result.files || [];
 }
 
-async function refreshDriveFiles() {
-  if (!gAccessToken) { toast('Conecte o Drive primeiro', 'err'); return; }
-  document.getElementById('drive-section').style.display = 'block';
-  document.getElementById('drive-file-list').innerHTML = '<div class="empty-state"><div class="icon">⏳</div><p>Carregando...</p></div>';
+async function initFolderNav() {
+  const rootId = localStorage.getItem('caju_root_folder');
+  if (!rootId || !gAccessToken) return;
+
+  document.getElementById('folder-nav-section').style.display = 'block';
+  document.getElementById('nav-status').textContent = 'Carregando grupos...';
+
   try {
-    driveFiles = await listDriveFilesAPI('');
-    renderDriveFiles(driveFiles);
-    updateDriveStatus(true);
-    document.getElementById('btn-refresh-drive').style.display = '';
-    document.getElementById('btn-connect-drive').textContent = '🔄 Reconectar';
-  } catch(e) { toast('Erro ao listar Drive: ' + e.message, 'err'); }
+    const grupos = await listSubfolders(rootId);
+    const sel = document.getElementById('nav-grupo');
+    sel.innerHTML = '<option value="">Selecione o grupo...</option>' +
+      grupos.map(g => `<option value="${g.id}" data-name="${g.name}">${g.name}</option>`).join('');
+    sel.disabled = false;
+    document.getElementById('nav-status').textContent = `${grupos.length} grupos encontrados`;
+  } catch(e) {
+    document.getElementById('nav-status').textContent = 'Erro ao listar grupos: ' + e.message;
+  }
 }
 
-function filterDriveFiles() {
-  const q = document.getElementById('drive-search').value.toLowerCase();
-  renderDriveFiles(driveFiles.filter(f => f.name.toLowerCase().includes(q)));
+async function onNavGrupo() {
+  const sel = document.getElementById('nav-grupo');
+  const grupoId = sel.value;
+  const selEmp = document.getElementById('nav-empresa');
+  const selMes = document.getElementById('nav-mes');
+  selEmp.innerHTML = '<option value="">Selecione...</option>';
+  selMes.innerHTML = '<option value="">Selecione...</option>';
+  selEmp.disabled = true; selMes.disabled = true;
+  document.getElementById('btn-nav-carregar').disabled = true;
+  if (!grupoId) return;
+
+  document.getElementById('nav-status').textContent = 'Carregando empresas...';
+  try {
+    const empresas = await listSubfolders(grupoId);
+    selEmp.innerHTML = '<option value="">Selecione a empresa...</option>' +
+      empresas.map(e => `<option value="${e.id}" data-name="${e.name}">${e.name}</option>`).join('');
+    selEmp.disabled = false;
+    document.getElementById('nav-status').textContent = `${empresas.length} empresas encontradas`;
+  } catch(e) { document.getElementById('nav-status').textContent = 'Erro: ' + e.message; }
 }
 
-async function renderDriveFiles(files) {
-  const loaded  = await idbAll('arquivos');
-  const loadSet = new Set(loaded.map(a => a.drive_id));
-  const el = document.getElementById('drive-file-list');
-  if (!files.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📂</div><p>Nenhuma planilha .xlsx encontrada no Drive</p></div>'; return; }
-  el.innerHTML = files.map(f => {
-    const isLoaded = loadSet.has(f.id);
-    const date = new Date(f.modifiedTime).toLocaleDateString('pt-BR');
+async function onNavEmpresa() {
+  const sel = document.getElementById('nav-empresa');
+  const empId = sel.value;
+  const selMes = document.getElementById('nav-mes');
+  selMes.innerHTML = '<option value="">Selecione...</option>';
+  selMes.disabled = true;
+  document.getElementById('btn-nav-carregar').disabled = true;
+  if (!empId) return;
+
+  document.getElementById('nav-status').textContent = 'Carregando meses...';
+  try {
+    const meses = await listSubfolders(empId);
+    // Ordena: meses no formato MM.YYYY — ordena por data desc
+    meses.sort((a,b) => {
+      const [ma,ya] = a.name.split('.');
+      const [mb,yb] = b.name.split('.');
+      return (Number(yb)*100+Number(mb)) - (Number(ya)*100+Number(ma));
+    });
+    selMes.innerHTML = '<option value="">Selecione o mês...</option>' +
+      meses.map(m => `<option value="${m.id}" data-name="${m.name}">${m.name}</option>`).join('');
+    selMes.disabled = false;
+    selMes.onchange = onNavMes;
+    document.getElementById('nav-status').textContent = `${meses.length} meses disponíveis`;
+  } catch(e) { document.getElementById('nav-status').textContent = 'Erro: ' + e.message; }
+}
+
+async function onNavMes() {
+  const mesId = document.getElementById('nav-mes').value;
+  document.getElementById('btn-nav-carregar').disabled = true;
+  if (!mesId) return;
+
+  document.getElementById('nav-status').textContent = 'Buscando planilha...';
+  try {
+    const files = await listXlsxInFolder(mesId);
+    if (!files.length) { document.getElementById('nav-status').textContent = 'Nenhuma planilha encontrada nesta pasta.'; return; }
+    // Guarda o arquivo encontrado no data do botão
+    const f = files[0];
+    const btn = document.getElementById('btn-nav-carregar');
+    btn.dataset.fileId   = f.id;
+    btn.dataset.fileName = f.name;
+    btn.disabled = false;
     const size = f.size ? (Number(f.size)/1024/1024).toFixed(1) + ' MB' : '—';
-    return `<div class="file-item" id="fi-${f.id}">
-      <div class="file-icon">📊</div>
-      <div class="file-info">
-        <div class="file-name">${f.name}</div>
-        <div class="file-meta">Modificado: ${date} &nbsp;|&nbsp; ${size}</div>
-        ${isLoaded ? '<div class="file-loaded">✅ Já carregada</div>' : ''}
-      </div>
-      ${isLoaded
-        ? `<button class="btn btn-sm btn-danger" onclick="removeArquivo('${f.id}','${f.name.replace(/'/g,'')}')">Remover</button>`
-        : `<button class="btn btn-sm btn-primary" onclick="loadDriveFile('${f.id}','${f.name.replace(/'/g,'')}')">Carregar</button>`}
-    </div>`;
-  }).join('');
+    document.getElementById('nav-status').textContent = `📊 ${f.name} (${size}) — pronto para carregar`;
+  } catch(e) { document.getElementById('nav-status').textContent = 'Erro: ' + e.message; }
+}
+
+async function carregarSelecionado() {
+  const btn = document.getElementById('btn-nav-carregar');
+  const fileId   = btn.dataset.fileId;
+  const fileName = btn.dataset.fileName;
+  if (!fileId) return;
+  await loadDriveFile(fileId, fileName);
+  // Reset seletor após carregar
+  document.getElementById('nav-mes').value = '';
+  document.getElementById('btn-nav-carregar').disabled = true;
+  document.getElementById('nav-status').textContent = '✅ Planilha carregada! Selecione outra ou vá ao Dashboard.';
 }
 
 async function renderLoadedFiles() {
