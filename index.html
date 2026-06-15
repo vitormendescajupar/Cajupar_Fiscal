@@ -685,7 +685,10 @@ function handleTokenResponse(resp) {
     const email = info.email || '';
     localStorage.setItem('caju_user_email', email);
     localStorage.setItem('caju_user_name',  info.name || email.split('@')[0]);
-    showApp();
+
+    const alreadyInApp = document.getElementById('app').style.display === 'flex';
+    if (!alreadyInApp) showApp();
+
     // Mostrar seções do Drive
     updateDriveStatus(true);
     document.getElementById('folder-config-section').style.display = 'block';
@@ -697,6 +700,9 @@ function handleTokenResponse(resp) {
     }
     document.getElementById('btn-connect-drive').textContent = '🔄 Reconectar';
     toast('Drive conectado como ' + email, 'ok');
+
+    // Navegar para aba Drive para mostrar as atualizações
+    showPage('drive');
   });
 }
 
@@ -1600,8 +1606,6 @@ function showApp() {
 
   populateFilterOptions().then(() => loadDashboard());
   renderLoadedFiles();
-  // Auto-connect Drive if access token available
-  if (gAccessToken) { refreshDriveFiles(); }
 }
 
 function doLogout() {
