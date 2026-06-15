@@ -735,8 +735,19 @@ function extractFolderId(urlOrId) {
 function saveFolderConfig() {
   const val = document.getElementById('folder-url-input').value.trim();
   if (!val) { toast('Cole o link da pasta', 'err'); return; }
+
+  // Detectar caminho local do Windows (ex: H:\Meu Drive\...)
+  if (/^[A-Za-z]:[\\\/]/.test(val) || val.startsWith('\\\\')) {
+    toast('❌ Isso é um caminho local do Windows. Abra o Google Drive no navegador (drive.google.com), navegue até a pasta "saida" e copie a URL da barra de endereço.', 'err');
+    document.getElementById('folder-config-status').textContent = '⚠️ Cole o link do site drive.google.com, não o caminho do Windows.';
+    return;
+  }
+
   const folderId = extractFolderId(val);
-  if (!folderId || folderId.length < 10) { toast('Link inválido — copie direto do navegador com a pasta aberta no Drive', 'err'); return; }
+  if (!folderId || folderId.length < 10) {
+    toast('Link inválido — copie direto do navegador com a pasta aberta no Drive (drive.google.com)', 'err');
+    return;
+  }
   localStorage.setItem('caju_root_folder', folderId);
   document.getElementById('folder-config-status').textContent = `✅ Pasta configurada (ID: ${folderId})`;
   toast('Pasta salva! Carregando grupos...', 'ok');
@@ -980,6 +991,33 @@ function updateDriveStatus(connected) {
 // ══════════════════════════════════════════════════════════════
 //  EXCEL PARSING
 // ══════════════════════════════════════════════════════════════
+
+// Converte string numérica em BR (1.633.078,03) ou US (1633078.03) para número
+function parseBRNum(val) {
+  if (val === null || val === undefined || val === '') return 0;
+  // Se já é número, retorna direto
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  const s = String(val).trim().replace(/\s/g, '');
+  if (!s || s === '-') return 0;
+  const hasDot   = s.includes('.');
+  const hasComma = s.includes(',');
+  if (hasDot && hasComma) {
+    // Ambos presentes: o último é o separador decimal
+    if (s.lastIndexOf(',') > s.lastIndexOf('.')) {
+      // Formato BR: 1.633.078,03
+      return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0;
+    } else {
+      // Formato US: 1,633,078.03
+      return parseFloat(s.replace(/,/g, '')) || 0;
+    }
+  } else if (hasComma) {
+    // Só vírgula: separador decimal BR
+    return parseFloat(s.replace(',', '.')) || 0;
+  } else {
+    return parseFloat(s) || 0;
+  }
+}
+
 function mapRow(row, colMap) {
   const out = {};
   for (const [col, field] of Object.entries(colMap)) {
@@ -1025,7 +1063,7 @@ function parseExcelFile(buf, fileName) {
     n.mes_ref  = mes_ref;
     // Normalize numeric fields
     for (const f of ['valor_produtos','desconto','valor_total','base_icms','valor_icms','base_icms_st','valor_icms_st','valor_fcp_st','valor_pis','valor_cofins']) {
-      n[f] = parseFloat(String(n[f]||'0').replace(/[^\d.,-]/g,'').replace(',','.')) || 0;
+      n[f] = parseBRNum(n[f]);
     }
     // Normalize date
     if (n.data_emissao && typeof n.data_emissao === 'string') {
@@ -1045,7 +1083,7 @@ function parseExcelFile(buf, fileName) {
     it._id      = _itemId++;
     it.tem_st   = (Number(it.valor_icms_st||0) > 0) || (Number(it.base_icms_st||0) > 0);
     for (const f of ['quantidade','valor_unitario','valor_item','desconto_item','base_icms','valor_icms','base_icms_st','valor_icms_st','valor_fcp_st','valor_pis','valor_cofins']) {
-      it[f] = parseFloat(String(it[f]||'0').replace(/[^\d.,-]/g,'').replace(',','.')) || 0;
+      it[f] = parseBRNum(it[f]);
     }
     return it;
   });
@@ -1059,14 +1097,14 @@ function parseExcelFile(buf, fileName) {
       metricas.push({
         key: `${empresa}__${mes_ref}__${tipo}`,
         empresa, grupo, mes_ref, tipo_doc: tipo,
-        qtd_notas: Number(row['Qtd Notas']||0),
-        fat:       parseFloat(String(row['Faturamento (R$)']||'0').replace(',','.'))||0,
-        desconto:  parseFloat(String(row['Descontos (R$)']||'0').replace(',','.'))||0,
-        icms:      parseFloat(String(row['ICMS Destacado (R$)']||'0').replace(',','.'))||0,
-        icms_st:   parseFloat(String(row['ICMS-ST (R$)']||'0').replace(',','.'))||0,
-        fcp_st:    parseFloat(String(row['FCP-ST (R$)']||'0').replace(',','.'))||0,
-        pis:       parseFloat(String(row['PIS (R$)']||'0').replace(',','.'))||0,
-        cofins:    parseFloat(String(row['COFINS (R$)']||'0').replace(',','.'))||0,
+        qtd_notas: parseBRNum(row['Qtd Notas']),
+        fat:       parseBRNum(row['Faturamento (R$)']),
+        desconto:  parseBRNum(row['Descontos (R$)']),
+        icms:      parseBRNum(row['ICMS Destacado (R$)']),
+        icms_st:   parseBRNum(row['ICMS-ST (R$)']),
+        fcp_st:    parseBRNum(row['FCP-ST (R$)']),
+        pis:       parseBRNum(row['PIS (R$)']),
+        cofins:    parseBRNum(row['COFINS (R$)']),
       });
     });
   }
