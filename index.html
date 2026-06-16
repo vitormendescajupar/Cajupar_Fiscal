@@ -317,6 +317,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
       <div class="metrics-grid">
         <div class="metric-card"><div class="metric-label">Faturamento</div><div class="metric-value" id="m-fat">—</div><div class="metric-sub" id="m-fat-sub">notas no período</div></div>
         <div class="metric-card"><div class="metric-label">ICMS Destacado</div><div class="metric-value" id="m-icms" style="color:var(--yellow)">—</div><div class="metric-sub" id="m-icms-sub">—</div></div>
+        <div class="metric-card"><div class="metric-label">Descontos</div><div class="metric-value" id="m-desc" style="color:var(--text2)">—</div><div class="metric-sub" id="m-desc-sub">—% do fat.</div></div>
         <div class="metric-card"><div class="metric-label">ICMS-ST</div><div class="metric-value" id="m-st" style="color:var(--red)">—</div><div class="metric-sub" id="m-st-sub">FCP-ST incluso</div></div>
         <div class="metric-card"><div class="metric-label">PIS</div><div class="metric-value" id="m-pis" style="color:var(--blue)">—</div><div class="metric-sub" id="m-pis-sub">0,65% fat.</div></div>
         <div class="metric-card"><div class="metric-label">COFINS</div><div class="metric-value" id="m-cofins" style="color:var(--blue)">—</div><div class="metric-sub" id="m-cofins-sub">3,0% fat.</div></div>
@@ -376,16 +377,16 @@ tr:hover td{background:rgba(255,255,255,.02)}
         <div class="tbl-wrap">
           <table>
             <thead>
-              <tr><th>Tipo</th><th>Número</th><th>Data</th><th>Empresa</th><th>Grupo</th><th>CFOPs</th><th>Destinatário</th><th>Valor Total</th><th>ICMS</th><th>ICMS-ST</th><th>PIS</th><th>COFINS</th><th>Pagamento</th><th>Chave de Acesso</th></tr>
+              <tr><th>Tipo</th><th>Número</th><th>Data</th><th>Empresa</th><th>Grupo</th><th>CFOPs</th><th>Destinatário</th><th>Valor Total</th><th>Desconto</th><th>ICMS</th><th>ICMS-ST</th><th>PIS</th><th>COFINS</th><th>Pagamento</th><th>Chave de Acesso</th></tr>
               <tr class="col-filter-row">
                 <th><select id="cf-tipo-notas" onchange="loadNotas(1)"><option value="">Todos</option><option value="NFC-e">NFC-e</option><option value="NF-e">NF-e</option></select></th>
                 <th><input id="cf-num-notas" placeholder="Nº" oninput="debounce(()=>loadNotas(1),350,'cf-num-notas')"/></th>
-                <th><input id="cf-data-notas" placeholder="dd/mm/aa" oninput="debounce(()=>loadNotas(1),350,'cf-data-notas')"/></th>
+                <th><select id="cf-data-notas" onchange="loadNotas(1)"><option value="">Todas datas</option></select></th>
                 <th><input id="cf-emp-notas" placeholder="Empresa" oninput="debounce(()=>loadNotas(1),350,'cf-emp-notas')"/></th>
                 <th><select id="cf-grp-notas" onchange="loadNotas(1)"><option value="">Todos</option></select></th>
                 <th><input id="cf-cfop-notas" placeholder="CFOP" oninput="debounce(()=>loadNotas(1),350,'cf-cfop-notas')"/></th>
                 <th><input id="cf-dest-notas" placeholder="Destinatário" oninput="debounce(()=>loadNotas(1),350,'cf-dest-notas')"/></th>
-                <th></th><th></th><th></th><th></th><th></th>
+                <th></th><th></th><th></th><th></th><th></th><th></th>
                 <th><select id="cf-pgto-notas" onchange="loadNotas(1)"><option value="">Todos</option></select></th>
                 <th><input id="cf-chave-notas" placeholder="Chave" oninput="debounce(()=>loadNotas(1),350,'cf-chave-notas')"/></th>
               </tr>
@@ -417,17 +418,17 @@ tr:hover td{background:rgba(255,255,255,.02)}
         <div class="tbl-wrap">
           <table>
             <thead>
-              <tr><th>Tipo</th><th>NF</th><th>Data</th><th>Empresa</th><th>Descrição</th><th>NCM</th><th>CFOP</th><th>CST/CSOSN</th><th>Un</th><th>Qtd</th><th>Vl Unit</th><th>Vl Total</th><th>Trib</th><th>ICMS</th><th>ICMS-ST</th><th>PIS</th><th>COFINS</th><th>Chave de Acesso</th></tr>
+              <tr><th>Tipo</th><th>NF</th><th>Data</th><th>Empresa</th><th>Descrição</th><th>NCM</th><th>CFOP</th><th>CST/CSOSN</th><th>Un</th><th>Qtd</th><th>Vl Unit</th><th>Vl Total</th><th>Desconto</th><th>Trib</th><th>ICMS</th><th>ICMS-ST</th><th>PIS</th><th>COFINS</th><th>Chave de Acesso</th></tr>
               <tr class="col-filter-row">
                 <th><select id="cf-tipo-itens" onchange="loadItens(1)"><option value="">Todos</option><option value="NFC-e">NFC-e</option><option value="NF-e">NF-e</option></select></th>
                 <th><input id="cf-num-itens" placeholder="Nº" oninput="debounce(()=>loadItens(1),350,'cf-num-itens')"/></th>
-                <th><input id="cf-data-itens" placeholder="dd/mm" oninput="debounce(()=>loadItens(1),350,'cf-data-itens')"/></th>
+                <th><select id="cf-data-itens" onchange="loadItens(1)"><option value="">Todas datas</option></select></th>
                 <th><input id="cf-emp-itens" placeholder="Empresa" oninput="debounce(()=>loadItens(1),350,'cf-emp-itens')"/></th>
                 <th><input id="cf-desc-itens" placeholder="Descrição" oninput="debounce(()=>loadItens(1),350,'cf-desc-itens')"/></th>
                 <th><input id="cf-ncm-itens" placeholder="NCM" oninput="debounce(()=>loadItens(1),350,'cf-ncm-itens')"/></th>
                 <th><input id="cf-cfop-itens" placeholder="CFOP" oninput="debounce(()=>loadItens(1),350,'cf-cfop-itens')"/></th>
                 <th><input id="cf-cst-itens" placeholder="CST" oninput="debounce(()=>loadItens(1),350,'cf-cst-itens')"/></th>
-                <th></th><th></th><th></th><th></th>
+                <th></th><th></th><th></th><th></th><th></th>
                 <th><select id="cf-trib-itens" onchange="loadItens(1)"><option value="">Todos</option></select></th>
                 <th></th><th></th><th></th><th></th>
                 <th><input id="cf-chave-itens" placeholder="Chave" oninput="debounce(()=>loadItens(1),350,'cf-chave-itens')"/></th>
@@ -1225,9 +1226,10 @@ function parseExcelFile(buf, fileName) {
   const sheetItens = wb.Sheets['Itens'] || wb.Sheets[wb.SheetNames.find(n => n.includes('Iten'))] || null;
   const sheetResumo= wb.Sheets['Resumo'] || wb.Sheets[wb.SheetNames[0]];
 
-  const rawNotas  = XLSX.utils.sheet_to_json(sheetNotas,  {raw:false, dateNF:'dd/mm/yyyy'}) || [];
-  const rawItens  = sheetItens ? XLSX.utils.sheet_to_json(sheetItens, {raw:false, dateNF:'dd/mm/yyyy'}) : [];
-  const rawResumo = sheetResumo ? XLSX.utils.sheet_to_json(sheetResumo, {raw:false, dateNF:'dd/mm/yyyy'}) : [];
+  // raw:true + cellDates:true → datas chegam como Date objects (evita depender do formato regional do Excel)
+  const rawNotas  = XLSX.utils.sheet_to_json(sheetNotas,  {raw:true}) || [];
+  const rawItens  = sheetItens ? XLSX.utils.sheet_to_json(sheetItens, {raw:true}) : [];
+  const rawResumo = sheetResumo ? XLSX.utils.sheet_to_json(sheetResumo, {raw:false}) : [];
 
   // Infer empresa & mes from file name: EMPRESA_NAME_MM.YYYY.xlsx
   let empresa = '', mes_ref = '', grupo = '';
@@ -1440,6 +1442,7 @@ async function loadDashboard() {
   const sum = (f) => mets.reduce((s, m) => s + Number(m[f]||0), 0);
   const fat    = sum('fat'), icms = sum('icms'), pis = sum('pis');
   const cof    = sum('cofins'), st = sum('icms_st'), fcp = sum('fcp_st');
+  const desc   = sum('desconto');
   const qtd    = mets.reduce((s,m) => s + Number(m.qtd_notas||0), 0);
   const qNFCe  = mets.filter(m => m.tipo_doc==='NFC-e').reduce((s,m) => s + Number(m.qtd_notas||0), 0);
   const qNFe   = mets.filter(m => m.tipo_doc==='NF-e').reduce((s,m) => s + Number(m.qtd_notas||0), 0);
@@ -1448,6 +1451,8 @@ async function loadDashboard() {
   document.getElementById('m-fat-sub').textContent    = qtd + ' notas no período';
   document.getElementById('m-icms').textContent       = 'R$ ' + fmt(icms);
   document.getElementById('m-icms-sub').textContent   = fmt(fat>0?(icms/fat*100):0) + '% do fat.';
+  document.getElementById('m-desc').textContent       = 'R$ ' + fmt(desc);
+  document.getElementById('m-desc-sub').textContent   = fmt(fat>0?(desc/fat*100):0) + '% do fat.';
   document.getElementById('m-st').textContent         = 'R$ ' + fmt(st + fcp);
   document.getElementById('m-st-sub').textContent     = 'FCP-ST: R$ ' + fmt(fcp);
   document.getElementById('m-pis').textContent        = 'R$ ' + fmt(pis);
@@ -1590,7 +1595,7 @@ async function loadNotas(page = 1) {
   // Apply column filters
   if (cfTipo)  all = all.filter(n => (n.tipo_doc||'').toLowerCase().includes(cfTipo));
   if (cfNum)   all = all.filter(n => (n.numero||'').toLowerCase().includes(cfNum));
-  if (cfData)  all = all.filter(n => fmtDate(n.data_emissao).toLowerCase().includes(cfData));
+  if (cfData)  all = all.filter(n => fmtDate(n.data_emissao) === cfData);
   if (cfEmp)   all = all.filter(n => (n.empresa||'').toLowerCase().includes(cfEmp));
   if (cfGrp)   all = all.filter(n => (n.grupo||'').toLowerCase().includes(cfGrp));
   if (cfCfop)  all = all.filter(n => (n.cfops||'').toLowerCase().includes(cfCfop));
@@ -1600,6 +1605,9 @@ async function loadNotas(page = 1) {
   all.sort((a,b) => (b.data_emissao||'').localeCompare(a.data_emissao||''));
   notasCache = all;
   // Populate dynamic column-filter dropdowns
+  const _dISO = s => s.split('/').reverse().join('-');
+  const allNotasDates = [...new Set((await idbAll('notas')).map(n=>fmtDate(n.data_emissao)).filter(d=>d&&d!=='—'))].sort((a,b)=>_dISO(b).localeCompare(_dISO(a)));
+  _populateColFilter('cf-data-notas', allNotasDates, cfData);
   _populateColFilter('cf-grp-notas', [...new Set(all.map(n=>n.grupo).filter(Boolean))].sort(), grupo||cfGrp);
   _populateColFilter('cf-pgto-notas', [...new Set(all.map(n=>n.forma_pagamento).filter(Boolean))].sort(), cfPgto);
 
@@ -1607,7 +1615,7 @@ async function loadNotas(page = 1) {
   const slice = all.slice((page-1)*PER_PAGE, page*PER_PAGE);
   const tbody = document.getElementById('notas-body');
   if (!slice.length) {
-    tbody.innerHTML = `<tr><td colspan="14"><div class="empty-state"><div class="icon">🧾</div><p>Nenhuma nota encontrada</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="15"><div class="empty-state"><div class="icon">🧾</div><p>Nenhuma nota encontrada</p></div></td></tr>`;
     document.getElementById('notas-pag').innerHTML = '';
     return;
   }
@@ -1619,6 +1627,7 @@ async function loadNotas(page = 1) {
     <td style="font-size:11px">${n.cfops||'—'}</td>
     <td title="${n.dest_nome}">${(n.dest_nome||'—').slice(0,16)}</td>
     <td style="text-align:right;font-weight:700">${fmt(n.valor_total)}</td>
+    <td style="text-align:right;color:var(--text2)">${n.desconto>0?fmt(n.desconto):'—'}</td>
     <td style="text-align:right;color:var(--yellow)">${fmt(n.valor_icms)}</td>
     <td style="text-align:right;color:var(--red)">${fmt(n.valor_icms_st)}</td>
     <td style="text-align:right">${fmt(n.valor_pis)}</td>
@@ -1666,7 +1675,7 @@ async function loadItens(page = 1) {
   // Apply column filters
   if (cfTipo)  all = all.filter(i => (i.tipo_doc||'').toLowerCase().includes(cfTipo));
   if (cfNum)   all = all.filter(i => (i.numero||'').toLowerCase().includes(cfNum));
-  if (cfData)  all = all.filter(i => fmtDate(i.data_emissao).toLowerCase().includes(cfData));
+  if (cfData)  all = all.filter(i => fmtDate(i.data_emissao) === cfData);
   if (cfEmp)   all = all.filter(i => (i.empresa||'').toLowerCase().includes(cfEmp));
   if (cfDesc)  all = all.filter(i => (i.descricao||'').toLowerCase().includes(cfDesc));
   if (cfNcm)   all = all.filter(i => (i.ncm||'').includes(cfNcm));
@@ -1677,13 +1686,16 @@ async function loadItens(page = 1) {
   all.sort((a,b) => (b.data_emissao||'').localeCompare(a.data_emissao||''));
   itensCache = all;
   // Populate dynamic column-filter dropdowns
+  const _dISO2 = s => s.split('/').reverse().join('-');
+  const allItensDates = [...new Set((await idbAll('itens')).map(i=>fmtDate(i.data_emissao)).filter(d=>d&&d!=='—'))].sort((a,b)=>_dISO2(b).localeCompare(_dISO2(a)));
+  _populateColFilter('cf-data-itens', allItensDates, cfData);
   _populateColFilter('cf-trib-itens', [...new Set(all.map(i=>i.tipo_trib).filter(Boolean))].sort(), cfTrib);
 
   document.getElementById('itens-count').textContent = all.length + ' itens';
   const slice = all.slice((page-1)*PER_PAGE, page*PER_PAGE);
   const tbody = document.getElementById('itens-body');
   if (!slice.length) {
-    tbody.innerHTML = `<tr><td colspan="18"><div class="empty-state"><div class="icon">📦</div><p>Nenhum item encontrado</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="19"><div class="empty-state"><div class="icon">📦</div><p>Nenhum item encontrado</p></div></td></tr>`;
     document.getElementById('itens-pag').innerHTML = '';
     return;
   }
@@ -1697,6 +1709,7 @@ async function loadItens(page = 1) {
     <td style="text-align:right">${Number(i.quantidade||0).toFixed(2)}</td>
     <td style="text-align:right">${fmt(i.valor_unitario)}</td>
     <td style="text-align:right;font-weight:700">${fmt(i.valor_item)}</td>
+    <td style="text-align:right;color:var(--text2)">${i.desconto>0?fmt(i.desconto):'—'}</td>
     <td><span class="badge ${i.tem_st?'badge-warn':''}"> ${i.tipo_trib||'—'}</span></td>
     <td style="text-align:right;color:var(--yellow)">${fmt(i.valor_icms)}</td>
     <td style="text-align:right;color:var(--red)">${fmt(i.valor_icms_st)}</td>
