@@ -1104,10 +1104,11 @@ async function loadDriveFile(fileId, fileName) {
     }
     pBar.style.width = '95%'; pLabel.textContent = 'Registrando arquivo...';
 
-    // Register file
+    // Register file — guarda mes_refs reais para deletar corretamente depois
     await idbPut('arquivos', {
       drive_id: fileId, nome: fileName,
       empresa: result.empresa, grupo: result.grupo, mes_ref: result.mes_ref,
+      mes_refs: result.mes_refs || [result.mes_ref], // meses reais das notas
       qtd_notas: result.notas.length, qtd_itens: result.itens.length,
       loaded_at: Date.now()
     });
@@ -1136,12 +1137,15 @@ async function removeArquivo(driveId, nome) {
     {label:'Cancelar', cls:'btn-outline', action: closeModal},
     {label:'Remover', cls:'btn-danger', action: async () => {
       closeModal();
-      // Delete notas and itens for this empresa+mes
-      await idbDeleteByIndex('notas', 'idx_empresa_mes', [a.empresa, a.mes_ref]);
-      await idbDeleteByIndex('itens', 'idx_empresa_mes', [a.empresa, a.mes_ref]);
+      // Deletar por TODOS os meses reais das notas deste arquivo
+      const mesRefs = a.mes_refs && a.mes_refs.length ? a.mes_refs : [a.mes_ref];
+      for (const mr of mesRefs) {
+        await idbDeleteByIndex('notas', 'idx_empresa_mes', [a.empresa, mr]);
+        await idbDeleteByIndex('itens', 'idx_empresa_mes', [a.empresa, mr]);
+      }
       // Delete metricas
       const mets = await idbAll('metricas');
-      for (const m of mets.filter(x => x.empresa === a.empresa && x.mes_ref === a.mes_ref)) {
+      for (const m of mets.filter(x => x.empresa === a.empresa && mesRefs.includes(x.mes_ref))) {
         await idbDelete('metricas', m.key);
       }
       await idbDelete('arquivos', driveId);
@@ -1168,27 +1172,38 @@ function updateDriveStatus(connected) {
 //  EXCEL PARSING
 // ══════════════════════════════════════════════════════════════
 
-// Converte string numérica em BR (1.633.078,03) ou US (1633078.03) para número
+// Converte string numérica em BR (1.633.078,03) ou US (1,633,078.03) para número
+// Regra para ponto sem vírgula: se último segmento tem 3 dígitos → milhar BR
 function parseBRNum(val) {
   if (val === null || val === undefined || val === '') return 0;
-  // Se já é número, retorna direto
   if (typeof val === 'number') return isNaN(val) ? 0 : val;
-  const s = String(val).trim().replace(/\s/g, '');
+  // Remove R$, espaços, tabs
+  const s = String(val).trim().replace(/\s/g,'').replace(/^R\$\s*/,'').replace(/[^\d.,-]/g,'');
   if (!s || s === '-') return 0;
   const hasDot   = s.includes('.');
   const hasComma = s.includes(',');
   if (hasDot && hasComma) {
-    // Ambos presentes: o último é o separador decimal
+    // Ambos: o ÚLTIMO é o separador decimal
     if (s.lastIndexOf(',') > s.lastIndexOf('.')) {
-      // Formato BR: 1.633.078,03
-      return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0;
+      return parseFloat(s.replace(/\./g,'').replace(',','.')) || 0; // BR: 1.633.078,03
     } else {
-      // Formato US: 1,633,078.03
-      return parseFloat(s.replace(/,/g, '')) || 0;
+      return parseFloat(s.replace(/,/g,'')) || 0; // US: 1,633,078.03
     }
-  } else if (hasComma) {
-    // Só vírgula: separador decimal BR
-    return parseFloat(s.replace(',', '.')) || 0;
+  } else if (hasComma && !hasDot) {
+    // Só vírgula → decimal BR: "1633,03" ou milhar BR: "1.633" não tem vírgula
+    // Verifica se pode ser milhar: "1.000,50" já tratado acima
+    return parseFloat(s.replace(',','.')) || 0;
+  } else if (hasDot && !hasComma) {
+    // Só ponto: detectar se é decimal (1.5, 0.50) ou milhar BR (1.000, 1.000.500)
+    const parts = s.split('.');
+    const lastPart = parts[parts.length - 1];
+    if (lastPart.length === 3) {
+      // Último segmento tem 3 dígitos → milhar BR: 1.000 → 1000, 1.000.500 → 1000500
+      return parseFloat(s.replace(/\./g,'')) || 0;
+    } else {
+      // Último segmento 1 ou 2 dígitos → decimal: 1.5 → 1.5, 0.50 → 0.50
+      return parseFloat(s) || 0;
+    }
   } else {
     return parseFloat(s) || 0;
   }
@@ -1242,9 +1257,18 @@ function parseExcelFile(buf, fileName) {
       n[f] = parseBRNum(n[f]);
     }
     // Normalize date
-    if (n.data_emissao && typeof n.data_emissao === 'string') {
-      const p = n.data_emissao.split('/');
-      if (p.length === 3) n.data_emissao = `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+    if (n.data_emissao) {
+      if (typeof n.data_emissao === 'string') {
+        const p = n.data_emissao.split('/');
+        if (p.length === 3) n.data_emissao = `${p[2].length===2?'20'+p[2]:p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+      } else if (n.data_emissao instanceof Date) {
+        const d = n.data_emissao;
+        n.data_emissao = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      }
+    }
+    // mes_ref derivado da data de emissão real (não do nome do arquivo)
+    if (n.data_emissao && typeof n.data_emissao === 'string' && /^\d{4}-\d{2}/.test(n.data_emissao)) {
+      n.mes_ref = n.data_emissao.slice(0, 7);
     }
     return n;
   }).filter(n => n.chave_acesso);
@@ -1260,6 +1284,19 @@ function parseExcelFile(buf, fileName) {
     for (const f of ['quantidade','valor_unitario','valor_item','desconto_item','base_icms','valor_icms','base_icms_st','valor_icms_st','valor_fcp_st','valor_pis','valor_cofins']) {
       it[f] = parseBRNum(it[f]);
     }
+    // Normalize date e mes_ref para itens
+    if (it.data_emissao) {
+      if (typeof it.data_emissao === 'string') {
+        const p = it.data_emissao.split('/');
+        if (p.length === 3) it.data_emissao = `${p[2].length===2?'20'+p[2]:p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+      } else if (it.data_emissao instanceof Date) {
+        const d = it.data_emissao;
+        it.data_emissao = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      }
+    }
+    if (it.data_emissao && typeof it.data_emissao === 'string' && /^\d{4}-\d{2}/.test(it.data_emissao)) {
+      it.mes_ref = it.data_emissao.slice(0, 7);
+    }
     // tem_st AFTER normalization — also detect by CST codes
     const cstIcms = String(it.cst_icms||'').trim();
     const csosn   = String(it.csosn||'').trim();
@@ -1270,58 +1307,48 @@ function parseExcelFile(buf, fileName) {
     return it;
   });
 
-  // SEMPRE agrega impostos a partir das notas (garante ICMS-ST correto)
+  // SEMPRE agrega impostos a partir das notas, agrupando pelo mes_ref REAL da data de emissão
   const metricas = [];
   {
-    const tipos = {};
+    // Agrupa por mes_ref real + tipo_doc
+    const gruposMes = {};
     notas.forEach(n => {
-      const t = n.tipo_doc || 'NF-e';
-      if (!tipos[t]) tipos[t] = {qtd:0,fat:0,desc:0,icms:0,st:0,fcp:0,pis:0,cof:0};
-      tipos[t].qtd++; tipos[t].fat+=n.valor_total||0; tipos[t].desc+=n.desconto||0;
-      tipos[t].icms+=n.valor_icms||0; tipos[t].st+=n.valor_icms_st||0; tipos[t].fcp+=n.valor_fcp_st||0;
-      tipos[t].pis+=n.valor_pis||0; tipos[t].cof+=n.valor_cofins||0;
+      const t  = n.tipo_doc || 'NF-e';
+      const mr = n.mes_ref  || mes_ref; // mes_ref real da nota (da data de emissão)
+      const k  = `${mr}|${t}`;
+      if (!gruposMes[k]) gruposMes[k] = {mes_ref:mr, tipo:t, qtd:0,fat:0,desc:0,icms:0,st:0,fcp:0,pis:0,cof:0};
+      const g = gruposMes[k];
+      g.qtd++; g.fat+=n.valor_total||0; g.desc+=n.desconto||0;
+      g.icms+=n.valor_icms||0; g.st+=n.valor_icms_st||0; g.fcp+=n.valor_fcp_st||0;
+      g.pis+=n.valor_pis||0; g.cof+=n.valor_cofins||0;
     });
-    // Se Resumo tem faturamento (pode ser mais preciso para qtd), usa-o para fat/qtd mas mantém ST das notas
-    const resumoFat = {};
-    if (rawResumo.length) {
-      rawResumo.forEach(row => {
-        const tipo = row['Tipo'] || '';
-        if (!tipo) return;
-        resumoFat[tipo] = {
-          qtd: parseBRNum(row['Qtd Notas'] || row['Quantidade'] || ''),
-          fat: parseBRNum(row['Faturamento (R$)'] || row['Faturamento'] || ''),
-          desc: parseBRNum(row['Descontos (R$)'] || row['Desconto (R$)'] || ''),
-        };
-      });
-    }
-    for (const [tipo, v] of Object.entries(tipos)) {
-      const rf = resumoFat[tipo] || {};
+    for (const [, v] of Object.entries(gruposMes)) {
       metricas.push({
-        key:`${empresa}__${mes_ref}__${tipo}`, empresa, grupo, mes_ref, tipo_doc:tipo,
-        // fat e qtd do Resumo se disponível (mais preciso), senão das notas
-        qtd_notas: rf.qtd || v.qtd,
-        fat:       rf.fat  || v.fat,
-        desconto:  rf.desc || v.desc,
-        // impostos SEMPRE das notas (garante ST correto)
-        icms:   v.icms, icms_st: v.st, fcp_st: v.fcp, pis: v.pis, cofins: v.cof,
+        key:`${empresa}__${v.mes_ref}__${v.tipo}`, empresa, grupo,
+        mes_ref: v.mes_ref, tipo_doc: v.tipo,
+        qtd_notas: v.qtd, fat: v.fat, desconto: v.desc,
+        icms: v.icms, icms_st: v.st, fcp_st: v.fcp, pis: v.pis, cofins: v.cof,
       });
     }
-    // Tipos que aparecem no Resumo mas não têm notas (raro)
-    if (!Object.keys(tipos).length && rawResumo.length) {
+    // Fallback: se não havia notas mas há Resumo sheet
+    if (!Object.keys(gruposMes).length && rawResumo.length) {
       rawResumo.forEach(row => {
         const tipo = row['Tipo'] || ''; if (!tipo) return;
         metricas.push({
           key:`${empresa}__${mes_ref}__${tipo}`, empresa, grupo, mes_ref, tipo_doc:tipo,
           qtd_notas: parseBRNum(row['Qtd Notas']||''), fat: parseBRNum(row['Faturamento (R$)']||''),
-          desconto: parseBRNum(row['Descontos (R$)']||''), icms: parseBRNum(row['ICMS Destacado (R$)']||''),
-          icms_st: parseBRNum(row['ICMS-ST (R$)']||''), fcp_st: parseBRNum(row['FCP-ST (R$)']||''),
-          pis: parseBRNum(row['PIS (R$)']||''), cofins: parseBRNum(row['COFINS (R$)']||''),
+          desconto:  parseBRNum(row['Descontos (R$)']||''), icms: parseBRNum(row['ICMS Destacado (R$)']||''),
+          icms_st:   parseBRNum(row['ICMS-ST (R$)']||''), fcp_st: parseBRNum(row['FCP-ST (R$)']||''),
+          pis:       parseBRNum(row['PIS (R$)']||''), cofins: parseBRNum(row['COFINS (R$)']||''),
         });
       });
     }
   }
 
-  return { notas, itens, metricas, empresa, grupo, mes_ref };
+  // mes_refs reais presentes neste arquivo (para remoção correta)
+  const mes_refs = [...new Set(metricas.map(m => m.mes_ref))];
+
+  return { notas, itens, metricas, empresa, grupo, mes_ref, mes_refs };
 }
 
 // ══════════════════════════════════════════════════════════════
