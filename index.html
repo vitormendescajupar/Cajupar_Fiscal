@@ -211,6 +211,22 @@ tr:hover td{background:rgba(255,255,255,.02)}
   min-width:0;box-sizing:border-box;height:24px
 }
 .col-filter-row th input:focus,.col-filter-row th select:focus{border-color:var(--primary)}
+/* DATE TREE FILTER */
+.df-wrap{position:relative;display:block;width:100%}
+.df-btn{width:100%;font-size:11px;padding:2px 5px;border:1px solid var(--border);border-radius:4px;background:var(--bg2);color:var(--text);cursor:pointer;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:24px;box-sizing:border-box}
+.df-btn:hover{border-color:var(--primary)}
+.df-panel{position:absolute;top:100%;left:0;z-index:300;background:var(--bg2);border:1px solid var(--border);border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,.4);min-width:170px;max-height:300px;overflow-y:auto;padding:4px 0;font-size:12px}
+.df-all{padding:3px 8px;border-bottom:1px solid var(--border);margin-bottom:2px}
+.df-all label{display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600;user-select:none}
+.df-node-head{display:flex;align-items:center;gap:4px;padding:2px 8px;cursor:pointer;user-select:none}
+.df-node-head:hover{background:var(--bg3)}
+.df-toggle{font-size:9px;color:var(--text2);transition:transform .15s;display:inline-block;min-width:10px;text-align:center}
+.df-toggle.open{transform:rotate(90deg)}
+.df-children{padding-left:14px;display:none}
+.df-children.open{display:block}
+.df-item{display:flex;align-items:center;gap:5px;padding:2px 10px;cursor:pointer;user-select:none}
+.df-item:hover{background:var(--bg3)}
+.df-item label{cursor:pointer;display:flex;align-items:center;gap:5px;width:100%}
 .tbl-wrap{overflow-x:auto;overflow-y:visible;scrollbar-width:thin;scrollbar-color:var(--border) var(--bg2)}
 /* MODAL */
 #modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -381,7 +397,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
               <tr class="col-filter-row">
                 <th><select id="cf-tipo-notas" onchange="loadNotas(1)"><option value="">Todos</option><option value="NFC-e">NFC-e</option><option value="NF-e">NF-e</option></select></th>
                 <th><input id="cf-num-notas" placeholder="Nº" oninput="debounce(()=>loadNotas(1),350,'cf-num-notas')"/></th>
-                <th><select id="cf-data-notas" onchange="loadNotas(1)"><option value="">Todas datas</option></select></th>
+                <th style="position:relative"><div class="df-wrap" id="df-wrap-notas"><button class="df-btn" id="df-btn-notas" onclick="event.stopPropagation();toggleDateFilter('notas')">Todas datas ▾</button><div class="df-panel" id="df-panel-notas" style="display:none"></div></div></th>
                 <th><input id="cf-emp-notas" placeholder="Empresa" oninput="debounce(()=>loadNotas(1),350,'cf-emp-notas')"/></th>
                 <th><select id="cf-grp-notas" onchange="loadNotas(1)"><option value="">Todos</option></select></th>
                 <th><input id="cf-cfop-notas" placeholder="CFOP" oninput="debounce(()=>loadNotas(1),350,'cf-cfop-notas')"/></th>
@@ -422,7 +438,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
               <tr class="col-filter-row">
                 <th><select id="cf-tipo-itens" onchange="loadItens(1)"><option value="">Todos</option><option value="NFC-e">NFC-e</option><option value="NF-e">NF-e</option></select></th>
                 <th><input id="cf-num-itens" placeholder="Nº" oninput="debounce(()=>loadItens(1),350,'cf-num-itens')"/></th>
-                <th><select id="cf-data-itens" onchange="loadItens(1)"><option value="">Todas datas</option></select></th>
+                <th style="position:relative"><div class="df-wrap" id="df-wrap-itens"><button class="df-btn" id="df-btn-itens" onclick="event.stopPropagation();toggleDateFilter('itens')">Todas datas ▾</button><div class="df-panel" id="df-panel-itens" style="display:none"></div></div></th>
                 <th><input id="cf-emp-itens" placeholder="Empresa" oninput="debounce(()=>loadItens(1),350,'cf-emp-itens')"/></th>
                 <th><input id="cf-desc-itens" placeholder="Descrição" oninput="debounce(()=>loadItens(1),350,'cf-desc-itens')"/></th>
                 <th><input id="cf-ncm-itens" placeholder="NCM" oninput="debounce(()=>loadItens(1),350,'cf-ncm-itens')"/></th>
@@ -1410,6 +1426,129 @@ function _populateColFilter(id, values, cur) {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  DATE TREE FILTER
+// ══════════════════════════════════════════════════════════════
+const _dfState    = {};    // ns → null (all) | Set<"dd/mm/yyyy">
+const _dfAllDates = {};    // ns → string[]
+const _MONTH_PT   = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+function toggleDateFilter(ns) {
+  const panel = document.getElementById(`df-panel-${ns}`);
+  if (!panel) return;
+  const isOpen = panel.style.display !== 'none';
+  document.querySelectorAll('.df-panel').forEach(p => p.style.display='none');
+  if (!isOpen) { panel.style.display = 'block'; }
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.df-wrap')) document.querySelectorAll('.df-panel').forEach(p => p.style.display='none');
+});
+
+function _dfUpdateBtn(ns) {
+  const btn = document.getElementById(`df-btn-${ns}`); if (!btn) return;
+  const sel = _dfState[ns];
+  const total = (_dfAllDates[ns]||[]).length;
+  if (!sel || sel.size === total) btn.textContent = 'Todas datas ▾';
+  else if (!sel.size) btn.textContent = '(Nenhuma) ▾';
+  else if (sel.size === 1) btn.textContent = [...sel][0] + ' ▾';
+  else btn.textContent = sel.size + ' datas ▾';
+}
+
+function _dfApply(ns) {
+  _dfUpdateBtn(ns);
+  if (ns==='notas') loadNotas(1);
+  else if (ns==='itens') loadItens(1);
+}
+
+function _dfToggleAll(ns, cb) {
+  const all = _dfAllDates[ns]||[];
+  _dfState[ns] = cb.checked ? null : new Set();
+  _renderDateFilter(ns);
+  _dfApply(ns);
+}
+
+function _dfToggleYear(ns, yyyy, cb) {
+  const all = _dfAllDates[ns]||[];
+  if (!_dfState[ns]) _dfState[ns] = new Set(all);
+  const yr = all.filter(d=>d.split('/')[2]===yyyy);
+  yr.forEach(d => cb.checked ? _dfState[ns].add(d) : _dfState[ns].delete(d));
+  if (_dfState[ns].size===all.length) _dfState[ns]=null;
+  _renderDateFilter(ns);
+  _dfApply(ns);
+}
+
+function _dfToggleMonth(ns, mm, yyyy, cb) {
+  const all = _dfAllDates[ns]||[];
+  if (!_dfState[ns]) _dfState[ns] = new Set(all);
+  const mo = all.filter(d=>{ const p=d.split('/'); return p[1]===mm&&p[2]===yyyy; });
+  mo.forEach(d => cb.checked ? _dfState[ns].add(d) : _dfState[ns].delete(d));
+  if (_dfState[ns].size===all.length) _dfState[ns]=null;
+  _renderDateFilter(ns);
+  _dfApply(ns);
+}
+
+function _dfToggleDay(ns, dateStr, cb) {
+  const all = _dfAllDates[ns]||[];
+  if (!_dfState[ns]) _dfState[ns] = new Set(all);
+  cb.checked ? _dfState[ns].add(dateStr) : _dfState[ns].delete(dateStr);
+  if (_dfState[ns].size===all.length) _dfState[ns]=null;
+  _renderDateFilter(ns);
+  _dfApply(ns);
+}
+
+function _dfToggleNode(el) {
+  el.classList.toggle('open');
+  const head = el.closest('.df-node-head');
+  if (head) { const ch=head.nextElementSibling; if(ch) ch.classList.toggle('open'); }
+}
+
+function _renderDateFilter(ns, newDates) {
+  if (newDates !== undefined) {
+    _dfAllDates[ns] = newDates;
+    if (_dfState[ns]) {
+      const valid = new Set(newDates);
+      _dfState[ns] = new Set([..._dfState[ns]].filter(d=>valid.has(d)));
+      if (_dfState[ns].size===newDates.length) _dfState[ns]=null;
+    }
+  }
+  const all = _dfAllDates[ns]||[];
+  const sel = _dfState[ns];
+  const panel = document.getElementById(`df-panel-${ns}`); if(!panel) return;
+
+  // Build tree: { yyyy: { 'mm': [dd, ...] } }
+  const tree = {};
+  for (const d of all) {
+    const [dd,mm,yyyy] = d.split('/');
+    if (!tree[yyyy]) tree[yyyy]={};
+    if (!tree[yyyy][mm]) tree[yyyy][mm]=[];
+    tree[yyyy][mm].push(dd);
+  }
+
+  const allChk = !sel;
+  let h = `<div class="df-all"><label><input type="checkbox" ${allChk?'checked':''} onchange="_dfToggleAll('${ns}',this)"> <b>Selecionar Tudo</b></label></div>`;
+
+  for (const yyyy of Object.keys(tree).sort().reverse()) {
+    const yrDates = all.filter(d=>d.split('/')[2]===yyyy);
+    const yrChk = !sel || yrDates.every(d=>sel.has(d));
+    h += `<div><div class="df-node-head"><span class="df-toggle" onclick="_dfToggleNode(this)">▶</span><input type="checkbox" ${yrChk?'checked':''} onchange="_dfToggleYear('${ns}','${yyyy}',this)"><span style="cursor:pointer" onclick="_dfToggleNode(this.parentElement.querySelector('.df-toggle'))">${yyyy}</span></div><div class="df-children">`;
+    for (const mm of Object.keys(tree[yyyy]).sort().reverse()) {
+      const moDates = all.filter(d=>{const p=d.split('/');return p[1]===mm&&p[2]===yyyy;});
+      const moChk = !sel||moDates.every(d=>sel.has(d));
+      const mName = _MONTH_PT[parseInt(mm)-1];
+      h += `<div><div class="df-node-head"><span class="df-toggle" onclick="_dfToggleNode(this)">▶</span><input type="checkbox" ${moChk?'checked':''} onchange="_dfToggleMonth('${ns}','${mm}','${yyyy}',this)"><span style="cursor:pointer" onclick="_dfToggleNode(this.parentElement.querySelector('.df-toggle'))">${mName}</span></div><div class="df-children">`;
+      for (const dd of tree[yyyy][mm].sort().reverse()) {
+        const ds=`${dd}/${mm}/${yyyy}`;
+        const dyChk = !sel||sel.has(ds);
+        h += `<div class="df-item"><label><input type="checkbox" ${dyChk?'checked':''} onchange="_dfToggleDay('${ns}','${ds}',this)"> ${dd}</label></div>`;
+      }
+      h += `</div></div>`;
+    }
+    h += `</div></div>`;
+  }
+  panel.innerHTML = h;
+  _dfUpdateBtn(ns);
+}
+
+// ══════════════════════════════════════════════════════════════
 //  DASHBOARD
 // ══════════════════════════════════════════════════════════════
 const charts = {};
@@ -1572,7 +1711,6 @@ async function loadNotas(page = 1) {
   // Column filters
   const cfTipo  = (document.getElementById('cf-tipo-notas')?.value||'').toLowerCase();
   const cfNum   = (document.getElementById('cf-num-notas')?.value||'').trim().toLowerCase();
-  const cfData  = (document.getElementById('cf-data-notas')?.value||'').trim().toLowerCase();
   const cfEmp   = (document.getElementById('cf-emp-notas')?.value||'').trim().toLowerCase();
   const cfGrp   = (document.getElementById('cf-grp-notas')?.value||'').toLowerCase();
   const cfCfop  = (document.getElementById('cf-cfop-notas')?.value||'').trim().toLowerCase();
@@ -1592,22 +1730,25 @@ async function loadNotas(page = 1) {
     (n.dest_doc||'').includes(busca) ||
     (n.dest_nome||'').toLowerCase().includes(busca)
   );
-  // Apply column filters
+  // Apply column filters (date applied last so tree reflects other filters)
   if (cfTipo)  all = all.filter(n => (n.tipo_doc||'').toLowerCase().includes(cfTipo));
   if (cfNum)   all = all.filter(n => (n.numero||'').toLowerCase().includes(cfNum));
-  if (cfData)  all = all.filter(n => fmtDate(n.data_emissao) === cfData);
   if (cfEmp)   all = all.filter(n => (n.empresa||'').toLowerCase().includes(cfEmp));
   if (cfGrp)   all = all.filter(n => (n.grupo||'').toLowerCase().includes(cfGrp));
   if (cfCfop)  all = all.filter(n => (n.cfops||'').toLowerCase().includes(cfCfop));
   if (cfDest)  all = all.filter(n => (n.dest_nome||'').toLowerCase().includes(cfDest));
   if (cfPgto)  all = all.filter(n => (n.forma_pagamento||'').toLowerCase().includes(cfPgto));
   if (cfChave) all = all.filter(n => (n.chave_acesso||'').toLowerCase().includes(cfChave));
+  // Build date tree from pre-date-filtered set
+  const _dISOn = s => s.split('/').reverse().join('-');
+  const availDatesN = [...new Set(all.map(n=>fmtDate(n.data_emissao)).filter(d=>d&&d!=='—'))].sort((a,b)=>_dISOn(b).localeCompare(_dISOn(a)));
+  _renderDateFilter('notas', availDatesN);
+  // Now apply date tree filter
+  const cfDataSetN = _dfState['notas'];
+  if (cfDataSetN) all = all.filter(n => cfDataSetN.has(fmtDate(n.data_emissao)));
   all.sort((a,b) => (b.data_emissao||'').localeCompare(a.data_emissao||''));
   notasCache = all;
-  // Populate dynamic column-filter dropdowns
-  const _dISO = s => s.split('/').reverse().join('-');
-  const allNotasDates = [...new Set((await idbAll('notas')).map(n=>fmtDate(n.data_emissao)).filter(d=>d&&d!=='—'))].sort((a,b)=>_dISO(b).localeCompare(_dISO(a)));
-  _populateColFilter('cf-data-notas', allNotasDates, cfData);
+  // Populate other dynamic column-filter dropdowns
   _populateColFilter('cf-grp-notas', [...new Set(all.map(n=>n.grupo).filter(Boolean))].sort(), grupo||cfGrp);
   _populateColFilter('cf-pgto-notas', [...new Set(all.map(n=>n.forma_pagamento).filter(Boolean))].sort(), cfPgto);
 
@@ -1654,7 +1795,6 @@ async function loadItens(page = 1) {
   // Column filters
   const cfTipo  = (document.getElementById('cf-tipo-itens')?.value||'').toLowerCase();
   const cfNum   = (document.getElementById('cf-num-itens')?.value||'').trim().toLowerCase();
-  const cfData  = (document.getElementById('cf-data-itens')?.value||'').trim().toLowerCase();
   const cfEmp   = (document.getElementById('cf-emp-itens')?.value||'').trim().toLowerCase();
   const cfDesc  = (document.getElementById('cf-desc-itens')?.value||'').trim().toLowerCase();
   const cfNcm   = (document.getElementById('cf-ncm-itens')?.value||'').trim().toLowerCase();
@@ -1675,7 +1815,6 @@ async function loadItens(page = 1) {
   // Apply column filters
   if (cfTipo)  all = all.filter(i => (i.tipo_doc||'').toLowerCase().includes(cfTipo));
   if (cfNum)   all = all.filter(i => (i.numero||'').toLowerCase().includes(cfNum));
-  if (cfData)  all = all.filter(i => fmtDate(i.data_emissao) === cfData);
   if (cfEmp)   all = all.filter(i => (i.empresa||'').toLowerCase().includes(cfEmp));
   if (cfDesc)  all = all.filter(i => (i.descricao||'').toLowerCase().includes(cfDesc));
   if (cfNcm)   all = all.filter(i => (i.ncm||'').includes(cfNcm));
@@ -1683,12 +1822,16 @@ async function loadItens(page = 1) {
   if (cfCst)   all = all.filter(i => ((i.cst_icms||'')+(i.csosn||'')).toLowerCase().includes(cfCst));
   if (cfTrib)  all = all.filter(i => (i.tipo_trib||'').toLowerCase().includes(cfTrib));
   if (cfChave) all = all.filter(i => (i.chave_acesso||'').toLowerCase().includes(cfChave));
+  // Build date tree from pre-date-filtered set
+  const _dISOi = s => s.split('/').reverse().join('-');
+  const availDatesI = [...new Set(all.map(i=>fmtDate(i.data_emissao)).filter(d=>d&&d!=='—'))].sort((a,b)=>_dISOi(b).localeCompare(_dISOi(a)));
+  _renderDateFilter('itens', availDatesI);
+  // Now apply date tree filter
+  const cfDataSetI = _dfState['itens'];
+  if (cfDataSetI) all = all.filter(i => cfDataSetI.has(fmtDate(i.data_emissao)));
   all.sort((a,b) => (b.data_emissao||'').localeCompare(a.data_emissao||''));
   itensCache = all;
-  // Populate dynamic column-filter dropdowns
-  const _dISO2 = s => s.split('/').reverse().join('-');
-  const allItensDates = [...new Set((await idbAll('itens')).map(i=>fmtDate(i.data_emissao)).filter(d=>d&&d!=='—'))].sort((a,b)=>_dISO2(b).localeCompare(_dISO2(a)));
-  _populateColFilter('cf-data-itens', allItensDates, cfData);
+  // Populate other dynamic column-filter dropdowns
   _populateColFilter('cf-trib-itens', [...new Set(all.map(i=>i.tipo_trib).filter(Boolean))].sort(), cfTrib);
 
   document.getElementById('itens-count').textContent = all.length + ' itens';
