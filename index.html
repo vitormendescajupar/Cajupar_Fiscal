@@ -397,7 +397,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
               <tr class="col-filter-row">
                 <th><select id="cf-tipo-notas" onchange="loadNotas(1)"><option value="">Todos</option><option value="NFC-e">NFC-e</option><option value="NF-e">NF-e</option></select></th>
                 <th><input id="cf-num-notas" placeholder="Nº" oninput="debounce(()=>loadNotas(1),350,'cf-num-notas')"/></th>
-                <th style="position:relative"><div class="df-wrap" id="df-wrap-notas"><button class="df-btn" id="df-btn-notas" onclick="event.stopPropagation();toggleDateFilter('notas')">Todas datas ▾</button><div class="df-panel" id="df-panel-notas" style="display:none"></div></div></th>
+                <th><div class="df-wrap" id="df-wrap-notas"><button class="df-btn" id="df-btn-notas" onclick="event.stopPropagation();toggleDateFilter('notas')">Todas datas ▾</button><div class="df-panel" id="df-panel-notas" style="display:none"></div></div></th>
                 <th><input id="cf-emp-notas" placeholder="Empresa" oninput="debounce(()=>loadNotas(1),350,'cf-emp-notas')"/></th>
                 <th><select id="cf-grp-notas" onchange="loadNotas(1)"><option value="">Todos</option></select></th>
                 <th><input id="cf-cfop-notas" placeholder="CFOP" oninput="debounce(()=>loadNotas(1),350,'cf-cfop-notas')"/></th>
@@ -438,7 +438,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
               <tr class="col-filter-row">
                 <th><select id="cf-tipo-itens" onchange="loadItens(1)"><option value="">Todos</option><option value="NFC-e">NFC-e</option><option value="NF-e">NF-e</option></select></th>
                 <th><input id="cf-num-itens" placeholder="Nº" oninput="debounce(()=>loadItens(1),350,'cf-num-itens')"/></th>
-                <th style="position:relative"><div class="df-wrap" id="df-wrap-itens"><button class="df-btn" id="df-btn-itens" onclick="event.stopPropagation();toggleDateFilter('itens')">Todas datas ▾</button><div class="df-panel" id="df-panel-itens" style="display:none"></div></div></th>
+                <th><div class="df-wrap" id="df-wrap-itens"><button class="df-btn" id="df-btn-itens" onclick="event.stopPropagation();toggleDateFilter('itens')">Todas datas ▾</button><div class="df-panel" id="df-panel-itens" style="display:none"></div></div></th>
                 <th><input id="cf-emp-itens" placeholder="Empresa" oninput="debounce(()=>loadItens(1),350,'cf-emp-itens')"/></th>
                 <th><input id="cf-desc-itens" placeholder="Descrição" oninput="debounce(()=>loadItens(1),350,'cf-desc-itens')"/></th>
                 <th><input id="cf-ncm-itens" placeholder="NCM" oninput="debounce(()=>loadItens(1),350,'cf-ncm-itens')"/></th>
@@ -1673,7 +1673,7 @@ async function loadAnual() {
   if (charts['anual']) charts['anual'].destroy();
   charts['anual'] = new Chart(ctx, {
     type:'bar',
-    data:{labels:MESES_NOME,datasets:[{label:'Faturamento',data:MESES.map(m=>porMes[`${ano}-${m}`].fat),backgroundColor:PALETTE.slice(0,12),borderRadius:6,borderSkipped:false}]},
+    data:{labels:MESES_NOME,datasets:[{label:'Faturamento',data:MESES.map(m=>porMes[`${ano}-${m}`].fat),backgroundColor:PALETTE.slice(0,12),borderRadius:6,borderSkipped:false,minBarLength:5}]},
     options:{...chartOpts('R$'), plugins:{legend:{display:false}}}
   });
 
