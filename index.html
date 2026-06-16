@@ -1697,8 +1697,13 @@ function ai(emp, per, field) {
   return parseFloat(localStorage.getItem(`caj_ai_${emp}__${per}__${field}`)) || 0;
 }
 function aiSet(emp, per, field, val) {
-  const v = parseFloat(val) || 0;
+  // parseBRNum aceita: 1.000,00 / 1,000.00 / 1000 / 1000.50
+  const v = parseBRNum(val);
   localStorage.setItem(`caj_ai_${emp}__${per}__${field}`, v);
+  // Atualiza o display do input para formato BR
+  const eid = `_ai_${btoa(emp+per+field).replace(/[^a-z0-9]/gi,'')}`;
+  const el = document.getElementById(eid);
+  if (el && document.activeElement !== el) el.value = v > 0 ? fmt(v) : '';
   refreshAuditTables();
 }
 
@@ -1713,10 +1718,14 @@ function showAuditTab(tab) {
 function aiInput(emp, per, field) {
   const v = ai(emp, per, field);
   const eid = `_ai_${btoa(emp+per+field).replace(/[^a-z0-9]/gi,'')}`;
-  return `<input type="number" class="audit-input" id="${eid}"
-    value="${v||''}" placeholder="0,00" step="0.01" min="0"
-    onchange="aiSet('${emp.replace(/'/g,"\\'")}','${per.replace(/'/g,"\\'")}','${field}',this.value)"
-    onclick="this.select()"/>`;
+  const empE = emp.replace(/'/g,"\\'"), perE = per.replace(/'/g,"\\'");
+  // type="text" aceita colar no formato BR (1.000,00) ou US (1,000.00)
+  return `<input type="text" inputmode="decimal" class="audit-input" id="${eid}"
+    value="${v > 0 ? fmt(v) : ''}" placeholder="0,00"
+    onfocus="this.select()"
+    onblur="aiSet('${empE}','${perE}','${field}',this.value)"
+    onkeydown="if(event.key==='Enter'||event.key==='Tab'){event.preventDefault();aiSet('${empE}','${perE}','${field}',this.value);this.blur()}"
+    onpaste="setTimeout(()=>aiSet('${empE}','${perE}','${field}',this.value),50)"/>`;
 }
 
 function fmtD(v) {
