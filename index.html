@@ -203,6 +203,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .toast-item.t-err{border-left:3px solid var(--red)}
 .toast-item.t-info{border-left:3px solid var(--primary)}
 
+.badge-cancel{background:#fee2e2;color:#dc2626}
+.badge-aceita{background:#dcfce7;color:#16a34a}
 /* EXCEL-LIKE COLUMN FILTERS */
 .col-filter-row th{background:var(--bg);padding:4px 6px;position:sticky;top:34px;z-index:1}
 .col-filter-row th input,.col-filter-row th select{
@@ -295,6 +297,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
       <div class="nav-section">Análise</div>
       <button class="nav-item active" onclick="showPage('dashboard')"><span class="icon">📊</span>Dashboard</button>
       <button class="nav-item" onclick="showPage('anual')"><span class="icon">📅</span>Resumo Anual</button>
+      <button class="nav-item" onclick="showPage('cfop')"><span class="icon">🏷️</span>Análise CFOP</button>
       <button class="nav-item" onclick="showPage('auditoria')"><span class="icon">🔍</span>Auditoria</button>
       <div class="nav-section">Dados</div>
       <button class="nav-item" onclick="showPage('notas')"><span class="icon">🧾</span>Notas Fiscais</button>
@@ -373,6 +376,38 @@ tr:hover td{background:rgba(255,255,255,.02)}
       <div class="anual-grid" id="anual-grid"></div>
     </div>
 
+    <!-- ANÁLISE CFOP -->
+    <div id="page-cfop" class="page">
+      <div class="top-bar">
+        <span class="page-title">Análise por CFOP</span>
+        <select id="f-ano-cfop" onchange="loadCFOP()"><option value="">Todos os anos</option></select>
+        <select id="f-mes-cfop" onchange="loadCFOP()"><option value="">Todos os meses</option></select>
+        <select id="f-grupo-cfop" onchange="loadCFOP()"><option value="">Todos os grupos</option></select>
+        <select id="f-empresa-cfop" onchange="loadCFOP()"><option value="">Todas as empresas</option></select>
+        <select id="f-tipo-cfop" onchange="loadCFOP()"><option value="">Todos os tipos</option><option value="NFC-e">NFC-e</option><option value="NF-e">NF-e</option></select>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+          <input type="checkbox" id="f-venda-cfop" onchange="loadCFOP()"> Somente vendas
+        </label>
+        <button class="btn btn-icon" onclick="loadCFOP()" title="Atualizar">🔄</button>
+      </div>
+      <div class="chart-card" style="margin-bottom:20px">
+        <div class="chart-wrap" style="height:320px"><canvas id="chart-cfop"></canvas></div>
+      </div>
+      <div class="card" style="overflow-x:auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>CFOP</th><th>Descrição / Natureza</th><th style="text-align:right">Itens</th><th style="text-align:right">Notas</th><th style="text-align:right">Valor Total</th><th style="text-align:right">% Fat. Vendas</th><th>Tipo</th>
+            </tr>
+          </thead>
+          <tbody id="cfop-body"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--text2)">
+        ✅ Verde = CFOP de venda (entra no faturamento) &nbsp;|&nbsp; ❌ Vermelho = não é venda (excluído do faturamento)
+      </div>
+    </div>
+
     <!-- NOTAS -->
     <div id="page-notas" class="page">
       <div class="top-bar">
@@ -393,7 +428,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
         <div class="tbl-wrap">
           <table>
             <thead>
-              <tr><th>Tipo</th><th>Número</th><th>Data</th><th>Empresa</th><th>Grupo</th><th>CFOPs</th><th>Destinatário</th><th>Valor Total</th><th>Desconto</th><th>ICMS</th><th>ICMS-ST</th><th>PIS</th><th>COFINS</th><th>Pagamento</th><th>Chave de Acesso</th></tr>
+              <tr><th>Tipo</th><th>Número</th><th>Data</th><th>Empresa</th><th>Grupo</th><th>CFOPs</th><th>Destinatário</th><th>Valor Total</th><th>Desconto</th><th>ICMS</th><th>ICMS-ST</th><th>PIS</th><th>COFINS</th><th>Pagamento</th><th>Manifesto</th><th>Chave de Acesso</th></tr>
               <tr class="col-filter-row">
                 <th><select id="cf-tipo-notas" onchange="loadNotas(1)"><option value="">Todos</option><option value="NFC-e">NFC-e</option><option value="NF-e">NF-e</option></select></th>
                 <th><input id="cf-num-notas" placeholder="Nº" oninput="debounce(()=>loadNotas(1),350,'cf-num-notas')"/></th>
@@ -404,6 +439,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
                 <th><input id="cf-dest-notas" placeholder="Destinatário" oninput="debounce(()=>loadNotas(1),350,'cf-dest-notas')"/></th>
                 <th></th><th></th><th></th><th></th><th></th><th></th>
                 <th><select id="cf-pgto-notas" onchange="loadNotas(1)"><option value="">Todos</option></select></th>
+                <th><select id="cf-manif-notas" onchange="loadNotas(1)"><option value="">Todos</option><option value="Aceita">Aceita</option><option value="Cancelada">Cancelada</option></select></th>
                 <th><input id="cf-chave-notas" placeholder="Chave" oninput="debounce(()=>loadNotas(1),350,'cf-chave-notas')"/></th>
               </tr>
             </thead>
@@ -434,7 +470,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
         <div class="tbl-wrap">
           <table>
             <thead>
-              <tr><th>Tipo</th><th>NF</th><th>Data</th><th>Empresa</th><th>Descrição</th><th>NCM</th><th>CFOP</th><th>CST/CSOSN</th><th>Un</th><th>Qtd</th><th>Vl Unit</th><th>Vl Total</th><th>Desconto</th><th>Trib</th><th>ICMS</th><th>ICMS-ST</th><th>PIS</th><th>COFINS</th><th>Chave de Acesso</th></tr>
+              <tr><th>Tipo</th><th>NF</th><th>Data</th><th>Empresa</th><th>Descrição</th><th>NCM</th><th>CFOP</th><th>CST/CSOSN</th><th>Un</th><th>Qtd</th><th>Vl Unit</th><th>Vl Total</th><th>Desconto</th><th>Trib</th><th>ICMS</th><th>ICMS-ST</th><th>PIS</th><th>COFINS</th><th>Manifesto</th><th>Chave de Acesso</th></tr>
               <tr class="col-filter-row">
                 <th><select id="cf-tipo-itens" onchange="loadItens(1)"><option value="">Todos</option><option value="NFC-e">NFC-e</option><option value="NF-e">NF-e</option></select></th>
                 <th><input id="cf-num-itens" placeholder="Nº" oninput="debounce(()=>loadItens(1),350,'cf-num-itens')"/></th>
@@ -447,6 +483,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
                 <th></th><th></th><th></th><th></th><th></th>
                 <th><select id="cf-trib-itens" onchange="loadItens(1)"><option value="">Todos</option></select></th>
                 <th></th><th></th><th></th><th></th>
+                <th><select id="cf-manif-itens" onchange="loadItens(1)"><option value="">Todos</option><option value="Aceita">Aceita</option><option value="Cancelada">Cancelada</option></select></th>
                 <th><input id="cf-chave-itens" placeholder="Chave" oninput="debounce(()=>loadItens(1),350,'cf-chave-itens')"/></th>
               </tr>
             </thead>
@@ -728,6 +765,7 @@ const COL_NOTAS = {
   'Base ICMS-ST (R$)':'base_icms_st','ICMS-ST (R$)':'valor_icms_st',
   'FCP-ST (R$)':'valor_fcp_st','PIS (R$)':'valor_pis','COFINS (R$)':'valor_cofins',
   'Pagamento':'forma_pagamento',
+  'Manifesto':'manifesto','Situação':'manifesto','Situacao':'manifesto','Status':'manifesto','Status NF':'manifesto',
 };
 
 // Mapeamento colunas Excel → campos internos (aba Itens)
@@ -740,10 +778,58 @@ const COL_ITENS = {
   'Tributacao':'tipo_trib','Base ICMS (R$)':'base_icms','ICMS (R$)':'valor_icms',
   'Base ICMS-ST (R$)':'base_icms_st','ICMS-ST (R$)':'valor_icms_st',
   'FCP-ST (R$)':'valor_fcp_st','PIS (R$)':'valor_pis','COFINS (R$)':'valor_cofins',
+  'Manifesto':'manifesto','Situação':'manifesto','Situacao':'manifesto','Status':'manifesto',
 };
 
 const MESES_NOME=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const PALETTE=['#f97316','#3b82f6','#22c55e','#eab308','#ef4444','#8b5cf6','#06b6d4','#ec4899','#14b8a6','#f59e0b','#64748b','#a78bfa'];
+
+// ── CFOP descriptions & sale classifier ─────────────────────────────────────
+const CFOP_DESC = {
+  '5101':'Venda de produção do estabelecimento',
+  '5102':'Venda de mercadoria adquirida ou recebida de terceiros',
+  '5103':'Venda de produção do estabelecimento, efetuada fora do estabelecimento',
+  '5104':'Venda de mercadoria adquirida ou recebida de terceiros, efetuada fora do estabelecimento',
+  '5115':'Venda de mercadoria adquirida ou recebida de terceiros, recebida anteriormente em consignação mercantil',
+  '5201':'Devolução de venda de produção do estabelecimento',
+  '5202':'Devolução de compra para comercialização',
+  '5401':'Venda de produção do estabelecimento em operação com produto sujeito ao regime de ST, como contribuinte substituto',
+  '5403':'Venda de mercadoria adquirida ou recebida de terceiros em operação com mercadoria sujeita ao regime de ST, como contribuinte substituto',
+  '5405':'Venda de mercadoria adquirida ou recebida de terceiros, sujeita ao regime de ST, na condição de contribuinte-substituído',
+  '5651':'Venda de combustível ou lubrificante de produção do estabelecimento',
+  '5652':'Venda de combustível ou lubrificante adquirido ou recebido de terceiros',
+  '5929':'Lançamento efetuado em decorrência de emissão de documento fiscal também registrada em Emissor de Cupom Fiscal (ECF)',
+  '6101':'Venda de produção do estabelecimento (interestadual)',
+  '6102':'Venda de mercadoria adquirida ou recebida de terceiros (interestadual)',
+  '6103':'Venda de produção do estabelecimento, efetuada fora do estabelecimento (interestadual)',
+  '6104':'Venda de mercadoria adquirida ou recebida de terceiros, efetuada fora do estabelecimento (interestadual)',
+  '6107':'Venda de produção do estabelecimento, destinada a não contribuinte (interestadual)',
+  '6108':'Venda de mercadoria adquirida ou recebida de terceiros, destinada a não contribuinte (interestadual)',
+  '6115':'Venda de mercadoria adquirida ou recebida de terceiros, recebida anteriormente em consignação mercantil (interestadual)',
+  '6202':'Devolução de compra para comercialização (interestadual)',
+  '6401':'Venda de produção em operação com produto sujeito ao regime de ST, como contribuinte substituto (interestadual)',
+  '6403':'Venda de mercadoria adquirida ou recebida de terceiros em operação com mercadoria sujeita ao regime de ST, como contribuinte substituto (interestadual)',
+  '6404':'Venda de mercadoria sujeita ao regime de ST, cujo imposto já tenha sido retido anteriormente (interestadual)',
+  '6405':'Venda de mercadoria adquirida ou recebida de terceiros, sujeita ao regime de ST, na condição de contribuinte-substituído (interestadual)',
+};
+
+function isCFOPVenda(cfop) {
+  if (!cfop) return false;
+  const n = parseInt(String(cfop).trim().replace(/\D/g,''));
+  if (isNaN(n)) return false;
+  if (n >= 5101 && n <= 5115) return true;
+  if (n >= 5401 && n <= 5405) return true;
+  if (n >= 5651 && n <= 5652) return true;
+  if (n >= 6101 && n <= 6115) return true;
+  if (n >= 6401 && n <= 6410) return true;
+  if (n >= 6651 && n <= 6652) return true;
+  return false;
+}
+// Returns true if any CFOP in a comma/semicolon-separated list is a sale CFOP
+function hasVendaCFOP(cfopsStr) {
+  if (!cfopsStr) return false;
+  return String(cfopsStr).split(/[,;\/\s]+/).some(c => isCFOPVenda(c.trim()));
+}
 const PER_PAGE = 50;
 
 // ══════════════════════════════════════════════════════════════
@@ -1288,6 +1374,12 @@ function parseExcelFile(buf, fileName) {
     if (n.data_emissao && typeof n.data_emissao === 'string' && /^\d{4}-\d{2}/.test(n.data_emissao)) {
       n.mes_ref = n.data_emissao.slice(0, 7);
     }
+    // Normalize manifesto
+    if (!n.manifesto) n.manifesto = 'Aceita';
+    else {
+      const mv = String(n.manifesto).toLowerCase();
+      n.manifesto = mv.includes('cancel') ? 'Cancelada' : 'Aceita';
+    }
     return n;
   }).filter(n => n.chave_acesso);
 
@@ -1315,6 +1407,12 @@ function parseExcelFile(buf, fileName) {
     if (it.data_emissao && typeof it.data_emissao === 'string' && /^\d{4}-\d{2}/.test(it.data_emissao)) {
       it.mes_ref = it.data_emissao.slice(0, 7);
     }
+    // Normalize manifesto for items (inherit from nota if possible)
+    if (!it.manifesto) it.manifesto = 'Aceita';
+    else {
+      const mv = String(it.manifesto).toLowerCase();
+      it.manifesto = mv.includes('cancel') ? 'Cancelada' : 'Aceita';
+    }
     // tem_st AFTER normalization — also detect by CST codes
     const cstIcms = String(it.cst_icms||'').trim();
     const csosn   = String(it.csosn||'').trim();
@@ -1325,12 +1423,24 @@ function parseExcelFile(buf, fileName) {
     return it;
   });
 
+  // Propagar manifesto da nota → itens (usando mapa chave→manifesto)
+  {
+    const notaManifMap = {};
+    notas.forEach(n => { if (n.chave_acesso) notaManifMap[n.chave_acesso] = n.manifesto; });
+    itens.forEach(it => {
+      if (it.chave_acesso && notaManifMap[it.chave_acesso]) it.manifesto = notaManifMap[it.chave_acesso];
+    });
+  }
+
   // SEMPRE agrega impostos a partir das notas, agrupando pelo mes_ref REAL da data de emissão
+  // Somente notas ACEITAS e com CFOP de venda entram no faturamento
   const metricas = [];
   {
     // Agrupa por mes_ref real + tipo_doc
     const gruposMes = {};
     notas.forEach(n => {
+      if (n.manifesto === 'Cancelada') return;          // excluir canceladas
+      if (!hasVendaCFOP(n.cfops)) return;               // excluir não-venda
       const t  = n.tipo_doc || 'NF-e';
       const mr = n.mes_ref  || mes_ref; // mes_ref real da nota (da data de emissão)
       const k  = `${mr}|${t}`;
@@ -1392,11 +1502,11 @@ async function populateFilterOptions() {
   const mesLabel = v => { const [a,m]=v.split('-'); return `${NOMES[m]||m} / ${a}`; };
   const anoLabel = v => v;
 
-  ['top-grupo','f-grupo-notas','f-grupo-itens','audit-grupo','anual-grupo'].forEach(id => fillSelect(id, grupos, null, 'Todos os grupos'));
-  ['top-empresa','f-empresa-notas','f-empresa-itens','anual-empresa'].forEach(id => fillSelect(id, empresas, null, 'Todas as empresas'));
-  ['f-mes-notas','f-mes-itens','audit-mes'].forEach(id => fillSelect(id, meses, mesLabel, 'Todos os meses'));
+  ['top-grupo','f-grupo-notas','f-grupo-itens','audit-grupo','anual-grupo','f-grupo-cfop'].forEach(id => fillSelect(id, grupos, null, 'Todos os grupos'));
+  ['top-empresa','f-empresa-notas','f-empresa-itens','anual-empresa','f-empresa-cfop'].forEach(id => fillSelect(id, empresas, null, 'Todas as empresas'));
+  ['f-mes-notas','f-mes-itens','audit-mes','f-mes-cfop'].forEach(id => fillSelect(id, meses, mesLabel, 'Todos os meses'));
 
-  // Ano selects
+  // Ano selects (dashboard/anual — sem opção "Todos")
   ['top-ano','anual-ano'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -1404,6 +1514,15 @@ async function populateFilterOptions() {
     el.innerHTML = anos.map(a => `<option value="${a}">${a}</option>`).join('');
     el.value = cur;
   });
+  // Ano CFOP — com opção "Todos os anos"
+  {
+    const el = document.getElementById('f-ano-cfop');
+    if (el) {
+      const cur = el.value;
+      el.innerHTML = `<option value="">Todos os anos</option>` + anos.map(a => `<option value="${a}">${a}</option>`).join('');
+      if (cur && anos.includes(cur)) el.value = cur;
+    }
+  }
 }
 
 function onFilterChange() {
@@ -1689,6 +1808,96 @@ async function loadAnual() {
   }).join('');
 }
 
+// ══════════════════════════════════════════════════════════════
+//  ANÁLISE CFOP
+// ══════════════════════════════════════════════════════════════
+async function loadCFOP() {
+  const ano    = document.getElementById('f-ano-cfop')?.value  || '';
+  const mesRef = document.getElementById('f-mes-cfop')?.value  || ''; // formato yyyy-mm
+  const grupo  = document.getElementById('f-grupo-cfop')?.value  || '';
+  const emp    = document.getElementById('f-empresa-cfop')?.value || '';
+  const tipo   = document.getElementById('f-tipo-cfop')?.value  || '';
+  const soVenda= document.getElementById('f-venda-cfop')?.checked || false;
+
+  let all = await idbAll('itens');
+  // Exclude cancelled
+  all = all.filter(i => (i.manifesto||'Aceita') !== 'Cancelada');
+  if (mesRef) all = all.filter(i => i.mes_ref === mesRef);
+  else if (ano) all = all.filter(i => i.mes_ref && i.mes_ref.startsWith(ano + '-'));
+  if (grupo) all = all.filter(i => i.grupo === grupo);
+  if (emp)   all = all.filter(i => i.empresa === emp);
+  if (tipo)  all = all.filter(i => i.tipo_doc === tipo);
+  if (soVenda) all = all.filter(i => isCFOPVenda(i.cfop));
+
+  // Aggregate by CFOP
+  const porCFOP = {};
+  all.forEach(i => {
+    const c = String(i.cfop || 'S/CFOP').trim();
+    if (!porCFOP[c]) porCFOP[c] = {cfop:c, qtd_itens:0, chaves:new Set(), valor:0};
+    porCFOP[c].qtd_itens++;
+    if (i.chave_acesso) porCFOP[c].chaves.add(i.chave_acesso);
+    porCFOP[c].valor += Number(i.valor_item || 0);
+  });
+
+  const rows = Object.values(porCFOP)
+    .map(r => ({...r, qtd_notas: r.chaves.size}))
+    .sort((a,b) => b.valor - a.valor);
+
+  const totalVenda = rows.filter(r => isCFOPVenda(r.cfop)).reduce((s,r) => s+r.valor, 0);
+
+  // Chart — horizontal bar, top 15 por valor
+  const top15 = rows.slice(0, 15);
+  const ctx = document.getElementById('chart-cfop').getContext('2d');
+  if (charts['cfop']) charts['cfop'].destroy();
+  charts['cfop'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: top15.map(r => r.cfop),
+      datasets: [{
+        label: 'Valor Total (R$)',
+        data: top15.map(r => r.valor),
+        backgroundColor: top15.map(r => isCFOPVenda(r.cfop) ? '#22c55e' : '#ef4444'),
+        borderRadius: 4,
+        minBarLength: 4,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {display: false},
+        tooltip: {callbacks:{label: ctx => ' R$ ' + ctx.raw.toLocaleString('pt-BR',{minimumFractionDigits:2})}}
+      },
+      scales: {
+        x: {ticks:{callback: v => 'R$ '+v.toLocaleString('pt-BR',{notation:'compact'})}, grid:{color:'rgba(255,255,255,.05)'}},
+        y: {grid:{display:false}}
+      }
+    }
+  });
+
+  // Table
+  const tbody = document.getElementById('cfop-body');
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text2)">Nenhum dado para o período selecionado</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(r => {
+    const isVenda = isCFOPVenda(r.cfop);
+    const desc = CFOP_DESC[r.cfop] || '—';
+    const pct = (totalVenda > 0 && isVenda) ? (r.valor/totalVenda*100).toFixed(1)+'%' : '—';
+    return `<tr style="${r.cfop==='5929'||r.cfop==='5202'||r.cfop==='6202'?'opacity:.7':''}">
+      <td><b>${r.cfop}</b></td>
+      <td style="font-size:11px;max-width:320px">${desc}</td>
+      <td style="text-align:right">${r.qtd_itens.toLocaleString('pt-BR')}</td>
+      <td style="text-align:right">${r.qtd_notas.toLocaleString('pt-BR')}</td>
+      <td style="text-align:right;font-weight:700">R$ ${fmt(r.valor)}</td>
+      <td style="text-align:right">${pct}</td>
+      <td style="text-align:center"><span class="badge ${isVenda?'badge-aceita':'badge-cancel'}">${isVenda?'✓ Venda':'✗ Excluído'}</span></td>
+    </tr>`;
+  }).join('');
+}
+
 function jumpToMes(ano, mes) {
   document.getElementById('top-ano').value = ano;
   document.getElementById('top-mes').value = mes;
@@ -1717,6 +1926,7 @@ async function loadNotas(page = 1) {
   const cfDest  = (document.getElementById('cf-dest-notas')?.value||'').trim().toLowerCase();
   const cfPgto  = (document.getElementById('cf-pgto-notas')?.value||'').toLowerCase();
   const cfChave = (document.getElementById('cf-chave-notas')?.value||'').trim().toLowerCase();
+  const cfManif = (document.getElementById('cf-manif-notas')?.value||'');
 
   let all = await idbAll('notas');
   if (mes)    all = all.filter(n => n.mes_ref  === mes);
@@ -1738,6 +1948,7 @@ async function loadNotas(page = 1) {
   if (cfCfop)  all = all.filter(n => (n.cfops||'').toLowerCase().includes(cfCfop));
   if (cfDest)  all = all.filter(n => (n.dest_nome||'').toLowerCase().includes(cfDest));
   if (cfPgto)  all = all.filter(n => (n.forma_pagamento||'').toLowerCase().includes(cfPgto));
+  if (cfManif) all = all.filter(n => (n.manifesto||'Aceita') === cfManif);
   if (cfChave) all = all.filter(n => (n.chave_acesso||'').toLowerCase().includes(cfChave));
   // Build date tree from pre-date-filtered set
   const _dISOn = s => s.split('/').reverse().join('-');
@@ -1756,7 +1967,7 @@ async function loadNotas(page = 1) {
   const slice = all.slice((page-1)*PER_PAGE, page*PER_PAGE);
   const tbody = document.getElementById('notas-body');
   if (!slice.length) {
-    tbody.innerHTML = `<tr><td colspan="15"><div class="empty-state"><div class="icon">🧾</div><p>Nenhuma nota encontrada</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="16"><div class="empty-state"><div class="icon">🧾</div><p>Nenhuma nota encontrada</p></div></td></tr>`;
     document.getElementById('notas-pag').innerHTML = '';
     return;
   }
@@ -1774,6 +1985,7 @@ async function loadNotas(page = 1) {
     <td style="text-align:right">${fmt(n.valor_pis)}</td>
     <td style="text-align:right">${fmt(n.valor_cofins)}</td>
     <td style="font-size:11px;color:var(--text2)">${n.forma_pagamento||'—'}</td>
+    <td><span class="badge ${(n.manifesto||'Aceita')==='Cancelada'?'badge-cancel':'badge-aceita'}">${n.manifesto||'Aceita'}</span></td>
     <td style="font-size:10px;font-family:monospace;color:var(--text3)" title="${n.chave_acesso||''}">${n.chave_acesso ? n.chave_acesso.slice(0,22)+'…' : '—'}</td>
   </tr>`).join('');
   renderPag('notas-pag', all.length, page, PER_PAGE, loadNotas);
@@ -1801,6 +2013,7 @@ async function loadItens(page = 1) {
   const cfCfop  = (document.getElementById('cf-cfop-itens')?.value||'').trim().toLowerCase();
   const cfCst   = (document.getElementById('cf-cst-itens')?.value||'').trim().toLowerCase();
   const cfTrib  = (document.getElementById('cf-trib-itens')?.value||'').toLowerCase();
+  const cfManifI= (document.getElementById('cf-manif-itens')?.value||'');
   const cfChave = (document.getElementById('cf-chave-itens')?.value||'').trim().toLowerCase();
 
   let all = await idbAll('itens');
@@ -1820,8 +2033,9 @@ async function loadItens(page = 1) {
   if (cfNcm)   all = all.filter(i => (i.ncm||'').includes(cfNcm));
   if (cfCfop)  all = all.filter(i => (i.cfop||'').includes(cfCfop));
   if (cfCst)   all = all.filter(i => ((i.cst_icms||'')+(i.csosn||'')).toLowerCase().includes(cfCst));
-  if (cfTrib)  all = all.filter(i => (i.tipo_trib||'').toLowerCase().includes(cfTrib));
-  if (cfChave) all = all.filter(i => (i.chave_acesso||'').toLowerCase().includes(cfChave));
+  if (cfTrib)   all = all.filter(i => (i.tipo_trib||'').toLowerCase().includes(cfTrib));
+  if (cfManifI) all = all.filter(i => (i.manifesto||'Aceita') === cfManifI);
+  if (cfChave)  all = all.filter(i => (i.chave_acesso||'').toLowerCase().includes(cfChave));
   // Build date tree from pre-date-filtered set
   const _dISOi = s => s.split('/').reverse().join('-');
   const availDatesI = [...new Set(all.map(i=>fmtDate(i.data_emissao)).filter(d=>d&&d!=='—'))].sort((a,b)=>_dISOi(b).localeCompare(_dISOi(a)));
@@ -1838,7 +2052,7 @@ async function loadItens(page = 1) {
   const slice = all.slice((page-1)*PER_PAGE, page*PER_PAGE);
   const tbody = document.getElementById('itens-body');
   if (!slice.length) {
-    tbody.innerHTML = `<tr><td colspan="19"><div class="empty-state"><div class="icon">📦</div><p>Nenhum item encontrado</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="20"><div class="empty-state"><div class="icon">📦</div><p>Nenhum item encontrado</p></div></td></tr>`;
     document.getElementById('itens-pag').innerHTML = '';
     return;
   }
@@ -1858,6 +2072,7 @@ async function loadItens(page = 1) {
     <td style="text-align:right;color:var(--red)">${fmt(i.valor_icms_st)}</td>
     <td style="text-align:right">${fmt(i.valor_pis)}</td>
     <td style="text-align:right">${fmt(i.valor_cofins)}</td>
+    <td><span class="badge ${(i.manifesto||'Aceita')==='Cancelada'?'badge-cancel':'badge-aceita'}">${i.manifesto||'Aceita'}</span></td>
     <td style="font-size:10px;font-family:monospace;color:var(--text3)" title="${i.chave_acesso||''}">${i.chave_acesso ? i.chave_acesso.slice(0,22)+'…' : '—'}</td>
   </tr>`).join('');
   renderPag('itens-pag', all.length, page, PER_PAGE, loadItens);
@@ -2421,6 +2636,7 @@ function showPage(name) {
   });
   if (name === 'dashboard')  loadDashboard();
   if (name === 'anual')      loadAnual();
+  if (name === 'cfop')       loadCFOP();
   if (name === 'notas')      loadNotas(1);
   if (name === 'itens')      loadItens(1);
   if (name === 'auditoria')  loadAuditoria();
