@@ -2129,7 +2129,7 @@ async function loadCFOP() {
     const pct = (totalVenda > 0 && isVenda) ? (r.valor/totalVenda*100).toFixed(1)+'%' : '—';
     return `<tr style="${r.cfop==='5929'||r.cfop==='5202'||r.cfop==='6202'?'opacity:.7':''}">
       <td><b>${r.cfop}</b></td>
-      <td style="font-size:11px;max-width:320px">${desc}</td>
+      <td style="font-size:11px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${desc}">${desc}</td>
       <td style="text-align:right">${r.qtd_itens.toLocaleString('pt-BR')}</td>
       <td style="text-align:right">${r.qtd_notas.toLocaleString('pt-BR')}</td>
       <td style="text-align:right;font-weight:700">R$ ${fmt(r.valor)}</td>
