@@ -163,6 +163,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .diff-zero{color:var(--green);font-weight:700}
 .audit-group-row td{padding:4px 12px;font-size:11px;font-weight:700;color:var(--primary);background:rgba(249,115,22,.06);letter-spacing:.5px}
 .audit-total-row td{padding:8px 12px;font-weight:800;background:var(--bg3);border-top:2px solid var(--border)}
+.audit-subtotal-row td{padding:6px 12px;font-weight:700;background:rgba(249,115,22,.04);border-top:1px solid rgba(249,115,22,.2);font-size:12px;color:var(--primary);opacity:.9}
 .params-bar{display:flex;gap:14px;flex-wrap:wrap;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;align-items:center}
 .param-item{display:flex;align-items:center;gap:6px;color:var(--text2)}
 .param-item strong{color:var(--text)}
@@ -394,6 +395,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
           <input type="checkbox" id="f-venda-cfop" onchange="loadCFOP()"> Somente vendas
         </label>
+        <button class="btn btn-sm btn-outline" onclick="exportCFOPExcel()" title="Exportar Excel">📊 Excel</button>
+        <button class="btn btn-sm btn-outline" onclick="exportCFOPPDF()" title="Exportar PDF">🖨️ PDF</button>
         <button class="btn btn-icon" onclick="loadCFOP()" title="Atualizar">🔄</button>
       </div>
       <div class="chart-card" style="margin-bottom:20px">
@@ -407,6 +410,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
             </tr>
           </thead>
           <tbody id="cfop-body"></tbody>
+          <tfoot id="cfop-foot"></tfoot>
         </table>
       </div>
       <div style="margin-top:12px;font-size:12px;color:var(--text2)">
@@ -506,6 +510,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
         <span class="page-title">Auditoria Fiscal</span>
         <select id="audit-grupo" onchange="loadAuditoria()"><option value="">Todos os grupos</option></select>
         <select id="audit-mes" onchange="loadAuditoria()"><option value="">Todos os meses</option></select>
+        <button class="btn btn-sm btn-outline" onclick="exportAuditoriaExcel()" title="Exportar Excel">📊 Excel</button>
+        <button class="btn btn-sm btn-outline" onclick="exportAuditoriaPDF()" title="Exportar PDF">🖨️ PDF</button>
         <button class="btn btn-icon" onclick="loadAuditoria()" title="Atualizar">🔄</button>
       </div>
 
@@ -2119,8 +2125,10 @@ async function loadCFOP() {
 
   // Table
   const tbody = document.getElementById('cfop-body');
+  const tfoot = document.getElementById('cfop-foot');
   if (!rows.length) {
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text2)">Nenhum dado para o período selecionado</td></tr>`;
+    if (tfoot) tfoot.innerHTML = '';
     return;
   }
   tbody.innerHTML = rows.map(r => {
@@ -2137,6 +2145,19 @@ async function loadCFOP() {
       <td style="text-align:center"><span class="badge ${isVenda?'badge-aceita':'badge-cancel'}">${isVenda?'✓ Venda':'✗ Excluído'}</span></td>
     </tr>`;
   }).join('');
+  // Somatório
+  if (tfoot) {
+    const totalItens = rows.reduce((s,r) => s + r.qtd_itens, 0);
+    const totalNotasUniq = new Set(rows.flatMap(r => [...(r.chaves||[])])).size || rows.reduce((s,r) => s + r.qtd_notas, 0);
+    const totalValor = rows.reduce((s,r) => s + r.valor, 0);
+    tfoot.innerHTML = `<tr class="audit-total-row">
+      <td colspan="2">TOTAL — ${rows.length} CFOPs</td>
+      <td style="text-align:right">${totalItens.toLocaleString('pt-BR')}</td>
+      <td style="text-align:right">${totalNotasUniq.toLocaleString('pt-BR')}</td>
+      <td style="text-align:right;font-weight:800">R$ ${fmt(totalValor)}</td>
+      <td></td><td></td>
+    </tr>`;
+  }
 }
 
 function jumpToMes(ano, mes) {
@@ -2447,6 +2468,25 @@ function renderAuditFat() {
   const tbody = document.getElementById('body-fat'); if (!tbody) return;
   let rows='', lastG='';
   let tFat=0,tEv=0,tGorj=0,tIf=0,tIcms=0,tMono=0,tBC=0,tPis=0,tCof=0,tDPis=0,tDCof=0;
+  let gFat=0,gEv=0,gGorj=0,gIf=0,gIcms=0,gMono=0,gBC=0,gPis=0,gCof=0;
+  const flushGroup = () => {
+    if (!lastG) return;
+    rows+=`<tr class="audit-subtotal-row">
+      <td colspan="3">∑ ${lastG}</td>
+      <td style="text-align:right">${fmt(gFat)}</td>
+      <td style="text-align:right">${fmt(gEv)}</td>
+      <td style="text-align:right">${gEv?fmtD(gEv-gFat):'—'}</td>
+      <td style="text-align:right">${fmt(gGorj)}</td>
+      <td style="text-align:right">${fmt(gIf)}</td>
+      <td style="text-align:right">${fmt(gIcms)}</td>
+      <td style="text-align:right">${fmt(gMono)}</td>
+      <td style="text-align:right">${fmt(gBC)}</td>
+      <td style="text-align:right">${fmt(gPis)}</td>
+      <td style="text-align:right">${fmt(gCof)}</td>
+      <td colspan="4"></td>
+    </tr>`;
+    gFat=gEv=gGorj=gIf=gIcms=gMono=gBC=gPis=gCof=0;
+  };
   auditRows.forEach(r => {
     const gorj=ai(r.empresa,r.mes_ref,'gorj'), ifood=ai(r.empresa,r.mes_ref,'ifood');
     const ev=ai(r.empresa,r.mes_ref,'ev');
@@ -2457,7 +2497,9 @@ function renderAuditFat() {
     const difP=dPis-pisC, difC=dCof-cofC;
     tFat+=r.fat;tEv+=ev;tGorj+=gorj;tIf+=ifood;tIcms+=r.icms;tMono+=r.fat_mono;
     tBC+=bc;tPis+=pisC;tCof+=cofC;tDPis+=difP;tDCof+=difC;
-    if(r.grupo!==lastG){rows+=grpRow(17,r.grupo);lastG=r.grupo;}
+    if(r.grupo!==lastG){flushGroup();rows+=grpRow(17,r.grupo);lastG=r.grupo;}
+    gFat+=r.fat;gEv+=ev;gGorj+=gorj;gIf+=ifood;gIcms+=r.icms;gMono+=r.fat_mono;
+    gBC+=bc;gPis+=pisC;gCof+=cofC;
     rows+=`<tr>
       <td style="font-size:11px;opacity:.5">${r.grupo}</td>
       <td style="font-weight:600;white-space:nowrap">${r.empresa}</td>
@@ -2478,6 +2520,7 @@ function renderAuditFat() {
       <td style="text-align:right">${dCof?fmtD(difC):'—'}</td>
     </tr>`;
   });
+  flushGroup();
   tbody.innerHTML = rows || `<tr><td colspan="17"><div class="empty-state"><div class="icon">📂</div><p>Carregue planilhas via Google Drive para ver a auditoria</p></div></td></tr>`;
   document.getElementById('foot-fat').innerHTML = `<tr class="audit-total-row">
     <td colspan="3">TOTAL GERAL</td>
@@ -2502,6 +2545,25 @@ function renderAuditICMS() {
   const tbody = document.getElementById('body-icms'); if (!tbody) return;
   let rows='', lastG='';
   let tFat=0,tGorj=0,tST=0,tMono=0,tDev=0,tBC=0,tIcms=0,tFu=0,tFac=0,tPago=0,tDif=0;
+  let gFat=0,gGorj=0,gST=0,gMono=0,gDev=0,gBC=0,gIcms=0,gFu=0,gFac=0;
+  const flushGroup = () => {
+    if (!lastG) return;
+    rows+=`<tr class="audit-subtotal-row">
+      <td colspan="3">∑ ${lastG}</td>
+      <td style="text-align:right">${fmt(gFat)}</td>
+      <td style="text-align:right">${fmt(gGorj)}</td>
+      <td style="text-align:right">${fmt(gST)}</td>
+      <td style="text-align:right">${fmt(gMono)}</td>
+      <td style="text-align:right">${fmt(gDev)}</td>
+      <td style="text-align:right">${fmt(gBC)}</td>
+      <td style="text-align:right">${fmt(gIcms)}</td>
+      <td style="text-align:right">${fmt(gFu)}</td>
+      <td style="text-align:right">${fmt(gFac)}</td>
+      <td style="text-align:right">${fmt(gFu+gFac)}</td>
+      <td colspan="2"></td>
+    </tr>`;
+    gFat=gGorj=gST=gMono=gDev=gBC=gIcms=gFu=gFac=0;
+  };
   auditRows.forEach(r => {
     const gorj=ai(r.empresa,r.mes_ref,'gorj'), dev=ai(r.empresa,r.mes_ref,'dev');
     const pago=ai(r.empresa,r.mes_ref,'darf_icms');
@@ -2510,7 +2572,9 @@ function renderAuditICMS() {
     const dif=pago-icmsC;
     tFat+=r.fat;tGorj+=gorj;tST+=r.fat_st;tMono+=r.fat_mono;tDev+=dev;
     tBC+=bc;tIcms+=icmsC;tFu+=fu;tFac+=fac;tPago+=pago;tDif+=dif;
-    if(r.grupo!==lastG){rows+=grpRow(15,r.grupo);lastG=r.grupo;}
+    if(r.grupo!==lastG){flushGroup();rows+=grpRow(15,r.grupo);lastG=r.grupo;}
+    gFat+=r.fat;gGorj+=gorj;gST+=r.fat_st;gMono+=r.fat_mono;gDev+=dev;
+    gBC+=bc;gIcms+=icmsC;gFu+=fu;gFac+=fac;
     rows+=`<tr>
       <td style="font-size:11px;opacity:.5">${r.grupo}</td>
       <td style="font-weight:600;white-space:nowrap">${r.empresa}</td>
@@ -2529,6 +2593,7 @@ function renderAuditICMS() {
       <td style="text-align:right">${pago?fmtD(dif):'—'}</td>
     </tr>`;
   });
+  flushGroup();
   tbody.innerHTML = rows || `<tr><td colspan="15"><div class="empty-state"><div class="icon">📂</div><p>Sem dados</p></div></td></tr>`;
   document.getElementById('foot-icms').innerHTML = `<tr class="audit-total-row">
     <td colspan="3">TOTAL GERAL</td>
@@ -2552,6 +2617,23 @@ function renderAuditPISCOF() {
   const tbody = document.getElementById('body-piscof'); if (!tbody) return;
   let rows='', lastG='';
   let tFat=0,tGorj=0,tIf=0,tIcms=0,tMono=0,tBC=0,tPis=0,tCof=0,tDPis=0,tDCof=0;
+  let gFat=0,gGorj=0,gIf=0,gIcms=0,gMono=0,gBC=0,gPis=0,gCof=0;
+  const flushGroup = () => {
+    if (!lastG) return;
+    rows+=`<tr class="audit-subtotal-row">
+      <td colspan="3">∑ ${lastG}</td>
+      <td style="text-align:right">${fmt(gFat)}</td>
+      <td style="text-align:right">${fmt(gGorj)}</td>
+      <td style="text-align:right">${fmt(gIf)}</td>
+      <td style="text-align:right">${fmt(gIcms)}</td>
+      <td style="text-align:right">${fmt(gMono)}</td>
+      <td style="text-align:right">${fmt(gBC)}</td>
+      <td style="text-align:right">${fmt(gPis)}</td>
+      <td style="text-align:right">${fmt(gCof)}</td>
+      <td colspan="4"></td>
+    </tr>`;
+    gFat=gGorj=gIf=gIcms=gMono=gBC=gPis=gCof=0;
+  };
   auditRows.forEach(r => {
     const gorj=ai(r.empresa,r.mes_ref,'gorj'), ifood=ai(r.empresa,r.mes_ref,'ifood');
     const dPis=ai(r.empresa,r.mes_ref,'darf_pis'), dCof=ai(r.empresa,r.mes_ref,'darf_cof');
@@ -2560,7 +2642,9 @@ function renderAuditPISCOF() {
     const difP=dPis-pisC, difC=dCof-cofC;
     tFat+=r.fat;tGorj+=gorj;tIf+=ifood;tIcms+=r.icms;tMono+=r.fat_mono;
     tBC+=bc;tPis+=pisC;tCof+=cofC;tDPis+=difP;tDCof+=difC;
-    if(r.grupo!==lastG){rows+=grpRow(15,r.grupo);lastG=r.grupo;}
+    if(r.grupo!==lastG){flushGroup();rows+=grpRow(15,r.grupo);lastG=r.grupo;}
+    gFat+=r.fat;gGorj+=gorj;gIf+=ifood;gIcms+=r.icms;gMono+=r.fat_mono;
+    gBC+=bc;gPis+=pisC;gCof+=cofC;
     rows+=`<tr>
       <td style="font-size:11px;opacity:.5">${r.grupo}</td>
       <td style="font-weight:600;white-space:nowrap">${r.empresa}</td>
@@ -2579,6 +2663,7 @@ function renderAuditPISCOF() {
       <td style="text-align:right">${dCof?fmtD(difC):'—'}</td>
     </tr>`;
   });
+  flushGroup();
   tbody.innerHTML = rows || `<tr><td colspan="15"><div class="empty-state"><div class="icon">📂</div><p>Sem dados</p></div></td></tr>`;
   document.getElementById('foot-piscof').innerHTML = `<tr class="audit-total-row">
     <td colspan="3">TOTAL GERAL</td>
@@ -2616,6 +2701,23 @@ function renderAuditIRPJ() {
 
   let rows='', lastG='';
   let tFat=0,tBCi=0,tI15=0,tAd=0,tIt=0,tPIrpj=0,tDIrpj=0,tBCc=0,tCsll=0,tPCsll=0,tDCsll=0;
+  let gFat=0,gBCi=0,gI15=0,gAd=0,gIt=0,gBCc=0,gCsll=0;
+  const flushGroup = () => {
+    if (!lastG) return;
+    rows+=`<tr class="audit-subtotal-row">
+      <td colspan="3">∑ ${lastG}</td>
+      <td style="text-align:right">${fmt(gFat)}</td>
+      <td style="text-align:right">${fmt(gBCi)}</td>
+      <td style="text-align:right">${fmt(gI15)}</td>
+      <td style="text-align:right">${fmt(gAd)}</td>
+      <td style="text-align:right">${fmt(gIt)}</td>
+      <td></td><td></td>
+      <td style="text-align:right">${fmt(gBCc)}</td>
+      <td style="text-align:right">${fmt(gCsll)}</td>
+      <td colspan="2"></td>
+    </tr>`;
+    gFat=gBCi=gI15=gAd=gIt=gBCc=gCsll=0;
+  };
 
   trimRows.forEach(r => {
     const pIrpj=ai(r.empresa,r.per,'darf_irpj'), pCsll=ai(r.empresa,r.per,'darf_csll');
@@ -2628,7 +2730,8 @@ function renderAuditIRPJ() {
     const dI=pIrpj-itot, dC=pCsll-csll;
     tFat+=r.fat;tBCi+=bcI;tI15+=i15;tAd+=adi;tIt+=itot;tPIrpj+=pIrpj;tDIrpj+=dI;
     tBCc+=bcC;tCsll+=csll;tPCsll+=pCsll;tDCsll+=dC;
-    if(r.grupo!==lastG){rows+=grpRow(14,r.grupo);lastG=r.grupo;}
+    if(r.grupo!==lastG){flushGroup();rows+=grpRow(14,r.grupo);lastG=r.grupo;}
+    gFat+=r.fat;gBCi+=bcI;gI15+=i15;gAd+=adi;gIt+=itot;gBCc+=bcC;gCsll+=csll;
     rows+=`<tr>
       <td style="font-size:11px;opacity:.5">${r.grupo}</td>
       <td style="font-weight:600;white-space:nowrap">${r.empresa}</td>
@@ -2646,6 +2749,7 @@ function renderAuditIRPJ() {
       <td style="text-align:right">${pCsll?fmtD(dC):'—'}</td>
     </tr>`;
   });
+  flushGroup();
 
   tbody.innerHTML = rows || `<tr><td colspan="14"><div class="empty-state"><div class="icon">📂</div><p>Sem dados</p></div></td></tr>`;
   document.getElementById('foot-irpj').innerHTML = `<tr class="audit-total-row">
@@ -2664,11 +2768,6 @@ function renderAuditIRPJ() {
   </tr>`;
 }
 
-function exportAuditoriaCSV() {
-  if (!auditRows.length) { toast('Sem dados para exportar', 'err'); return; }
-  exportCSV(auditRows, 'cajupar_auditoria.csv');
-}
-
 // ══════════════════════════════════════════════════════════════
 //  EXPORT CSV
 // ══════════════════════════════════════════════════════════════
@@ -2685,7 +2784,101 @@ function exportCSV(rows, filename) {
 
 function exportNotasCSV() { exportCSV(notasCache, 'cajupar_notas.csv'); }
 function exportItensCSV()  { exportCSV(itensCache, 'cajupar_itens.csv'); }
-function exportAuditoriaCSV() { exportCSV(auditCache, 'cajupar_auditoria.csv'); }
+function exportAuditoriaCSV() { exportCSV(auditRows, 'cajupar_auditoria.csv'); }
+
+// ── EXPORT EXCEL ─────────────────────────────────────────────
+function _tableToAOA(tableEl) {
+  const rows = [];
+  tableEl.querySelectorAll('thead tr, tbody tr, tfoot tr').forEach(tr => {
+    const cells = [];
+    tr.querySelectorAll('th, td').forEach(td => {
+      const span = parseInt(td.getAttribute('colspan')||'1');
+      cells.push(td.innerText.trim());
+      for (let i=1;i<span;i++) cells.push('');
+    });
+    rows.push(cells);
+  });
+  return rows;
+}
+
+function _exportTableExcel(tableId, filename) {
+  const tbl = document.getElementById(tableId);
+  if (!tbl) { toast('Tabela não encontrada', 'err'); return; }
+  const aoa = _tableToAOA(tbl);
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  // Auto-width
+  const colWidths = aoa[0]?.map((_,ci) => ({wch: Math.max(...aoa.map(r => (r[ci]||'').length), 8)}));
+  if (colWidths) ws['!cols'] = colWidths;
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Relatório');
+  XLSX.writeFile(wb, filename);
+  toast('Excel exportado', 'ok');
+}
+
+function _exportTablePDF(tableId, titulo) {
+  const tbl = document.getElementById(tableId);
+  if (!tbl) { toast('Tabela não encontrada', 'err'); return; }
+  const html = tbl.outerHTML;
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>${titulo}</title>
+    <style>
+      body{font-family:Arial,sans-serif;font-size:11px;color:#111;margin:20px}
+      h2{font-size:14px;margin-bottom:12px;color:#f97316}
+      table{border-collapse:collapse;width:100%;font-size:10px}
+      th,td{border:1px solid #ccc;padding:4px 6px;text-align:left;white-space:nowrap}
+      th{background:#f0f0f0;font-weight:700}
+      tfoot td{background:#e8e8e8;font-weight:800;border-top:2px solid #999}
+      @media print{@page{size:landscape;margin:10mm}}
+    </style></head><body>
+    <h2>${titulo} — ${new Date().toLocaleDateString('pt-BR')}</h2>
+    ${html}
+    <script>window.onload=()=>{window.print();}<\/script>
+  </body></html>`);
+  w.document.close();
+}
+
+// Wrappers — Auditoria (exporta a sub-aba ativa)
+function _activeAuditSection() {
+  for (const t of ['fat','icms','piscof','irpj']) {
+    const s = document.getElementById('audit-sec-'+t);
+    if (s && s.style.display !== 'none') return t;
+  }
+  return 'fat';
+}
+function exportAuditoriaExcel() {
+  const tab = _activeAuditSection();
+  const tableEl = document.querySelector(`#audit-sec-${tab} table`);
+  if (!tableEl) { toast('Tabela não encontrada', 'err'); return; }
+  tableEl.id = '_tmp_audit_tbl';
+  _exportTableExcel('_tmp_audit_tbl', `cajupar_auditoria_${tab}.xlsx`);
+  tableEl.id = '';
+}
+function exportAuditoriaPDF() {
+  const tab = _activeAuditSection();
+  const labels = {fat:'Faturamento',icms:'ICMS',piscof:'PIS/COFINS',irpj:'IRPJ/CSLL'};
+  const tableEl = document.querySelector(`#audit-sec-${tab} table`);
+  if (!tableEl) { toast('Tabela não encontrada', 'err'); return; }
+  tableEl.id = '_tmp_audit_tbl';
+  _exportTablePDF('_tmp_audit_tbl', `Auditoria — ${labels[tab]||tab}`);
+  tableEl.id = '';
+}
+
+// Wrappers — CFOP
+function exportCFOPExcel() {
+  const tableEl = document.querySelector('#page-cfop table');
+  if (!tableEl) { toast('Sem dados CFOP', 'err'); return; }
+  tableEl.id = '_tmp_cfop_tbl';
+  _exportTableExcel('_tmp_cfop_tbl', 'cajupar_cfop.xlsx');
+  tableEl.id = '';
+}
+function exportCFOPPDF() {
+  const tableEl = document.querySelector('#page-cfop table');
+  if (!tableEl) { toast('Sem dados CFOP', 'err'); return; }
+  tableEl.id = '_tmp_cfop_tbl';
+  _exportTablePDF('_tmp_cfop_tbl', 'Análise por CFOP');
+  tableEl.id = '';
+}
 
 // ══════════════════════════════════════════════════════════════
 //  CHARTS
