@@ -3064,7 +3064,8 @@ function showApp() {
   document.getElementById('sb-name').textContent   = name;
   document.getElementById('sb-email').textContent  = email;
 
-  populateFilterOptions().then(() => loadDashboard());
+  const lastPage = localStorage.getItem('caju_last_page') || 'dashboard';
+  populateFilterOptions().then(() => showPage(lastPage));
   renderLoadedFiles();
 }
 
@@ -3100,6 +3101,7 @@ function showPage(name) {
   document.querySelectorAll('.nav-item').forEach(b => {
     if (b.getAttribute('onclick')?.includes("'"+name+"'")) b.classList.add('active');
   });
+  localStorage.setItem('caju_last_page', name);
   if (name === 'dashboard')  loadDashboard();
   if (name === 'anual')      loadAnual();
   if (name === 'cfop')       loadCFOP();
