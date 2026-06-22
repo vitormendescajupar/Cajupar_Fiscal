@@ -1669,9 +1669,8 @@ function parseExcelFile(buf, fileName) {
     const cstIcms = String(it.cst_icms||'').trim();
     const csosn   = String(it.csosn||'').trim();
     it.tem_st = (it.valor_icms_st > 0) || (it.base_icms_st > 0) || cstIcms === '60' || csosn === '500';
-    // monofasico PIS/COFINS
-    const MONO_CST_PIS = ['04','70','71','72','73','74','75'];
-    it.monofasico = MONO_CST_PIS.includes(String(it.cst_pis||'').trim());
+    // monofasico detectado por descrição (ver MONO_KEYWORDS)
+    it.monofasico = isMonofasico(it.descricao);
     return it;
   });
 
@@ -2467,7 +2466,7 @@ async function loadAuditoria() {
   const monoMap = {}, stMap = {};
   itens.forEach(it => {
     const k = `${it.empresa}||${it.mes_ref}`;
-    if (it.monofasico || isMonofasico(it.descricao)) {
+    if (isMonofasico(it.descricao)) {
       monoMap[k] = (monoMap[k]||0) + (it.valor_item||0);
     }
     if (it.tem_st) {
