@@ -491,7 +491,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
                 <th><input id="cf-cfop-itens" placeholder="CFOP" oninput="debounce(()=>loadItens(1),350,'cf-cfop-itens')"/></th>
                 <th><input id="cf-cst-itens" placeholder="CST" oninput="debounce(()=>loadItens(1),350,'cf-cst-itens')"/></th>
                 <th></th><th></th><th></th><th></th><th></th>
-                <th><select id="cf-trib-itens" onchange="loadItens(1)"><option value="">Todos</option></select></th>
+                <th><select id="cf-trib-itens" onchange="loadItens(1)"><option value="">Todos</option><option value="mono">Monofásico</option><option value="naomono">Não Monofásico</option></select></th>
                 <th></th><th></th><th></th><th></th>
                 <th><select id="cf-manif-itens" onchange="loadItens(1)"><option value="">Todos</option><option value="Aceita">Aceita</option><option value="Cancelada">Cancelada</option></select></th>
                 <th><input id="cf-chave-itens" placeholder="Chave" oninput="debounce(()=>loadItens(1),350,'cf-chave-itens')"/></th>
@@ -501,6 +501,16 @@ tr:hover td{background:rgba(255,255,255,.02)}
           </table>
         </div>
         <div class="pagination" id="itens-pag"></div>
+        <div id="itens-subtotal" style="display:none;padding:10px 16px;background:var(--bg3);border-top:2px solid var(--border);font-size:12px;display:flex;flex-wrap:wrap;gap:16px;align-items:center">
+          <span style="font-weight:800;color:var(--primary)">SUBTOTAL (filtro)</span>
+          <span>Itens: <strong id="sub-qtd-itens">—</strong></span>
+          <span>Valor Total: <strong id="sub-valor-itens" style="color:var(--text)">—</strong></span>
+          <span>ICMS: <strong id="sub-icms-itens" style="color:var(--yellow)">—</strong></span>
+          <span>ICMS-ST: <strong id="sub-st-itens" style="color:var(--red)">—</strong></span>
+          <span>PIS: <strong id="sub-pis-itens" style="color:var(--blue)">—</strong></span>
+          <span>COFINS: <strong id="sub-cof-itens" style="color:var(--blue)">—</strong></span>
+          <span style="color:var(--text2);font-size:11px" id="sub-mono-itens"></span>
+        </div>
       </div>
     </div>
 
@@ -2309,7 +2319,7 @@ async function loadItens(page = 1) {
   const cfNcm   = (document.getElementById('cf-ncm-itens')?.value||'').trim().toLowerCase();
   const cfCfop  = (document.getElementById('cf-cfop-itens')?.value||'').trim().toLowerCase();
   const cfCst   = (document.getElementById('cf-cst-itens')?.value||'').trim().toLowerCase();
-  const cfTrib  = (document.getElementById('cf-trib-itens')?.value||'').toLowerCase();
+  const cfTrib  = (document.getElementById('cf-trib-itens')?.value||'');
   const cfManifI= (document.getElementById('cf-manif-itens')?.value||'');
   const cfChave = (document.getElementById('cf-chave-itens')?.value||'').trim().toLowerCase();
 
@@ -2330,7 +2340,8 @@ async function loadItens(page = 1) {
   if (cfNcm)   all = all.filter(i => (i.ncm||'').includes(cfNcm));
   if (cfCfop)  all = all.filter(i => (i.cfop||'').includes(cfCfop));
   if (cfCst)   all = all.filter(i => ((i.cst_icms||'')+(i.csosn||'')).toLowerCase().includes(cfCst));
-  if (cfTrib)   all = all.filter(i => (i.tipo_trib||'').toLowerCase().includes(cfTrib));
+  if (cfTrib === 'mono')    all = all.filter(i => isMonofasico(i.descricao));
+  if (cfTrib === 'naomono') all = all.filter(i => !isMonofasico(i.descricao));
   if (cfManifI) all = all.filter(i => (i.manifesto||'Aceita') === cfManifI);
   if (cfChave)  all = all.filter(i => (i.chave_acesso||'').toLowerCase().includes(cfChave));
   // Build date tree from pre-date-filtered set
@@ -2342,8 +2353,28 @@ async function loadItens(page = 1) {
   if (cfDataSetI) all = all.filter(i => cfDataSetI.has(fmtDate(i.data_emissao)));
   all.sort((a,b) => (b.data_emissao||'').localeCompare(a.data_emissao||''));
   itensCache = all;
-  // Populate other dynamic column-filter dropdowns
-  _populateColFilter('cf-trib-itens', [...new Set(all.map(i=>i.tipo_trib).filter(Boolean))].sort(), cfTrib);
+  // Subtotal de todos os itens filtrados (como SUBTOTAL do Excel)
+  {
+    const subDiv = document.getElementById('itens-subtotal');
+    if (subDiv && all.length) {
+      const sumVal  = all.reduce((s,i) => s + Number(i.valor_item||0), 0);
+      const sumIcms = all.reduce((s,i) => s + Number(i.valor_icms||0), 0);
+      const sumSt   = all.reduce((s,i) => s + Number(i.valor_icms_st||0), 0);
+      const sumPis  = all.reduce((s,i) => s + Number(i.valor_pis||0), 0);
+      const sumCof  = all.reduce((s,i) => s + Number(i.valor_cofins||0), 0);
+      const qtdMono = all.filter(i => isMonofasico(i.descricao)).length;
+      document.getElementById('sub-qtd-itens').textContent  = all.length.toLocaleString('pt-BR');
+      document.getElementById('sub-valor-itens').textContent = 'R$ ' + fmt(sumVal);
+      document.getElementById('sub-icms-itens').textContent  = 'R$ ' + fmt(sumIcms);
+      document.getElementById('sub-st-itens').textContent    = 'R$ ' + fmt(sumSt);
+      document.getElementById('sub-pis-itens').textContent   = 'R$ ' + fmt(sumPis);
+      document.getElementById('sub-cof-itens').textContent   = 'R$ ' + fmt(sumCof);
+      document.getElementById('sub-mono-itens').textContent  = qtdMono + ' itens monofásicos (R$ ' + fmt(all.filter(i=>isMonofasico(i.descricao)).reduce((s,i)=>s+Number(i.valor_item||0),0)) + ')';
+      subDiv.style.display = 'flex';
+    } else if (subDiv) {
+      subDiv.style.display = 'none';
+    }
+  }
 
   document.getElementById('itens-count').textContent = all.length + ' itens';
   const slice = all.slice((page-1)*PER_PAGE, page*PER_PAGE);
@@ -2364,7 +2395,7 @@ async function loadItens(page = 1) {
     <td style="text-align:right">${fmt(i.valor_unitario)}</td>
     <td style="text-align:right;font-weight:700">${fmt(i.valor_item)}</td>
     <td style="text-align:right;color:var(--text2)">${i.desconto>0?fmt(i.desconto):'—'}</td>
-    <td><span class="badge ${i.tem_st?'badge-warn':''}"> ${i.tipo_trib||'—'}</span></td>
+    <td>${isMonofasico(i.descricao)?'<span class="badge badge-warn" style="background:rgba(234,179,8,.15);color:#eab308;border-color:#eab308">Monofásico</span>':'<span class="badge '+(i.tem_st?'badge-warn':'')+'">'+(i.tipo_trib||'—')+'</span>'}</td>
     <td style="text-align:right;color:var(--yellow)">${fmt(i.valor_icms)}</td>
     <td style="text-align:right;color:var(--red)">${fmt(i.valor_icms_st)}</td>
     <td style="text-align:right">${fmt(i.valor_pis)}</td>
