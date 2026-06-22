@@ -796,6 +796,39 @@ const COL_ITENS = {
 const MESES_NOME=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const PALETTE=['#f97316','#3b82f6','#22c55e','#eab308','#ef4444','#8b5cf6','#06b6d4','#ec4899','#14b8a6','#f59e0b','#64748b','#a78bfa'];
 
+// ── BEBIDAS FRIAS MONOFÁSICAS ────────────────────────────────
+// Adicione ou remova termos conforme necessário.
+// A busca é feita na DESCRIÇÃO do item (sem acento, maiúsculas).
+const MONO_KEYWORDS = [
+  // Tipo de produto
+  'AGUA','CHOPP','CHOPE','CERVEJA','BEER','REFRIGERANTE','REFRIG',
+  'SODA ITALIANA','SODA LIMONADA','AGUA TONICA','TONICA',
+  'ENERGETICO','ENERGY DRINK','ISOTONICO','ISOTON',
+  // Marcas — cervejas/chopps
+  'HEINEKEN','AMSTEL','CORONA','BRAHMA','STELLA','SKOL','BOHEMIA',
+  'BUDWEISER','BECKS','ORIGINAL','DEVASSA','SPATEN','ITAIPAVA',
+  'COLORADO','MICHELOB','PRAYA','SCHIN','KAISER','CARLSBERG',
+  'GUINNESS','LEFFE','BLUEMOON','BLUE MOON','COZUMEL','VOLANT',
+  // Marcas — refrigerantes
+  'COCA COLA','COCA-COLA','PEPSI','GUARANA','SPRITE','FANTA',
+  'SCHWEPPES','KUAT','H2OH','H2O',
+  // Marcas — energéticos
+  'RED BULL','REDBULL','MONSTER','BURN',
+  // Marcas — água
+  'MAMBA','CRYSTAL','INDAIA','BONAFONT','PERRIER','SAN PELLEGRINO',
+];
+
+// Normaliza string: remove acentos e converte para maiúsculas
+function normStr(s) {
+  return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase();
+}
+
+// Retorna true se a descrição do item bate com qualquer keyword monofásica
+function isMonofasico(descricao) {
+  const d = normStr(descricao);
+  return MONO_KEYWORDS.some(k => d.includes(k));
+}
+
 // ── CFOP descriptions & sale classifier ─────────────────────────────────────
 const CFOP_DESC = {
   // ── 5000 Saídas intraestadual ─────────────────────────────
@@ -2428,11 +2461,10 @@ async function loadAuditoria() {
   if (gr) itens = itens.filter(i => i.grupo === gr);
   if (mes) itens = itens.filter(i => i.mes_ref === mes);
 
-  const MONO = new Set(['04','70','71','72','73','74','75']);
   const monoMap = {}, stMap = {};
   itens.forEach(it => {
     const k = `${it.empresa}||${it.mes_ref}`;
-    if (it.monofasico || MONO.has(String(it.cst_pis||'').trim())) {
+    if (it.monofasico || isMonofasico(it.descricao)) {
       monoMap[k] = (monoMap[k]||0) + (it.valor_item||0);
     }
     if (it.tem_st) {
