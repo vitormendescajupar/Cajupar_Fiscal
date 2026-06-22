@@ -3119,4 +3119,12 @@ function doLogout() {
   if (gAccessToken) google.accounts.oauth2.revoke(gAccessToken);
   gAccessToken = null;
   localStorage.removeItem('caju_user_name');
-  l
+  localStorage.removeItem('caju_user_email');
+  localStorage.removeItem('caju_root_folder');
+  localStorage.removeItem('caju_last_page');
+  notasCache = []; itensCache = []; auditRows = [];
+  showLoginScreen();
+}
+</script>
+</body>
+</html>
