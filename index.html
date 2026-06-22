@@ -824,21 +824,25 @@ const MONO_KEYWORDS = [
   'SCHWEPPES','KUAT','H2OH','H2O',
   // Marcas — energéticos
   'RED BULL','REDBULL','MONSTER','BURN',
-  // Marcas — água
+  // Marcas — agua
   'MAMBA','CRYSTAL','INDAIA','BONAFONT','PERRIER','SAN PELLEGRINO',
 ];
 
-// Normaliza string: remove acentos e converte para maiúsculas
-function normStr(s) {
-  try { return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase(); }
-  catch(e) { return String(s||'').toUpperCase()
-    .replace(/[ÁÀÃÂÄ]/g,'A').replace(/[ÉÈÊË]/g,'E').replace(/[ÍÌÎÏ]/g,'I')
-    .replace(/[ÓÒÕÔÖ]/g,'O').replace(/[ÚÙÛÜ]/g,'U').replace(/[Ç]/g,'C'); }
-}
-
+// ── EXCLUSÕES — batem em MONO_KEYWORDS mas NÃO são monofásicos
+// (pratos que levam bebida como ingrediente, coquetéis preparados, etc.)
+// Adicione novos falsos positivos aqui conforme forem aparecendo.
+const ANTI_KEYWORDS = [
+  // Pratos que usam cerveja/bebida como ingrediente
+  'NA CERVEJA','COM CERVEJA','A CERVEJA','AO MOLHO DE CERVEJA',
+  'MOELA','COSTELINHA','COSTELA','FRANGO AO','CAMARAO',
+  // Coqueteis preparados (nao produto monofasico em si)
+  'GIN TONICA','GIN TONICO',
+];
 // Retorna true se a descrição do item bate com qualquer keyword monofásica
+// e NÃO bate com nenhuma exclusão (ANTI_KEYWORDS)
 function isMonofasico(descricao) {
   const d = normStr(descricao);
+  if (ANTI_KEYWORDS.some(k => d.includes(normStr(k)))) return false;
   return MONO_KEYWORDS.some(k => d.includes(normStr(k)));
 }
 
@@ -3111,78 +3115,4 @@ function doLogout() {
 }
 
 async function clearAllData() {
-  showModal('Limpar todos os dados locais?',
-    'Isso apaga todas as notas, itens e métricas carregadas do IndexedDB. As planilhas no Drive não são afetadas.',
-    [
-      {label:'Cancelar', cls:'btn-outline', action:closeModal},
-      {label:'Limpar tudo', cls:'btn-danger', action: async () => {
-        closeModal();
-        await idbClearAll();
-        toast('Dados locais apagados', 'ok');
-        populateFilterOptions();
-        loadDashboard();
-        renderLoadedFiles();
-      }}
-    ]
-  );
-}
-
-function showPage(name) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-  document.getElementById('page-' + name)?.classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(b => {
-    if (b.getAttribute('onclick')?.includes("'"+name+"'")) b.classList.add('active');
-  });
-  localStorage.setItem('caju_last_page', name);
-  if (name === 'dashboard')  loadDashboard();
-  if (name === 'anual')      loadAnual();
-  if (name === 'cfop')       loadCFOP();
-  if (name === 'notas')      loadNotas(1);
-  if (name === 'itens')      loadItens(1);
-  if (name === 'auditoria')  loadAuditoria();
-  if (name === 'drive')      renderLoadedFiles();
-}
-
-// ══════════════════════════════════════════════════════════════
-//  INIT
-// ══════════════════════════════════════════════════════════════
-async function init() {
-  // Apply saved theme
-  const theme = localStorage.getItem('caju_theme') || 'dark';
-  document.documentElement.setAttribute('data-theme', theme);
-
-  // Open IndexedDB
-  idb = await openIDB();
-
-  const cfg   = getConfig();
-  const email = localStorage.getItem('caju_user_email');
-
-  if (!cfg.clientId) {
-    showSetup();
-    return;
-  }
-
-  // Initialize Google (loads gapi + tokenClient)
-  window._gapiLoaded = false;
-  window._gsiLoaded  = false;
-
-  function tryInit() {
-    if (typeof gapi !== 'undefined' && typeof google !== 'undefined') {
-      initGoogleClient();
-      if (email) {
-        showApp();
-      } else {
-        showLoginScreen();
-      }
-    } else {
-      setTimeout(tryInit, 200);
-    }
-  }
-  tryInit();
-}
-
-window.addEventListener('load', init);
-</script>
-</body>
-</html>
+  showModal('Limpar tod
