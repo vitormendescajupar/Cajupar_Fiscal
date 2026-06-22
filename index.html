@@ -838,6 +838,15 @@ const ANTI_KEYWORDS = [
   // Coqueteis preparados (nao produto monofasico em si)
   'GIN TONICA','GIN TONICO',
 ];
+
+// Normaliza string: remove acentos e converte para maiusculas
+function normStr(s) {
+  try { return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase(); }
+  catch(e) { return String(s||'').toUpperCase()
+    .replace(/[ÁÀÃÂÄ]/g,'A').replace(/[ÉÈÊË]/g,'E').replace(/[ÍÌÎÏ]/g,'I')
+    .replace(/[ÓÒÕÔÖ]/g,'O').replace(/[ÚÙÛÜ]/g,'U').replace(/[Ç]/g,'C'); }
+}
+
 // Retorna true se a descrição do item bate com qualquer keyword monofásica
 // e NÃO bate com nenhuma exclusão (ANTI_KEYWORDS)
 function isMonofasico(descricao) {
@@ -3110,9 +3119,4 @@ function doLogout() {
   if (gAccessToken) google.accounts.oauth2.revoke(gAccessToken);
   gAccessToken = null;
   localStorage.removeItem('caju_user_name');
-  localStorage.removeItem('caju_user_email');
-  showLoginScreen();
-}
-
-async function clearAllData() {
-  showModal('Limpar tod
+  l
