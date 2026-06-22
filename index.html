@@ -820,13 +820,16 @@ const MONO_KEYWORDS = [
 
 // Normaliza string: remove acentos e converte para maiúsculas
 function normStr(s) {
-  return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase();
+  try { return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase(); }
+  catch(e) { return String(s||'').toUpperCase()
+    .replace(/[ÁÀÃÂÄ]/g,'A').replace(/[ÉÈÊË]/g,'E').replace(/[ÍÌÎÏ]/g,'I')
+    .replace(/[ÓÒÕÔÖ]/g,'O').replace(/[ÚÙÛÜ]/g,'U').replace(/[Ç]/g,'C'); }
 }
 
 // Retorna true se a descrição do item bate com qualquer keyword monofásica
 function isMonofasico(descricao) {
   const d = normStr(descricao);
-  return MONO_KEYWORDS.some(k => d.includes(k));
+  return MONO_KEYWORDS.some(k => d.includes(normStr(k)));
 }
 
 // ── CFOP descriptions & sale classifier ─────────────────────────────────────
