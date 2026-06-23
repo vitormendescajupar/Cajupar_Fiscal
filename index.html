@@ -1942,6 +1942,37 @@ function _renderDateFilter(ns, newDates) {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  PAGE NAVIGATION
+// ══════════════════════════════════════════════════════════════
+const PAGE_LOADERS = {
+  dashboard: () => loadDashboard(),
+  anual:     () => loadAnual(),
+  cfop:      () => loadCFOP(),
+  notas:     () => loadNotas(1),
+  itens:     () => loadItens(1),
+  auditoria: () => loadAuditoria(),
+  drive:     () => {},
+};
+
+function showPage(name) {
+  // Hide all pages, show selected
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const page = document.getElementById('page-' + name);
+  if (page) page.classList.add('active');
+
+  // Update nav highlight
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('onclick') === `showPage('${name}')`);
+  });
+
+  // Persist last visited page
+  localStorage.setItem('caju_last_page', name);
+
+  // Trigger data load
+  if (PAGE_LOADERS[name]) PAGE_LOADERS[name]();
+}
+
+// ══════════════════════════════════════════════════════════════
 //  DASHBOARD
 // ══════════════════════════════════════════════════════════════
 const charts = {};
