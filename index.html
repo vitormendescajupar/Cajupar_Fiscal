@@ -3156,6 +3156,23 @@ function doLogout() {
   notasCache = []; itensCache = []; auditRows = [];
   showLoginScreen();
 }
+// ══════════════════════════════════════════════════════════════
+//  STARTUP INIT
+// ══════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  // Restore theme
+  const savedTheme = localStorage.getItem('caju_theme');
+  if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
+
+  // Show correct screen
+  const cfg = getConfig();
+  if (!cfg.clientId) {
+    showSetup();
+  } else {
+    initGoogleClient();
+    showLoginScreen();
+  }
+});
 </script>
 </body>
 </html>
