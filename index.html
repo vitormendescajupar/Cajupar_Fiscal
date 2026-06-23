@@ -3159,10 +3159,13 @@ function doLogout() {
 // ══════════════════════════════════════════════════════════════
 //  STARTUP INIT
 // ══════════════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   // Restore theme
   const savedTheme = localStorage.getItem('caju_theme');
   if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
+
+  // Open IndexedDB first
+  try { idb = await openIDB(); } catch(e) { console.error('IDB open failed:', e); }
 
   // Show correct screen
   const cfg = getConfig();
