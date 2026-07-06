@@ -438,7 +438,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
         <div class="tbl-wrap">
           <table>
             <thead>
-              <tr><th>Tipo</th><th>Número</th><th>Data</th><th>Empresa</th><th>Grupo</th><th>CFOPs</th><th>Destinatário</th><th>Valor Total</th><th>Desconto</th><th>ICMS</th><th>ICMS-ST</th><th>PIS</th><th>COFINS</th><th>Pagamento</th><th>Manifesto</th><th>Chave de Acesso</th></tr>
+              <tr><th>Tipo</th><th>Número</th><th>Data</th><th>Empresa</th><th>Grupo</th><th>CFOPs</th><th>Destinatário</th><th>Valor Total</th><th>Desconto</th><th>ICMS</th><th>ICMS-ST</th><th>PIS</th><th>COFINS</th><th>Pagamento</th><th>Manifesto</th><th>Origem</th><th>Chave de Acesso</th></tr>
               <tr class="col-filter-row">
                 <th><select id="cf-tipo-notas" onchange="loadNotas(1)"><option value="">Todos</option><option value="NFC-e">NFC-e</option><option value="NF-e">NF-e</option></select></th>
                 <th><input id="cf-num-notas" placeholder="Nº" oninput="debounce(()=>loadNotas(1),350,'cf-num-notas')"/></th>
@@ -450,6 +450,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
                 <th></th><th></th><th></th><th></th><th></th><th></th>
                 <th><select id="cf-pgto-notas" onchange="loadNotas(1)"><option value="">Todos</option></select></th>
                 <th><select id="cf-manif-notas" onchange="loadNotas(1)"><option value="">Todos</option><option value="Aceita">Aceita</option><option value="Cancelada">Cancelada</option></select></th>
+                <th><select id="cf-origem-notas" onchange="loadNotas(1)"><option value="">Todos</option><option value="drive">Drive</option><option value="manual">Manual</option></select></th>
                 <th><input id="cf-chave-notas" placeholder="Chave" oninput="debounce(()=>loadNotas(1),350,'cf-chave-notas')"/></th>
               </tr>
             </thead>
@@ -555,7 +556,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
           </div>
           <div class="tbl-wrap">
             <table><thead><tr>
-              <th>Grupo</th><th>Empresa</th><th>Mês</th>
+              <th>Grupo</th><th>Empresa</th><th>CNPJ</th><th>Mês</th>
               <th>Fat. Fiscal (R$)</th>
               <th class="edit-col">Fat. Everest ✏️</th>
               <th>Δ Fat. (R$)</th>
@@ -587,7 +588,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
           </div>
           <div class="tbl-wrap">
             <table><thead><tr>
-              <th>Grupo</th><th>Empresa</th><th>Mês</th>
+              <th>Grupo</th><th>Empresa</th><th>CNPJ</th><th>Mês</th>
               <th>Receita Bruta (R$)</th>
               <th class="edit-col">Gorjeta ✏️</th>
               <th>Vendas c/ ST (R$)</th>
@@ -617,7 +618,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
           </div>
           <div class="tbl-wrap">
             <table><thead><tr>
-              <th>Grupo</th><th>Empresa</th><th>Mês</th>
+              <th>Grupo</th><th>Empresa</th><th>CNPJ</th><th>Mês</th>
               <th>Fat. Fiscal (R$)</th>
               <th class="edit-col">Gorjeta ✏️</th>
               <th class="edit-col">iFood ✏️</th>
@@ -647,7 +648,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
           </div>
           <div class="tbl-wrap">
             <table><thead><tr>
-              <th>Grupo</th><th>Empresa</th><th>Trimestre</th>
+              <th>Grupo</th><th>Empresa</th><th>CNPJ</th><th>Trimestre</th>
               <th>Fat. Trim. (R$)</th>
               <th>BC IRPJ 8% (R$)</th>
               <th>IRPJ 15% (R$)</th>
@@ -719,6 +720,25 @@ tr:hover td{background:rgba(255,255,255,.02)}
         </div>
       </div>
 
+      <!-- Importar Manualmente -->
+      <div style="margin-bottom:24px">
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text2)">📋 IMPORTAR PLANILHA MANUALMENTE</h3>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:600px">
+          <p style="font-size:12px;color:var(--text2);margin-bottom:14px">
+            Importe arquivos <strong>XML de NF-e / NFC-e</strong> diretamente do seu computador.<br>
+            Útil para notas complementares ou notas que não constam nas planilhas do Drive.<br>
+            Notas já existentes (mesma chave de acesso) serão ignoradas automaticamente.
+          </p>
+          <div style="display:flex;gap:8px;align-items:center">
+            <label class="btn btn-primary btn-sm" style="cursor:pointer">
+              📂 Selecionar XML(s)
+              <input type="file" id="manual-file-input" accept=".xml" multiple style="display:none" onchange="handleManualFiles(this.files)"/>
+            </label>
+          </div>
+          <div id="manual-import-status" style="font-size:12px;color:var(--text2);margin-top:10px"></div>
+        </div>
+      </div>
+
       <!-- Arquivos já carregados -->
       <div id="loaded-section" style="display:none;margin-bottom:28px">
         <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text2)">✅ PLANILHAS CARREGADAS (<span id="loaded-count">0</span>)</h3>
@@ -777,10 +797,20 @@ const MAPA_CNPJ = {
   '37492271000707':{grupo:'FERM',nome:'FOSTER ASA NORTE'},
 };
 
+// Reverse: nome → CNPJ (for Auditoria)
+const CNPJ_BY_NOME = {};
+for (const [cnpj, v] of Object.entries(MAPA_CNPJ)) CNPJ_BY_NOME[v.nome] = cnpj;
+
+function fmtCNPJ(cnpj) {
+  const s = String(cnpj||'').replace(/\D/g,'');
+  if (s.length !== 14) return s || '—';
+  return s.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+}
+
 // Mapeamento colunas Excel → campos internos (aba Notas)
 const COL_NOTAS = {
   'Chave de Acesso':'chave_acesso','Tipo':'tipo_doc','Numero':'numero','Serie':'serie',
-  'CFOPs':'cfops','Data Emissao':'data_emissao','CNPJ Emitente':'cnpj_emit',
+  'CFOPs':'cfops','Data Emissao':'data_emissao','Hora Emissao':'hora_emissao','CNPJ Emitente':'cnpj_emit',
   'Razao Social':'razao_social','CNPJ/CPF Destinatario':'dest_doc','Nome Destinatario':'dest_nome',
   'Vl Produtos (R$)':'valor_produtos','Desconto (R$)':'desconto','Valor Total (R$)':'valor_total',
   'Base ICMS (R$)':'base_icms','ICMS Destacado (R$)':'valor_icms',
@@ -792,11 +822,14 @@ const COL_NOTAS = {
 
 // Mapeamento colunas Excel → campos internos (aba Itens)
 const COL_ITENS = {
-  'Chave':'chave_acesso','Tipo':'tipo_doc','NF':'numero','Data':'data_emissao',
+  'Empresa':'estabelecimento','CNPJ Emitente':'cnpj_emit',
+  'Chave':'chave_acesso','Tipo':'tipo_doc','NF':'numero',
+  'Data':'data_emissao','Data Emissao':'data_emissao','Hora Emissao':'hora_emissao',
   'CNPJ/CPF Dest':'dest_doc','Cod Produto':'codigo_produto','Descricao':'descricao',
   'NCM':'ncm','CFOP':'cfop','CST ICMS':'cst_icms','CSOSN':'csosn',
   'CST PIS':'cst_pis','CST COFINS':'cst_cofins','Un':'unidade','Qtd':'quantidade',
   'Vl Unit (R$)':'valor_unitario','Vl Total (R$)':'valor_item','Desconto (R$)':'desconto_item',
+  'Total Sem Desconto (R$)':'total_sem_desconto',
   'Tributacao':'tipo_trib','Base ICMS (R$)':'base_icms','ICMS (R$)':'valor_icms',
   'Base ICMS-ST (R$)':'base_icms_st','ICMS-ST (R$)':'valor_icms_st',
   'FCP-ST (R$)':'valor_fcp_st','PIS (R$)':'valor_pis','COFINS (R$)':'valor_cofins',
@@ -1425,7 +1458,7 @@ async function renderLoadedFiles() {
     <div class="file-item">
       <div class="file-icon">✅</div>
       <div class="file-info">
-        <div class="file-name">${a.nome}</div>
+        <div class="file-name">${a.nome} <span style="font-size:10px;background:${a.origem==='manual'?'rgba(59,130,246,.15)':'rgba(34,197,94,.15)'};color:${a.origem==='manual'?'var(--blue)':'var(--green)'};border:1px solid ${a.origem==='manual'?'#3b82f644':'#22c55e44'};padding:1px 7px;border-radius:4px;font-weight:700">${a.origem==='manual'?'📋 Manual':'📁 Drive'}</span></div>
         <div class="file-meta">${a.empresa} &nbsp;|&nbsp; ${a.mes_ref} &nbsp;|&nbsp; ${a.qtd_notas} notas &nbsp;|&nbsp; ${a.qtd_itens} itens</div>
         <div class="file-loaded">Carregado em ${new Date(a.loaded_at).toLocaleString('pt-BR')}</div>
       </div>
@@ -1452,7 +1485,7 @@ async function loadDriveFile(fileId, fileName) {
     pBar.style.width = '30%'; pLabel.textContent = 'Parseando Excel...';
 
     // Parse Excel
-    const result = parseExcelFile(buf, fileName);
+    const result = parseExcelFile(buf, fileName, 'drive');
     pBar.style.width = '50%'; pLabel.textContent = `Salvando ${result.notas.length} notas...`;
 
     // Save to IndexedDB
@@ -1474,7 +1507,7 @@ async function loadDriveFile(fileId, fileName) {
 
     // Register file — guarda mes_refs reais para deletar corretamente depois
     await idbPut('arquivos', {
-      drive_id: fileId, nome: fileName,
+      drive_id: fileId, nome: fileName, origem: 'drive',
       empresa: result.empresa, grupo: result.grupo, mes_ref: result.mes_ref,
       mes_refs: result.mes_refs || [result.mes_ref], // meses reais das notas
       qtd_notas: result.notas.length, qtd_itens: result.itens.length,
@@ -1493,6 +1526,273 @@ async function loadDriveFile(fileId, fileName) {
   } catch(e) {
     prog.style.display = 'none';
     toast('Erro ao carregar arquivo: ' + e.message, 'err');
+    console.error(e);
+  }
+}
+
+// ─── XML NF-e parser ────────────────────────────────────────────────────────
+function parseXMLNFe(xmlText) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlText, 'application/xml');
+  if (doc.querySelector('parsererror')) return null;
+
+  const infNFe = doc.querySelector('infNFe');
+  if (!infNFe) return null;
+
+  const NS = 'http://www.portalfiscal.inf.br/nfe';
+
+  // Helper: get text by tag name (handles namespace or no-ns)
+  const txt = (el, tag) => {
+    if (!el) return '';
+    let node = el.getElementsByTagNameNS(NS, tag)[0]
+             || el.getElementsByTagName(tag)[0];
+    return node ? node.textContent.trim() : '';
+  };
+  const num = (el, tag) => parseFloat(txt(el, tag).replace(',','.')) || 0;
+
+  // Chave de acesso
+  const id = infNFe.getAttribute('Id') || '';
+  const chave_acesso = id.replace(/^NFe/, '');
+  if (!chave_acesso) return null;
+
+  // Tipo
+  const mod = txt(infNFe, 'mod');
+  const tipo_doc = mod === '65' ? 'NFC-e' : 'NF-e';
+
+  // Número / série
+  const numero = txt(infNFe, 'nNF');
+  const serie  = txt(infNFe, 'serie');
+
+  // Data/hora
+  const dhRaw = txt(infNFe, 'dhEmi') || txt(infNFe, 'dEmi');
+  let data_emissao = null, hora_emissao = '';
+  if (dhRaw) {
+    const dt = new Date(dhRaw);
+    if (!isNaN(dt)) {
+      data_emissao = dt.toISOString().slice(0, 10);  // YYYY-MM-DD
+      hora_emissao = ('0'+dt.getHours()).slice(-2)+':'+('0'+dt.getMinutes()).slice(-2)+':'+('0'+dt.getSeconds()).slice(-2);
+    }
+  }
+
+  // CNPJ emitente → empresa/grupo
+  const emitEl = infNFe.getElementsByTagNameNS(NS,'emit')[0] || infNFe.getElementsByTagName('emit')[0];
+  const cnpj_emit = txt(emitEl, 'CNPJ');
+  const empInfo = MAPA_CNPJ[cnpj_emit] || {grupo:'OUTROS', nome: cnpj_emit || 'DESCONHECIDO'};
+  const empresa = empInfo.nome;
+  const grupo   = empInfo.grupo;
+  const mes_ref = data_emissao ? data_emissao.slice(0, 7) : '';
+
+  // Destinatário
+  const destEl = infNFe.getElementsByTagNameNS(NS,'dest')[0] || infNFe.getElementsByTagName('dest')[0];
+  const dest_doc = destEl ? (txt(destEl,'CNPJ') || txt(destEl,'CPF')) : '';
+
+  // Totais
+  const icmsTot = infNFe.getElementsByTagNameNS(NS,'ICMSTot')[0] || infNFe.getElementsByTagName('ICMSTot')[0];
+  const valor_total   = num(icmsTot, 'vNF');
+  const desconto_nota = num(icmsTot, 'vDesc');
+  const valor_icms    = num(icmsTot, 'vICMS');
+  const valor_icms_st = num(icmsTot, 'vST');
+  const valor_pis     = num(icmsTot, 'vPIS');
+  const valor_cofins  = num(icmsTot, 'vCOFINS');
+
+  // Itens
+  const detEls = infNFe.getElementsByTagNameNS(NS,'det').length
+    ? infNFe.getElementsByTagNameNS(NS,'det')
+    : infNFe.getElementsByTagName('det');
+
+  const cfopSet = new Set();
+  const itens   = [];
+
+  for (const det of detEls) {
+    const prod    = det.getElementsByTagNameNS(NS,'prod')[0] || det.getElementsByTagName('prod')[0];
+    const imposto = det.getElementsByTagNameNS(NS,'imposto')[0] || det.getElementsByTagName('imposto')[0];
+    if (!prod) continue;
+
+    const cfop = txt(prod,'CFOP');
+    if (cfop) cfopSet.add(cfop);
+
+    const qtd   = num(prod,'qCom');
+    const vUnit = num(prod,'vUnCom');
+    const desc_i= num(prod,'vDesc');
+
+    // ICMS
+    let cst_icms='', csosn='', base_icms=0, v_icms=0, base_st=0, v_st=0, v_fcp_st=0;
+    const icmsEl = imposto
+      ? (imposto.getElementsByTagNameNS(NS,'ICMS')[0] || imposto.getElementsByTagName('ICMS')[0])
+      : null;
+    if (icmsEl && icmsEl.firstElementChild) {
+      const ic = icmsEl.firstElementChild;
+      cst_icms = txt(ic,'CST');
+      csosn    = txt(ic,'CSOSN');
+      base_icms= num(ic,'vBC');
+      v_icms   = num(ic,'vICMS');
+      base_st  = num(ic,'vBCST');
+      v_st     = num(ic,'vICMSST');
+      v_fcp_st = num(ic,'vFCPST');
+    }
+
+    // PIS
+    let cst_pis='', v_pis=0;
+    const pisEl = imposto
+      ? (imposto.getElementsByTagNameNS(NS,'PIS')[0] || imposto.getElementsByTagName('PIS')[0])
+      : null;
+    if (pisEl && pisEl.firstElementChild) {
+      cst_pis = txt(pisEl.firstElementChild,'CST');
+      v_pis   = num(pisEl.firstElementChild,'vPIS');
+    }
+
+    // COFINS
+    let cst_cofins='', v_cofins=0;
+    const cofEl = imposto
+      ? (imposto.getElementsByTagNameNS(NS,'COFINS')[0] || imposto.getElementsByTagName('COFINS')[0])
+      : null;
+    if (cofEl && cofEl.firstElementChild) {
+      cst_cofins = txt(cofEl.firstElementChild,'CST');
+      v_cofins   = num(cofEl.firstElementChild,'vCOFINS');
+    }
+
+    const tipo_trib = csosn ? `CSOSN ${csosn}` : (cst_icms ? `CST ${cst_icms}` : '');
+
+    itens.push({
+      estabelecimento: empresa, cnpj_emit, chave_acesso, tipo_doc, numero,
+      data_emissao, hora_emissao, dest_doc,
+      codigo_produto: txt(prod,'cProd'),
+      descricao:      txt(prod,'xProd'),
+      ncm:            txt(prod,'NCM'),
+      cfop, cst_icms, csosn, cst_pis, cst_cofins,
+      unidade:        txt(prod,'uCom'),
+      quantidade:     qtd, valor_unitario: vUnit,
+      valor_item:     num(prod,'vProd'),
+      desconto_item:  desc_i,
+      total_sem_desconto: (qtd * vUnit) - desc_i,
+      tipo_trib, base_icms, valor_icms: v_icms,
+      base_icms_st: base_st, valor_icms_st: v_st, valor_fcp_st: v_fcp_st,
+      valor_pis: v_pis, valor_cofins: v_cofins,
+      manifesto: 'Aceita',
+      empresa, grupo, mes_ref, origem: 'manual',
+    });
+  }
+
+  const nota = {
+    chave_acesso, tipo_doc, numero, serie,
+    data_emissao, hora_emissao, cnpj_emit,
+    estabelecimento: empresa, empresa, grupo, mes_ref, dest_doc,
+    valor_total, desconto: desconto_nota,
+    valor_icms, valor_icms_st, valor_pis, valor_cofins,
+    cfops: [...cfopSet].join(','),
+    manifesto: 'Aceita',
+    origem: 'manual',
+  };
+
+  return {nota, itens, empresa, grupo, mes_ref};
+}
+
+// ─── Compute metricas from array of notas (for manual XML import) ────────────
+function computeMetricasFromNotas(notas) {
+  const mMap = {};
+  for (const n of notas) {
+    const k = `${n.empresa}__${n.mes_ref}__${n.tipo_doc}`;
+    if (!mMap[k]) mMap[k] = {
+      key: k, empresa: n.empresa, grupo: n.grupo, mes_ref: n.mes_ref, tipo_doc: n.tipo_doc,
+      fat: 0, desconto: 0, icms: 0, icms_st: 0, pis: 0, cofins: 0, qtd: 0,
+    };
+    mMap[k].fat      += n.valor_total   || 0;
+    mMap[k].desconto += n.desconto      || 0;
+    mMap[k].icms     += n.valor_icms    || 0;
+    mMap[k].icms_st  += n.valor_icms_st || 0;
+    mMap[k].pis      += n.valor_pis     || 0;
+    mMap[k].cofins   += n.valor_cofins  || 0;
+    mMap[k].qtd      += 1;
+  }
+  return Object.values(mMap);
+}
+
+async function handleManualFiles(files) {
+  for (const file of files) {
+    await importManualXML(file);
+  }
+  const inp = document.getElementById('manual-file-input');
+  if (inp) inp.value = '';
+}
+
+async function importManualXML(file) {
+  const statusEl = document.getElementById('manual-import-status');
+  if (statusEl) statusEl.textContent = `⏳ Lendo ${file.name}...`;
+
+  try {
+    const text = await file.text();
+    const result = parseXMLNFe(text);
+
+    if (!result) {
+      const msg = `❌ ${file.name} — não foi possível interpretar o XML. Verifique se é um XML de NF-e/NFC-e válido.`;
+      toast(msg, 'err');
+      if (statusEl) statusEl.textContent = msg;
+      return;
+    }
+
+    // Duplicate check
+    const existingNotas  = await idbAll('notas');
+    const existingChaves = new Set(existingNotas.map(n => n.chave_acesso));
+
+    if (existingChaves.has(result.nota.chave_acesso)) {
+      const msg = `⚠️ ${file.name} — nota já existe no sistema (chave: ${result.nota.chave_acesso.slice(0,20)}…). Ignorada.`;
+      toast(msg, 'info');
+      if (statusEl) statusEl.textContent = msg;
+      return;
+    }
+
+    // Assign _id to itens
+    let _itemId = Date.now();
+    const itensComId = result.itens.map(it => ({...it, _id: _itemId++}));
+
+    // Save nota + itens
+    await idbPut('notas', [result.nota]);
+    if (itensComId.length) await idbPut('itens', itensComId);
+
+    // Compute and save metricas (merge with existing)
+    const novasMetricas = computeMetricasFromNotas([result.nota]);
+    for (const m of novasMetricas) {
+      // Try to merge with existing metric for same key
+      const existKey = `${m.empresa}__${m.mes_ref}__${m.tipo_doc}`;
+      const allMets  = await idbAll('metricas');
+      const existing = allMets.find(x => `${x.empresa}__${x.mes_ref}__${x.tipo_doc}` === existKey);
+      if (existing) {
+        // Merge
+        await idbPut('metricas', [{
+          ...existing,
+          fat:      (existing.fat      || 0) + m.fat,
+          desconto: (existing.desconto || 0) + m.desconto,
+          icms:     (existing.icms     || 0) + m.icms,
+          icms_st:  (existing.icms_st  || 0) + m.icms_st,
+          pis:      (existing.pis      || 0) + m.pis,
+          cofins:   (existing.cofins   || 0) + m.cofins,
+          qtd:      (existing.qtd      || 0) + m.qtd,
+        }]);
+      } else {
+        await idbPut('metricas', [m]);
+      }
+    }
+
+    // Register in arquivos
+    const fileId = 'manual_xml_' + Date.now() + '_' + file.name;
+    await idbPut('arquivos', [{
+      drive_id: fileId, nome: file.name, origem: 'manual',
+      empresa: result.empresa, grupo: result.grupo, mes_ref: result.mes_ref,
+      mes_refs: [result.mes_ref],
+      qtd_notas: 1, qtd_itens: itensComId.length,
+      loaded_at: Date.now(),
+    }]);
+
+    const msg = `✅ ${file.name}: nota importada — ${result.empresa} | ${result.mes_ref} | ${itensComId.length} item(ns)`;
+    toast(msg, 'ok');
+    if (statusEl) statusEl.textContent = msg;
+
+    await renderLoadedFiles();
+    populateFilterOptions();
+  } catch(e) {
+    const msg = `❌ Erro ao importar ${file.name}: ${e.message}`;
+    toast(msg, 'err');
+    if (statusEl) statusEl.textContent = msg;
     console.error(e);
   }
 }
@@ -1585,7 +1885,7 @@ function mapRow(row, colMap) {
   return out;
 }
 
-function parseExcelFile(buf, fileName) {
+function parseExcelFile(buf, fileName, origem = 'drive') {
   const wb = XLSX.read(buf, {type:'array', cellDates:true});
 
   // Try to read 'Notas' sheet
@@ -1621,6 +1921,7 @@ function parseExcelFile(buf, fileName) {
     n.empresa  = empresa;
     n.grupo    = grupo;
     n.mes_ref  = mes_ref;
+    n.origem   = origem;
     // Normalize numeric fields
     for (const f of ['valor_produtos','desconto','valor_total','base_icms','valor_icms','base_icms_st','valor_icms_st','valor_fcp_st','valor_pis','valor_cofins']) {
       n[f] = parseBRNum(n[f]);
@@ -1665,6 +1966,7 @@ function parseExcelFile(buf, fileName) {
     it.empresa  = empresa;
     it.grupo    = grupo;
     it.mes_ref  = mes_ref;
+    it.origem   = origem;
     it._id      = _itemId++;
     for (const f of ['quantidade','valor_unitario','valor_item','desconto_item','base_icms','valor_icms','base_icms_st','valor_icms_st','valor_fcp_st','valor_pis','valor_cofins']) {
       it[f] = parseBRNum(it[f]);
@@ -2277,7 +2579,8 @@ async function loadNotas(page = 1) {
   const cfDest  = (document.getElementById('cf-dest-notas')?.value||'').trim().toLowerCase();
   const cfPgto  = (document.getElementById('cf-pgto-notas')?.value||'').toLowerCase();
   const cfChave = (document.getElementById('cf-chave-notas')?.value||'').trim().toLowerCase();
-  const cfManif = (document.getElementById('cf-manif-notas')?.value||'');
+  const cfManif  = (document.getElementById('cf-manif-notas')?.value||'');
+  const cfOrigem = (document.getElementById('cf-origem-notas')?.value||'');
 
   let all = await idbAll('notas');
   if (mes)    all = all.filter(n => n.mes_ref  === mes);
@@ -2299,8 +2602,9 @@ async function loadNotas(page = 1) {
   if (cfCfop)  all = all.filter(n => (n.cfops||'').toLowerCase().includes(cfCfop));
   if (cfDest)  all = all.filter(n => (n.dest_nome||'').toLowerCase().includes(cfDest));
   if (cfPgto)  all = all.filter(n => (n.forma_pagamento||'').toLowerCase().includes(cfPgto));
-  if (cfManif) all = all.filter(n => (n.manifesto||'Aceita') === cfManif);
-  if (cfChave) all = all.filter(n => (n.chave_acesso||'').toLowerCase().includes(cfChave));
+  if (cfManif)  all = all.filter(n => (n.manifesto||'Aceita') === cfManif);
+  if (cfOrigem) all = all.filter(n => (n.origem||'drive') === cfOrigem);
+  if (cfChave)  all = all.filter(n => (n.chave_acesso||'').toLowerCase().includes(cfChave));
   // Build date tree from pre-date-filtered set
   const _dISOn = s => s.split('/').reverse().join('-');
   const availDatesN = [...new Set(all.map(n=>fmtDate(n.data_emissao)).filter(d=>d&&d!=='—'))].sort((a,b)=>_dISOn(b).localeCompare(_dISOn(a)));
@@ -2318,7 +2622,7 @@ async function loadNotas(page = 1) {
   const slice = all.slice((page-1)*PER_PAGE, page*PER_PAGE);
   const tbody = document.getElementById('notas-body');
   if (!slice.length) {
-    tbody.innerHTML = `<tr><td colspan="16"><div class="empty-state"><div class="icon">🧾</div><p>Nenhuma nota encontrada</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="17"><div class="empty-state"><div class="icon">🧾</div><p>Nenhuma nota encontrada</p></div></td></tr>`;
     document.getElementById('notas-pag').innerHTML = '';
     return;
   }
@@ -2337,6 +2641,7 @@ async function loadNotas(page = 1) {
     <td style="text-align:right">${fmt(n.valor_cofins)}</td>
     <td style="font-size:11px;color:var(--text2)">${n.forma_pagamento||'—'}</td>
     <td><span class="badge ${(n.manifesto||'Aceita')==='Cancelada'?'badge-cancel':'badge-aceita'}">${n.manifesto||'Aceita'}</span></td>
+    <td style="text-align:center">${n.origem==='manual'?'<span style="font-size:10px;background:rgba(59,130,246,.15);color:var(--blue);border:1px solid #3b82f644;padding:1px 6px;border-radius:4px;font-weight:700">📋 Manual</span>':'<span style="font-size:10px;color:var(--text3)">📁 Drive</span>'}</td>
     <td style="font-size:10px;font-family:monospace;color:var(--text3)" title="${n.chave_acesso||''}">${n.chave_acesso ? n.chave_acesso.slice(0,22)+'…' : '—'}</td>
   </tr>`).join('');
   renderPag('notas-pag', all.length, page, PER_PAGE, loadNotas);
@@ -2526,7 +2831,8 @@ async function loadAuditoria() {
   const byKey = {};
   mets.forEach(m => {
     const k = `${m.empresa}||${m.mes_ref}`;
-    if (!byKey[k]) byKey[k] = {empresa:m.empresa,grupo:m.grupo,mes_ref:m.mes_ref,
+    const cnpj = CNPJ_BY_NOME[m.empresa] || '';
+    if (!byKey[k]) byKey[k] = {empresa:m.empresa,grupo:m.grupo,mes_ref:m.mes_ref,cnpj,
       fat:0,desconto:0,icms:0,icms_st:0,pis:0,cofins:0,qtd:0};
     const r = byKey[k];
     r.fat+=m.fat||0; r.desconto+=m.desconto||0; r.icms+=m.icms||0;
@@ -2559,8 +2865,8 @@ async function loadAuditoria() {
   auditRows.sort((a,b) => {
     const cg = a.grupo.localeCompare(b.grupo);
     if (cg) return cg;
-    const ce = a.empresa.localeCompare(b.empresa);
-    if (ce) return ce;
+    const cc = (a.cnpj||'').localeCompare(b.cnpj||'');
+    if (cc) return cc;
     return b.mes_ref.localeCompare(a.mes_ref);
   });
 
@@ -2583,7 +2889,7 @@ function renderAuditFat() {
   const flushGroup = () => {
     if (!lastG) return;
     rows+=`<tr class="audit-subtotal-row">
-      <td colspan="3">∑ ${lastG}</td>
+      <td colspan="4">∑ ${lastG}</td>
       <td style="text-align:right">${fmt(gFat)}</td>
       <td style="text-align:right">${fmt(gEv)}</td>
       <td style="text-align:right">${gEv?fmtD(gEv-gFat):'—'}</td>
@@ -2608,12 +2914,13 @@ function renderAuditFat() {
     const difP=dPis-pisC, difC=dCof-cofC;
     tFat+=r.fat;tEv+=ev;tGorj+=gorj;tIf+=ifood;tIcms+=r.icms;tMono+=r.fat_mono;
     tBC+=bc;tPis+=pisC;tCof+=cofC;tDPis+=difP;tDCof+=difC;
-    if(r.grupo!==lastG){flushGroup();rows+=grpRow(17,r.grupo);lastG=r.grupo;}
+    if(r.grupo!==lastG){flushGroup();rows+=grpRow(18,r.grupo);lastG=r.grupo;}
     gFat+=r.fat;gEv+=ev;gGorj+=gorj;gIf+=ifood;gIcms+=r.icms;gMono+=r.fat_mono;
     gBC+=bc;gPis+=pisC;gCof+=cofC;
     rows+=`<tr>
       <td style="font-size:11px;opacity:.5">${r.grupo}</td>
       <td style="font-weight:600;white-space:nowrap">${r.empresa}</td>
+      <td style="font-size:11px;font-family:monospace;color:var(--text2)">${fmtCNPJ(r.cnpj)}</td>
       <td style="white-space:nowrap">${mesLabel(r.mes_ref)}</td>
       <td style="text-align:right;font-weight:700">${fmt(r.fat)}</td>
       <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'ev')}</td>
@@ -2632,9 +2939,9 @@ function renderAuditFat() {
     </tr>`;
   });
   flushGroup();
-  tbody.innerHTML = rows || `<tr><td colspan="17"><div class="empty-state"><div class="icon">📂</div><p>Carregue planilhas via Google Drive para ver a auditoria</p></div></td></tr>`;
+  tbody.innerHTML = rows || `<tr><td colspan="18"><div class="empty-state"><div class="icon">📂</div><p>Carregue planilhas via Google Drive para ver a auditoria</p></div></td></tr>`;
   document.getElementById('foot-fat').innerHTML = `<tr class="audit-total-row">
-    <td colspan="3">TOTAL GERAL</td>
+    <td colspan="4">TOTAL GERAL</td>
     <td style="text-align:right">${fmt(tFat)}</td>
     <td style="text-align:right">${fmt(tEv)}</td>
     <td style="text-align:right">${tEv?fmtD(tEv-tFat):'—'}</td>
@@ -2660,7 +2967,7 @@ function renderAuditICMS() {
   const flushGroup = () => {
     if (!lastG) return;
     rows+=`<tr class="audit-subtotal-row">
-      <td colspan="3">∑ ${lastG}</td>
+      <td colspan="4">∑ ${lastG}</td>
       <td style="text-align:right">${fmt(gFat)}</td>
       <td style="text-align:right">${fmt(gGorj)}</td>
       <td style="text-align:right">${fmt(gST)}</td>
@@ -2683,12 +2990,13 @@ function renderAuditICMS() {
     const dif=pago-icmsC;
     tFat+=r.fat;tGorj+=gorj;tST+=r.fat_st;tMono+=r.fat_mono;tDev+=dev;
     tBC+=bc;tIcms+=icmsC;tFu+=fu;tFac+=fac;tPago+=pago;tDif+=dif;
-    if(r.grupo!==lastG){flushGroup();rows+=grpRow(15,r.grupo);lastG=r.grupo;}
+    if(r.grupo!==lastG){flushGroup();rows+=grpRow(16,r.grupo);lastG=r.grupo;}
     gFat+=r.fat;gGorj+=gorj;gST+=r.fat_st;gMono+=r.fat_mono;gDev+=dev;
     gBC+=bc;gIcms+=icmsC;gFu+=fu;gFac+=fac;
     rows+=`<tr>
       <td style="font-size:11px;opacity:.5">${r.grupo}</td>
       <td style="font-weight:600;white-space:nowrap">${r.empresa}</td>
+      <td style="font-size:11px;font-family:monospace;color:var(--text2)">${fmtCNPJ(r.cnpj)}</td>
       <td style="white-space:nowrap">${mesLabel(r.mes_ref)}</td>
       <td style="text-align:right;font-weight:700">${fmt(r.fat)}</td>
       <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'gorj')}</td>
@@ -2705,9 +3013,9 @@ function renderAuditICMS() {
     </tr>`;
   });
   flushGroup();
-  tbody.innerHTML = rows || `<tr><td colspan="15"><div class="empty-state"><div class="icon">📂</div><p>Sem dados</p></div></td></tr>`;
+  tbody.innerHTML = rows || `<tr><td colspan="16"><div class="empty-state"><div class="icon">📂</div><p>Sem dados</p></div></td></tr>`;
   document.getElementById('foot-icms').innerHTML = `<tr class="audit-total-row">
-    <td colspan="3">TOTAL GERAL</td>
+    <td colspan="4">TOTAL GERAL</td>
     <td style="text-align:right">${fmt(tFat)}</td>
     <td style="text-align:right">${fmt(tGorj)}</td>
     <td style="text-align:right">${fmt(tST)}</td>
@@ -2732,7 +3040,7 @@ function renderAuditPISCOF() {
   const flushGroup = () => {
     if (!lastG) return;
     rows+=`<tr class="audit-subtotal-row">
-      <td colspan="3">∑ ${lastG}</td>
+      <td colspan="4">∑ ${lastG}</td>
       <td style="text-align:right">${fmt(gFat)}</td>
       <td style="text-align:right">${fmt(gGorj)}</td>
       <td style="text-align:right">${fmt(gIf)}</td>
@@ -2753,12 +3061,13 @@ function renderAuditPISCOF() {
     const difP=dPis-pisC, difC=dCof-cofC;
     tFat+=r.fat;tGorj+=gorj;tIf+=ifood;tIcms+=r.icms;tMono+=r.fat_mono;
     tBC+=bc;tPis+=pisC;tCof+=cofC;tDPis+=difP;tDCof+=difC;
-    if(r.grupo!==lastG){flushGroup();rows+=grpRow(15,r.grupo);lastG=r.grupo;}
+    if(r.grupo!==lastG){flushGroup();rows+=grpRow(16,r.grupo);lastG=r.grupo;}
     gFat+=r.fat;gGorj+=gorj;gIf+=ifood;gIcms+=r.icms;gMono+=r.fat_mono;
     gBC+=bc;gPis+=pisC;gCof+=cofC;
     rows+=`<tr>
       <td style="font-size:11px;opacity:.5">${r.grupo}</td>
       <td style="font-weight:600;white-space:nowrap">${r.empresa}</td>
+      <td style="font-size:11px;font-family:monospace;color:var(--text2)">${fmtCNPJ(r.cnpj)}</td>
       <td style="white-space:nowrap">${mesLabel(r.mes_ref)}</td>
       <td style="text-align:right;font-weight:700">${fmt(r.fat)}</td>
       <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'gorj')}</td>
@@ -2775,9 +3084,9 @@ function renderAuditPISCOF() {
     </tr>`;
   });
   flushGroup();
-  tbody.innerHTML = rows || `<tr><td colspan="15"><div class="empty-state"><div class="icon">📂</div><p>Sem dados</p></div></td></tr>`;
+  tbody.innerHTML = rows || `<tr><td colspan="16"><div class="empty-state"><div class="icon">📂</div><p>Sem dados</p></div></td></tr>`;
   document.getElementById('foot-piscof').innerHTML = `<tr class="audit-total-row">
-    <td colspan="3">TOTAL GERAL</td>
+    <td colspan="4">TOTAL GERAL</td>
     <td style="text-align:right">${fmt(tFat)}</td>
     <td style="text-align:right">${fmt(tGorj)}</td>
     <td style="text-align:right">${fmt(tIf)}</td>
@@ -2816,7 +3125,7 @@ function renderAuditIRPJ() {
   const flushGroup = () => {
     if (!lastG) return;
     rows+=`<tr class="audit-subtotal-row">
-      <td colspan="3">∑ ${lastG}</td>
+      <td colspan="4">∑ ${lastG}</td>
       <td style="text-align:right">${fmt(gFat)}</td>
       <td style="text-align:right">${fmt(gBCi)}</td>
       <td style="text-align:right">${fmt(gI15)}</td>
@@ -2841,11 +3150,12 @@ function renderAuditIRPJ() {
     const dI=pIrpj-itot, dC=pCsll-csll;
     tFat+=r.fat;tBCi+=bcI;tI15+=i15;tAd+=adi;tIt+=itot;tPIrpj+=pIrpj;tDIrpj+=dI;
     tBCc+=bcC;tCsll+=csll;tPCsll+=pCsll;tDCsll+=dC;
-    if(r.grupo!==lastG){flushGroup();rows+=grpRow(14,r.grupo);lastG=r.grupo;}
+    if(r.grupo!==lastG){flushGroup();rows+=grpRow(15,r.grupo);lastG=r.grupo;}
     gFat+=r.fat;gBCi+=bcI;gI15+=i15;gAd+=adi;gIt+=itot;gBCc+=bcC;gCsll+=csll;
     rows+=`<tr>
       <td style="font-size:11px;opacity:.5">${r.grupo}</td>
       <td style="font-weight:600;white-space:nowrap">${r.empresa}</td>
+      <td style="font-size:11px;font-family:monospace;color:var(--text2)">${fmtCNPJ(r.cnpj||CNPJ_BY_NOME[r.empresa]||'')}</td>
       <td style="white-space:nowrap;font-weight:600">${r.trimLabel}</td>
       <td style="text-align:right;font-weight:700">${fmt(r.fat)}</td>
       <td style="text-align:right;color:var(--text2)">${fmt(bcI)}</td>
@@ -2862,9 +3172,9 @@ function renderAuditIRPJ() {
   });
   flushGroup();
 
-  tbody.innerHTML = rows || `<tr><td colspan="14"><div class="empty-state"><div class="icon">📂</div><p>Sem dados</p></div></td></tr>`;
+  tbody.innerHTML = rows || `<tr><td colspan="15"><div class="empty-state"><div class="icon">📂</div><p>Sem dados</p></div></td></tr>`;
   document.getElementById('foot-irpj').innerHTML = `<tr class="audit-total-row">
-    <td colspan="3">TOTAL GERAL</td>
+    <td colspan="4">TOTAL GERAL</td>
     <td style="text-align:right">${fmt(tFat)}</td>
     <td style="text-align:right">${fmt(tBCi)}</td>
     <td style="text-align:right">${fmt(tI15)}</td>
