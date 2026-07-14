@@ -1109,6 +1109,20 @@ const CFOP_DESC = {
   '6929':'Lançamento efetuado em decorrência de emissão de documento fiscal relativo a operação ou prestação também registrada em Emissor de Cupom Fiscal (ECF)',
   '6933':'Prestação de serviço tributado pelo ISSQN',
   '6949':'Outra saída de mercadoria ou prestação de serviço não especificado',
+  // ── 1000/2000 Devoluções de venda ─────────────────────────
+  '1201': 'Devolução de venda de produção do estabelecimento',
+  '2201': 'Devolução de venda de produção do estabelecimento',
+  '1202': 'Devolução de venda de mercadoria adquirida ou recebida de terceiros',
+  '2202': 'Devolução de venda de mercadoria adquirida ou recebida de terceiros',
+  '3202': 'Devolução de venda de mercadoria adquirida ou recebida de terceiros',
+  '1203': 'Devolução de venda de produção do estabelecimento destinada à ZFM',
+  '2203': 'Devolução de venda de produção do estabelecimento destinada à ZFM',
+  '1204': 'Devolução de venda de mercadoria destinada à ZFM',
+  '2204': 'Devolução de venda de mercadoria destinada à ZFM',
+  '1410': 'Devolução de venda de mercadoria destinada a não-contribuinte',
+  '2410': 'Devolução de venda de mercadoria destinada a não-contribuinte',
+  '1411': 'Devolução de venda em consignação mercantil',
+  '2411': 'Devolução de venda em consignação mercantil',
 };
 
 function isCFOPVenda(cfop) {
@@ -2039,7 +2053,7 @@ function parseExcelFile(buf, fileName, origem = 'drive') {
     const gruposMes = {};
     notas.forEach(n => {
       if (n.manifesto === 'Cancelada') return;          // excluir canceladas
-      if (!hasVendaCFOP(n.cfops)) return;               // excluir não-venda
+      if (!hasVendaCFOP(n.cfops) && !isDevolucaoNota(n.cfops)) return; // excluir não-venda e não-devolução
       const t  = n.tipo_doc || 'NF-e';
       const mr = n.mes_ref  || mes_ref; // mes_ref real da nota (da data de emissão)
       const k  = `${mr}|${t}`;
