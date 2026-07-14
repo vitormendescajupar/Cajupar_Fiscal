@@ -1128,6 +1128,27 @@ function hasVendaCFOP(cfopsStr) {
   if (!cfopsStr) return false;
   return String(cfopsStr).split(/[,;\/\s]+/).some(c => isCFOPVenda(c.trim()));
 }
+
+// CFOPs de devolução de venda (entrada de mercadoria devolvida pelo cliente)
+const CFOPS_DEVOLUCAO = new Set([
+  '1201','2201','3201',  // devolução de venda de produção própria
+  '1202','2202','3202',  // devolução de venda de mercadoria adquirida/recebida de terceiros
+  '1203','2203','3203',  // devolução prod. própria ZFM
+  '1204','2204','3204',  // devolução mercadoria ZFM
+  '1410','2410',         // devolução venda destinada a não-contribuinte
+  '1411','2411',         // devolução de consignação mercantil
+]);
+
+function isCFOPDevolucao(cfop) {
+  return CFOPS_DEVOLUCAO.has(String(cfop).trim());
+}
+
+function isDevolucaoNota(cfopsStr) {
+  if (!cfopsStr) return false;
+  const lista = String(cfopsStr).split(',').map(c => c.trim()).filter(Boolean);
+  return lista.length > 0 && lista.every(c => isCFOPDevolucao(c));
+}
+
 const PER_PAGE = 50;
 
 // ══════════════════════════════════════════════════════════════
@@ -1696,13 +1717,15 @@ function computeMetricasFromNotas(notas) {
       key: k, empresa: n.empresa, grupo: n.grupo, mes_ref: n.mes_ref, tipo_doc: n.tipo_doc,
       fat: 0, desconto: 0, icms: 0, icms_st: 0, pis: 0, cofins: 0, qtd: 0,
     };
-    mMap[k].fat      += n.valor_total   || 0;
-    mMap[k].desconto += n.desconto      || 0;
-    mMap[k].icms     += n.valor_icms    || 0;
-    mMap[k].icms_st  += n.valor_icms_st || 0;
-    mMap[k].pis      += n.valor_pis     || 0;
-    mMap[k].cofins   += n.valor_cofins  || 0;
-    mMap[k].qtd      += 1;
+    const _isDev = isDevolucaoNota(n.cfops);
+    const _s     = _isDev ? -1 : 1;
+    mMap[k].fat      += _s * (n.valor_total   || 0);
+    mMap[k].desconto += _s * (n.desconto      || 0);
+    mMap[k].icms     += _s * (n.valor_icms    || 0);
+    mMap[k].icms_st  += _s * (n.valor_icms_st || 0);
+    mMap[k].pis      += _s * (n.valor_pis     || 0);
+    mMap[k].cofins   += _s * (n.valor_cofins  || 0);
+    mMap[k].qtd      += _s * 1;
   }
   return Object.values(mMap);
 }
@@ -2022,9 +2045,11 @@ function parseExcelFile(buf, fileName, origem = 'drive') {
       const k  = `${mr}|${t}`;
       if (!gruposMes[k]) gruposMes[k] = {mes_ref:mr, tipo:t, qtd:0,fat:0,desc:0,icms:0,st:0,fcp:0,pis:0,cof:0};
       const g = gruposMes[k];
-      g.qtd++; g.fat+=n.valor_total||0; g.desc+=n.desconto||0;
-      g.icms+=n.valor_icms||0; g.st+=n.valor_icms_st||0; g.fcp+=n.valor_fcp_st||0;
-      g.pis+=n.valor_pis||0; g.cof+=n.valor_cofins||0;
+      const _isDev = isDevolucaoNota(n.cfops);
+      const _sinal = _isDev ? -1 : 1;
+      g.qtd++; g.fat+=_sinal*(n.valor_total||0); g.desc+=_sinal*(n.desconto||0);
+      g.icms+=_sinal*(n.valor_icms||0); g.st+=_sinal*(n.valor_icms_st||0); g.fcp+=_sinal*(n.valor_fcp_st||0);
+      g.pis+=_sinal*(n.valor_pis||0); g.cof+=_sinal*(n.valor_cofins||0);
     });
     for (const [, v] of Object.entries(gruposMes)) {
       metricas.push({
@@ -2627,7 +2652,7 @@ async function loadNotas(page = 1) {
     return;
   }
   tbody.innerHTML = slice.map(n => `<tr>
-    <td><span class="badge ${n.tipo_doc==='NF-e'?'badge-nfe':'badge-nfce'}">${n.tipo_doc||'—'}</span></td>
+    <td><span class="badge ${n.tipo_doc==='NF-e'?'badge-nfe':'badge-nfce'}">${n.tipo_doc||'—'}</span>${isDevolucaoNota(n.cfops)?'<span style="font-size:10px;background:rgba(239,68,68,.15);color:#ef4444;border:1px solid #ef444444;padding:1px 5px;border-radius:4px;margin-left:4px;font-weight:700">DEV</span>':''}</td>
     <td>${n.numero||'—'}</td><td>${fmtDate(n.data_emissao)}</td>
     <td title="${n.empresa}">${(n.empresa||'').slice(0,18)}</td>
     <td><span style="font-size:10px;background:var(--bg3);padding:1px 5px;border-radius:3px">${n.grupo||'—'}</span></td>
