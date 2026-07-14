@@ -1731,15 +1731,13 @@ function computeMetricasFromNotas(notas) {
       key: k, empresa: n.empresa, grupo: n.grupo, mes_ref: n.mes_ref, tipo_doc: n.tipo_doc,
       fat: 0, desconto: 0, icms: 0, icms_st: 0, pis: 0, cofins: 0, qtd: 0,
     };
-    const _isDev = isDevolucaoNota(n.cfops);
-    const _s     = _isDev ? -1 : 1;
-    mMap[k].fat      += _s * (n.valor_total   || 0);
-    mMap[k].desconto += _s * (n.desconto      || 0);
-    mMap[k].icms     += _s * (n.valor_icms    || 0);
-    mMap[k].icms_st  += _s * (n.valor_icms_st || 0);
-    mMap[k].pis      += _s * (n.valor_pis     || 0);
-    mMap[k].cofins   += _s * (n.valor_cofins  || 0);
-    mMap[k].qtd      += _s * 1;
+    mMap[k].fat      += n.valor_total   || 0;
+    mMap[k].desconto += n.desconto      || 0;
+    mMap[k].icms     += n.valor_icms    || 0;
+    mMap[k].icms_st  += n.valor_icms_st || 0;
+    mMap[k].pis      += n.valor_pis     || 0;
+    mMap[k].cofins   += n.valor_cofins  || 0;
+    mMap[k].qtd      += 1;
   }
   return Object.values(mMap);
 }
@@ -2053,17 +2051,15 @@ function parseExcelFile(buf, fileName, origem = 'drive') {
     const gruposMes = {};
     notas.forEach(n => {
       if (n.manifesto === 'Cancelada') return;          // excluir canceladas
-      if (!hasVendaCFOP(n.cfops) && !isDevolucaoNota(n.cfops)) return; // excluir não-venda e não-devolução
+      if (!hasVendaCFOP(n.cfops)) return;
       const t  = n.tipo_doc || 'NF-e';
       const mr = n.mes_ref  || mes_ref; // mes_ref real da nota (da data de emissão)
       const k  = `${mr}|${t}`;
       if (!gruposMes[k]) gruposMes[k] = {mes_ref:mr, tipo:t, qtd:0,fat:0,desc:0,icms:0,st:0,fcp:0,pis:0,cof:0};
       const g = gruposMes[k];
-      const _isDev = isDevolucaoNota(n.cfops);
-      const _sinal = _isDev ? -1 : 1;
-      g.qtd++; g.fat+=_sinal*(n.valor_total||0); g.desc+=_sinal*(n.desconto||0);
-      g.icms+=_sinal*(n.valor_icms||0); g.st+=_sinal*(n.valor_icms_st||0); g.fcp+=_sinal*(n.valor_fcp_st||0);
-      g.pis+=_sinal*(n.valor_pis||0); g.cof+=_sinal*(n.valor_cofins||0);
+      g.qtd++; g.fat+=(n.valor_total||0); g.desc+=(n.desconto||0);
+      g.icms+=(n.valor_icms||0); g.st+=(n.valor_icms_st||0); g.fcp+=(n.valor_fcp_st||0);
+      g.pis+=(n.valor_pis||0); g.cof+=(n.valor_cofins||0);
     });
     for (const [, v] of Object.entries(gruposMes)) {
       metricas.push({
@@ -2895,6 +2891,25 @@ async function loadAuditoria() {
       stMap[k] = (stMap[k]||0) + (it.valor_item||0);
     }
   });
+
+  // ── Dedução de devoluções (direto das notas, não depende de reimport) ────
+  const todasNotasDev = (await idbAll('notas')).filter(n => isDevolucaoNota(n.cfops));
+  for (const n of todasNotasDev) {
+    const k = `${n.empresa}||${n.mes_ref}`;
+    if (!byKey[k]) {
+      const cnpj = CNPJ_BY_NOME[n.empresa] || '';
+      byKey[k] = {
+        empresa: n.empresa, grupo: n.grupo || '', mes_ref: n.mes_ref, cnpj,
+        fat: 0, desconto: 0, icms: 0, icms_st: 0, pis: 0, cofins: 0, qtd: 0,
+      };
+    }
+    byKey[k].fat      -= (n.valor_total  || 0);
+    byKey[k].desconto -= (n.desconto     || 0);
+    byKey[k].icms     -= (n.valor_icms   || 0);
+    byKey[k].pis      -= (n.valor_pis    || 0);
+    byKey[k].cofins   -= (n.valor_cofins || 0);
+  }
+  // ────────────────────────────────────────────────────────────────────────
 
   auditRows = Object.values(byKey).map(r => {
     const k = `${r.empresa}||${r.mes_ref}`;
