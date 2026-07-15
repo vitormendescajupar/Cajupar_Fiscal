@@ -2879,6 +2879,9 @@ async function loadAuditoria() {
   if (gr) itens = itens.filter(i => i.grupo === gr);
   if (mes) itens = itens.filter(i => i.mes_ref === mes);
 
+  // Carregar notas uma única vez (reutilizado no bloco de devoluções)
+  const todasNotas = await idbAll('notas');
+
   const monoMap = {}, stMap = {};
   itens.forEach(it => {
     // Apenas itens de CFOPs de venda entram no cálculo de monofásico e ST
@@ -2893,7 +2896,11 @@ async function loadAuditoria() {
   });
 
   // ── Dedução de devoluções (direto das notas, não depende de reimport) ────
-  const todasNotasDev = (await idbAll('notas')).filter(n => isDevolucaoNota(n.cfops));
+  const todasNotasDev = todasNotas.filter(n =>
+    isDevolucaoNota(n.cfops) &&
+    (!gr  || (n.grupo || '').toUpperCase() === gr.toUpperCase()) &&
+    (!mes || n.mes_ref === mes)
+  );
   for (const n of todasNotasDev) {
     const k = `${n.empresa}||${n.mes_ref}`;
     if (!byKey[k]) {
