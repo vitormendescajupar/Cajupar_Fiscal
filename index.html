@@ -2888,10 +2888,13 @@ async function loadAuditoria() {
     if (!isCFOPVenda(it.cfop)) return;
     const k = `${it.empresa}||${it.mes_ref}`;
     if (isMonofasico(it.descricao)) {
-      monoMap[k] = (monoMap[k]||0) + (it.valor_item||0);
+      // Usa valor líquido (valor_item − desconto_item) para não inflar a base monofásica
+      const vlMono = (it.valor_item||0) - (it.desconto_item||0);
+      monoMap[k] = (monoMap[k]||0) + vlMono;
     }
     if (it.tem_st) {
-      stMap[k] = (stMap[k]||0) + (it.valor_item||0);
+      const vlST = (it.valor_item||0) - (it.desconto_item||0);
+      stMap[k] = (stMap[k]||0) + vlST;
     }
   });
 
@@ -3282,7 +3285,25 @@ function _tableToAOA(tableEl) {
     const cells = [];
     tr.querySelectorAll('th, td').forEach(td => {
       const span = parseInt(td.getAttribute('colspan')||'1');
-      cells.push(td.innerText.trim());
+      // Captura valor de input/select editáveis; caso contrário usa innerText
+      const inp = td.querySelector('input, select');
+      let val;
+      if (inp) {
+        const raw = inp.value.trim();
+        // Tenta converter para número (valores monetários)
+        const num = parseBRNum(raw);
+        val = (!isNaN(num) && raw !== '') ? num : raw;
+      } else {
+        const txt = td.innerText.trim();
+        // Tenta converter colunas numéricas (ex: "1.234,56")
+        if (/^[-\d.,]+$/.test(txt.replace(/\s/g,''))) {
+          const num = parseBRNum(txt);
+          val = (!isNaN(num) && txt !== '' && txt !== '—') ? num : txt;
+        } else {
+          val = txt;
+        }
+      }
+      cells.push(val);
       for (let i=1;i<span;i++) cells.push('');
     });
     rows.push(cells);
@@ -3290,14 +3311,33 @@ function _tableToAOA(tableEl) {
   return rows;
 }
 
+function _applyExcelStyle(ws, aoa) {
+  // Largura automática por coluna
+  const colWidths = aoa[0]?.map((_,ci) => ({
+    wch: Math.max(...aoa.map(r => String(r[ci]||'').length), 8)
+  }));
+  if (colWidths) ws['!cols'] = colWidths;
+
+  // Formata células numéricas como moeda BRL
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for (let R = range.s.r; R <= range.e.r; R++) {
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const addr = XLSX.utils.encode_cell({r:R,c:C});
+      const cell = ws[addr];
+      if (!cell) continue;
+      if (cell.t === 'n') {
+        cell.z = '#,##0.00'; // formato numérico padrão Excel
+      }
+    }
+  }
+}
+
 function _exportTableExcel(tableId, filename) {
   const tbl = document.getElementById(tableId);
   if (!tbl) { toast('Tabela não encontrada', 'err'); return; }
   const aoa = _tableToAOA(tbl);
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  // Auto-width
-  const colWidths = aoa[0]?.map((_,ci) => ({wch: Math.max(...aoa.map(r => (r[ci]||'').length), 8)}));
-  if (colWidths) ws['!cols'] = colWidths;
+  _applyExcelStyle(ws, aoa);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Relatório');
   XLSX.writeFile(wb, filename);
