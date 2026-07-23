@@ -2761,7 +2761,10 @@ async function loadItens(page = 1) {
       document.getElementById('sub-st-itens').textContent    = 'R$ ' + fmt(sumSt);
       document.getElementById('sub-pis-itens').textContent   = 'R$ ' + fmt(sumPis);
       document.getElementById('sub-cof-itens').textContent   = 'R$ ' + fmt(sumCof);
-      document.getElementById('sub-mono-itens').textContent  = qtdMono + ' itens monofásicos (R$ ' + fmt(all.filter(i=>isMonofasico(i.descricao)).reduce((s,i)=>s+Number(i.valor_item||0),0)) + ')';
+      // Monofásico: apenas CFOPs de venda, valor líquido (valor_item − desconto_item) — igual à Auditoria
+      const monoItens = all.filter(i => isMonofasico(i.descricao) && isCFOPVenda(i.cfop));
+      const monoVal   = monoItens.reduce((s,i) => s + Number(i.valor_item||0) - Number(i.desconto_item||0), 0);
+      document.getElementById('sub-mono-itens').textContent  = monoItens.length + ' itens monofásicos (R$ ' + fmt(monoVal) + ')';
       subDiv.style.display = 'flex';
     } else if (subDiv) {
       subDiv.style.display = 'none';
@@ -2786,7 +2789,7 @@ async function loadItens(page = 1) {
     <td style="text-align:right">${Number(i.quantidade||0).toFixed(2)}</td>
     <td style="text-align:right">${fmt(i.valor_unitario)}</td>
     <td style="text-align:right;font-weight:700">${fmt(i.valor_item)}</td>
-    <td style="text-align:right;color:var(--text2)">${i.desconto>0?fmt(i.desconto):'—'}</td>
+    <td style="text-align:right;color:var(--text2)">${(i.desconto_item||0)>0?fmt(i.desconto_item):'—'}</td>
     <td>${isMonofasico(i.descricao)?'<span class="badge badge-warn" style="background:rgba(234,179,8,.15);color:#eab308;border-color:#eab308">Monofásico</span>':'<span class="badge '+(i.tem_st?'badge-warn':'')+'">'+(i.tipo_trib||'—')+'</span>'}</td>
     <td style="text-align:right;color:var(--yellow)">${fmt(i.valor_icms)}</td>
     <td style="text-align:right;color:var(--red)">${fmt(i.valor_icms_st)}</td>
