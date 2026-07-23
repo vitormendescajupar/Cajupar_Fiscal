@@ -855,8 +855,8 @@ const MONO_KEYWORDS = [
   // Marcas — refrigerantes
   'COCA COLA','COCA-COLA','PEPSI','GUARANA','SPRITE','FANTA',
   'SCHWEPPES','KUAT','H2OH','H2O',
-  // Marcas — energéticos
-  'RED BULL','REDBULL','MONSTER','BURN',
+  // Marcas — energéticos e maté (NCM 2202 Ex 05)
+  'RED BULL','REDBULL','MONSTER','BURN','BAER MATE',
   // Marcas — agua
   'MAMBA','CRYSTAL','INDAIA','BONAFONT','PERRIER','SAN PELLEGRINO',
 ];
@@ -870,6 +870,14 @@ const ANTI_KEYWORDS = [
   'MOELA','COSTELINHA','COSTELA','FRANGO AO','CAMARAO',
   // Coqueteis preparados (nao produto monofasico em si)
   'GIN TONICA','GIN TONICO',
+  // Preparações/pratos que incluem marca de cerveja como ingrediente
+  // (ex: "PREPARO COZUMEL", "CALDERETA BRAHMA") — NCM não é 2201/2202/2203
+  'PREPARO','CALDERETA',
+  // Água de coco — NCM 2009 (suco de fruta), fora do regime monofásico Lei 13.097/2015
+  'AGUA DE COCO','COCO',
+  // Bebidas espirituosas NCM 2208 — fora do regime monofásico
+  // (tributação normal de PIS/COFINS; a Lei 13.097/2015 cobre apenas 2201/2202/2203)
+  'APEROL','BAILEYS','BALLENA',
 ];
 
 // Normaliza string: remove acentos e converte para maiusculas
