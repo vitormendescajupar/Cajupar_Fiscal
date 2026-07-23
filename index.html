@@ -238,6 +238,32 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:16px;max-width:480px;width:100%;padding:28px}
 .modal-box h3{font-size:16px;font-weight:700;margin-bottom:12px}
 .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+/* CONCILIAÇÃO */
+.conc-upload-zone{border:2px dashed var(--border);border-radius:12px;padding:48px 32px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg2);margin-bottom:20px}
+.conc-upload-zone:hover,.conc-upload-zone.drag-over{border-color:var(--primary);background:rgba(249,115,22,.05)}
+.conc-upload-icon{font-size:44px;margin-bottom:14px}
+.conc-upload-text{font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px}
+.conc-upload-sub{font-size:13px;color:var(--text2)}
+.conc-run-bar{display:none;align-items:center;gap:12px;padding:14px 18px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:20px}
+.conc-file-info{font-size:13px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.conc-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+.conc-metric{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.conc-metric-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:6px}
+.conc-metric-value{font-size:15px;font-weight:800;color:var(--text)}
+.conc-metric-sub{font-size:11px;color:var(--text3);margin-top:3px}
+.conc-section{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-bottom:16px;overflow:hidden}
+.conc-section-hdr{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;transition:background .15s}
+.conc-section-hdr:hover{background:var(--bg3)}
+.conc-section-hdr h3{font-size:14px;font-weight:700;flex:1}
+.conc-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+.conc-badge-warn{background:rgba(234,179,8,.15);color:#eab308;border:1px solid rgba(234,179,8,.3)}
+.conc-badge-err{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+.conc-badge-ok{background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3)}
+.conc-chevron{font-size:11px;color:var(--text3);transition:transform .2s;display:inline-block}
+.conc-chevron.open{transform:rotate(90deg)}
+.conc-section-body{display:none}
+.conc-section-body.open{display:block}
+.conc-empty{padding:16px 18px;font-size:13px;color:var(--text2)}
 </style>
 </head>
 <body>
@@ -304,6 +330,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
       <div class="nav-section">Dados</div>
       <button class="nav-item" onclick="showPage('notas')"><span class="icon">🧾</span>Notas Fiscais</button>
       <button class="nav-item" onclick="showPage('itens')"><span class="icon">📦</span>Itens</button>
+      <button class="nav-item" onclick="showPage('conciliacao')"><span class="icon">⚖️</span>Conciliação</button>
       <div class="nav-section">Importar</div>
       <button class="nav-item" onclick="showPage('drive')"><span class="icon">📁</span>Google Drive</button>
     </nav>
@@ -754,6 +781,102 @@ tr:hover td{background:rgba(255,255,255,.02)}
         </div>
       </div>
     </div>
+
+    <!-- CONCILIAÇÃO MONOFÁSICO -->
+    <div id="page-conciliacao" class="page">
+      <div class="top-bar">
+        <span class="page-title">Conciliação Monofásico</span>
+        <select id="conc-empresa" onchange="runConciliacaoAuto()" style="min-width:180px"><option value="">Todas as empresas</option></select>
+        <select id="conc-mes" onchange="runConciliacaoAuto()" style="min-width:130px"><option value="">Todos os meses</option></select>
+        <button class="btn btn-icon" onclick="runConciliacaoAuto()" title="Atualizar">🔄</button>
+      </div>
+
+      <!-- Upload zone -->
+      <div id="conc-upload-zone" class="conc-upload-zone"
+           onclick="document.getElementById('conc-file-input').click()"
+           ondragover="event.preventDefault();this.classList.add('drag-over')"
+           ondragleave="this.classList.remove('drag-over')"
+           ondrop="event.preventDefault();this.classList.remove('drag-over');handleConciliacaoFile(event.dataTransfer.files[0])">
+        <div class="conc-upload-icon">📊</div>
+        <div class="conc-upload-text">Arraste aqui o Excel do contador</div>
+        <div class="conc-upload-sub">ou clique para selecionar — mesma estrutura do processar.py, já filtrado para monofásicos</div>
+        <input type="file" id="conc-file-input" accept=".xlsx,.xls,.csv" style="display:none"
+               onchange="handleConciliacaoFile(this.files[0])"/>
+      </div>
+
+      <!-- File loaded bar -->
+      <div id="conc-run-bar" class="conc-run-bar">
+        <span>📄</span>
+        <span id="conc-file-info" class="conc-file-info">—</span>
+        <button class="btn btn-primary btn-sm" onclick="runConciliacao()">🔍 Analisar divergências</button>
+        <button class="btn btn-outline btn-sm" onclick="clearConciliacao()">✕ Remover</button>
+      </div>
+
+      <!-- Results -->
+      <div id="conc-results" style="display:none">
+
+        <!-- Summary -->
+        <div class="conc-summary">
+          <div class="conc-metric">
+            <div class="conc-metric-label">Index (keywords)</div>
+            <div class="conc-metric-value" id="conc-m-index">—</div>
+            <div class="conc-metric-sub" id="conc-m-index-val">—</div>
+          </div>
+          <div class="conc-metric">
+            <div class="conc-metric-label">Contador (Excel)</div>
+            <div class="conc-metric-value" id="conc-m-contador">—</div>
+            <div class="conc-metric-sub" id="conc-m-contador-val">—</div>
+          </div>
+          <div class="conc-metric">
+            <div class="conc-metric-label" style="color:var(--green)">✅ Concordam</div>
+            <div class="conc-metric-value" id="conc-m-match">—</div>
+            <div class="conc-metric-sub" id="conc-m-match-val">—</div>
+          </div>
+          <div class="conc-metric">
+            <div class="conc-metric-label" style="color:var(--red)">⚠️ Divergências</div>
+            <div class="conc-metric-value" id="conc-m-div">—</div>
+            <div class="conc-metric-sub">descrições únicas</div>
+          </div>
+        </div>
+
+        <!-- Index SIM / Contador NÃO -->
+        <div class="conc-section">
+          <div class="conc-section-hdr" onclick="concToggle('body-only-index',this)">
+            <h3>⚠️ Index SIM &nbsp;/&nbsp; Contador NÃO</h3>
+            <span id="badge-only-index" class="conc-badge conc-badge-warn">0</span>
+            <span class="conc-chevron">▶</span>
+          </div>
+          <div id="body-only-index" class="conc-section-body">
+            <p class="conc-empty">Carregando…</p>
+          </div>
+        </div>
+
+        <!-- Contador SIM / Index NÃO -->
+        <div class="conc-section">
+          <div class="conc-section-hdr" onclick="concToggle('body-only-contador',this)">
+            <h3>❌ Contador SIM &nbsp;/&nbsp; Index NÃO</h3>
+            <span id="badge-only-contador" class="conc-badge conc-badge-err">0</span>
+            <span class="conc-chevron">▶</span>
+          </div>
+          <div id="body-only-contador" class="conc-section-body">
+            <p class="conc-empty">Carregando…</p>
+          </div>
+        </div>
+
+        <!-- Ambos concordam -->
+        <div class="conc-section">
+          <div class="conc-section-hdr" onclick="concToggle('body-both',this)">
+            <h3>✅ Ambos concordam</h3>
+            <span id="badge-both" class="conc-badge conc-badge-ok">0</span>
+            <span class="conc-chevron">▶</span>
+          </div>
+          <div id="body-both" class="conc-section-body">
+            <p class="conc-empty">Carregando…</p>
+          </div>
+        </div>
+
+      </div><!-- /conc-results -->
+    </div><!-- /page-conciliacao -->
 
   </div><!-- /content -->
 </div><!-- /app -->
@@ -2302,7 +2425,8 @@ const PAGE_LOADERS = {
   notas:     () => loadNotas(1),
   itens:     () => loadItens(1),
   auditoria: () => loadAuditoria(),
-  drive:     () => {},
+  drive:        () => {},
+  conciliacao:  () => loadConciliacao(),
 };
 
 function showPage(name) {
@@ -3597,6 +3721,306 @@ function doLogout() {
   notasCache = []; itensCache = []; auditRows = [];
   showLoginScreen();
 }
+// ══════════════════════════════════════════════════════════════
+//  CONCILIAÇÃO MONOFÁSICO
+// ══════════════════════════════════════════════════════════════
+let _concContadorItems = null; // itens do Excel do contador (após parse)
+
+// Popula dropdowns de empresa/mês com dados do IndexedDB
+async function loadConciliacao() {
+  const all = await idbAll('itens');
+  const empresas = [...new Set(all.map(i => i.empresa).filter(Boolean))].sort();
+  const meses    = [...new Set(all.map(i => i.mes_ref).filter(Boolean))].sort().reverse();
+
+  const empSel = document.getElementById('conc-empresa');
+  const mesSel = document.getElementById('conc-mes');
+
+  const empVal = empSel.value;
+  const mesVal = mesSel.value;
+
+  empSel.innerHTML = '<option value="">Todas as empresas</option>' +
+    empresas.map(e => `<option value="${e}"${e===empVal?' selected':''}>${e}</option>`).join('');
+  mesSel.innerHTML = '<option value="">Todos os meses</option>' +
+    meses.map(m => `<option value="${m}"${m===mesVal?' selected':''}>${m}</option>`).join('');
+}
+
+// Chamado ao trocar filtros quando resultado já existe
+function runConciliacaoAuto() {
+  if (_concContadorItems) runConciliacao();
+}
+
+// Lê o arquivo Excel/CSV do contador
+function handleConciliacaoFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      let rows;
+      if (file.name.toLowerCase().endsWith('.csv')) {
+        // CSV: usar SheetJS para consistência
+        const wb = XLSX.read(e.target.result, {type:'binary'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(ws, {defval:'', raw:false});
+      } else {
+        const wb = XLSX.read(e.target.result, {type:'binary'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(ws, {defval:'', raw:false});
+      }
+      if (!rows.length) { showToast('Arquivo vazio ou formato inválido','error'); return; }
+
+      // Detecção flexível de colunas — suporta nomes PT-BR e nomes internos
+      const keys = Object.keys(rows[0]);
+      function findKey(...patterns) {
+        for (const p of patterns) {
+          const k = keys.find(k => new RegExp(p,'i').test(k));
+          if (k) return k;
+        }
+        return null;
+      }
+      const kDesc = findKey('descri');
+      const kNcm  = findKey('^ncm');
+      const kCfop = findKey('^cfop');
+      const kVal  = findKey('vl.?total|valor_item');
+      const kDesc2= findKey('desconto');
+      const kEmp  = findKey('empresa|estabelec');
+      const kMes  = findKey('mes.?ref');
+
+      function pn(v) {
+        if (typeof v === 'number') return isNaN(v) ? 0 : v;
+        // tenta número BR (1.234,56) senão número EN (1234.56)
+        const s = String(v||'0').trim();
+        const br = parseFloat(s.replace(/\./g,'').replace(',','.'));
+        if (!isNaN(br)) return br;
+        return parseFloat(s) || 0;
+      }
+
+      _concContadorItems = rows
+        .map(r => ({
+          descricao: String(kDesc ? r[kDesc] : '').trim(),
+          ncm:       String(kNcm  ? r[kNcm]  : '').trim(),
+          cfop:      String(kCfop ? r[kCfop] : '').trim(),
+          valor:     pn(kVal ? r[kVal] : 0),
+          desconto:  pn(kDesc2 ? r[kDesc2] : 0),
+          empresa:   String(kEmp ? r[kEmp] : '').trim(),
+          mes_ref:   String(kMes ? r[kMes] : '').trim(),
+        }))
+        .filter(r => r.descricao);
+
+      if (!_concContadorItems.length) {
+        showToast('Nenhum item encontrado — verifique o arquivo','error'); return;
+      }
+
+      // Auto-seleciona empresa/mês se arquivo tiver um único valor
+      const fileEmpresas = [...new Set(_concContadorItems.map(i => i.empresa).filter(Boolean))];
+      const fileMeses    = [...new Set(_concContadorItems.map(i => i.mes_ref).filter(Boolean))];
+      const empSel = document.getElementById('conc-empresa');
+      const mesSel = document.getElementById('conc-mes');
+      if (fileEmpresas.length === 1) {
+        [...empSel.options].forEach(o => { if (o.value === fileEmpresas[0]) empSel.value = fileEmpresas[0]; });
+      }
+      if (fileMeses.length === 1) {
+        [...mesSel.options].forEach(o => { if (o.value === fileMeses[0]) mesSel.value = fileMeses[0]; });
+      }
+
+      const parts = [file.name, `${_concContadorItems.length} itens`];
+      if (fileEmpresas.length) parts.push(fileEmpresas.slice(0,2).join(', '));
+      if (fileMeses.length)    parts.push(fileMeses.slice(0,3).join(', '));
+      document.getElementById('conc-file-info').textContent = parts.join(' — ');
+      document.getElementById('conc-run-bar').style.display = 'flex';
+      document.getElementById('conc-upload-zone').style.display = 'none';
+      // Roda análise automaticamente após upload
+      runConciliacao();
+    } catch(err) {
+      showToast('Erro ao ler arquivo: ' + err.message, 'error');
+      console.error(err);
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+// Compara itens do IndexedDB com os do Excel do contador
+async function runConciliacao() {
+  if (!_concContadorItems) return;
+  const emp = document.getElementById('conc-empresa').value;
+  const mes = document.getElementById('conc-mes').value;
+
+  // Carrega todos os itens do IndexedDB e filtra
+  let indexItems = await idbAll('itens');
+  if (emp) indexItems = indexItems.filter(i => i.empresa === emp);
+  if (mes) indexItems = indexItems.filter(i => i.mes_ref === mes);
+
+  // Filtra os itens do contador conforme os filtros ativos
+  let cItems = _concContadorItems;
+  if (emp) cItems = cItems.filter(i => !i.empresa || i.empresa === emp);
+  if (mes) cItems = cItems.filter(i => !i.mes_ref  || i.mes_ref  === mes);
+
+  // Mapa: descrição normalizada → {desc, ncm, valor, qty} para o INDEX (isMonofasico=true)
+  const indexMap = new Map();
+  for (const it of indexItems) {
+    if (!isMonofasico(it.descricao)) continue;
+    const nd = normStr(it.descricao);
+    if (!indexMap.has(nd)) indexMap.set(nd, {desc: it.descricao, ncm: it.ncm||'', valor: 0, qty: 0});
+    const e = indexMap.get(nd);
+    e.valor += (Number(it.valor_item||0) - Number(it.desconto_item||0));
+    e.qty++;
+  }
+
+  // Mapa: descrição normalizada → {desc, ncm, valor, qty} para o CONTADOR (todos os itens do arquivo)
+  const contMap = new Map();
+  for (const it of cItems) {
+    const nd = normStr(it.descricao);
+    if (!contMap.has(nd)) contMap.set(nd, {desc: it.descricao, ncm: it.ncm||'', valor: 0, qty: 0});
+    const e = contMap.get(nd);
+    e.valor += (it.valor - it.desconto);
+    e.qty++;
+  }
+
+  // Computa grupos
+  const allKeys    = new Set([...indexMap.keys(), ...contMap.keys()]);
+  const onlyIndex  = []; // index=true, contador=false
+  const onlyCount  = []; // index=false, contador=true
+  const both       = []; // ambos=true
+
+  for (const nd of allKeys) {
+    const inI = indexMap.has(nd);
+    const inC = contMap.has(nd);
+    const row = {
+      desc:        inI ? indexMap.get(nd).desc  : contMap.get(nd).desc,
+      ncm:         inI ? indexMap.get(nd).ncm   : contMap.get(nd).ncm,
+      indexValor:  inI ? indexMap.get(nd).valor : 0,
+      indexQty:    inI ? indexMap.get(nd).qty   : 0,
+      contValor:   inC ? contMap.get(nd).valor  : 0,
+      contQty:     inC ? contMap.get(nd).qty    : 0,
+    };
+    if      ( inI && !inC) onlyIndex.push(row);
+    else if (!inI &&  inC) onlyCount.push(row);
+    else                   both.push(row);
+  }
+
+  // Ordena por valor descrescente
+  const byVal = (a,b) => (b.indexValor+b.contValor) - (a.indexValor+a.contValor);
+  onlyIndex.sort(byVal); onlyCount.sort(byVal); both.sort(byVal);
+
+  _renderConciliacao({onlyIndex, onlyCount, both, indexMap, contMap});
+}
+
+function _renderConciliacao({onlyIndex, onlyCount, both, indexMap, contMap}) {
+  const totalIndex = [...indexMap.values()].reduce((s,v) => s+v.valor, 0);
+  const totalCont  = [...contMap.values()].reduce((s,v) => s+v.valor, 0);
+  const totalBoth  = both.reduce((s,r) => s+r.indexValor, 0);
+  const totalDiv   = onlyIndex.reduce((s,r)=>s+r.indexValor,0) + onlyCount.reduce((s,r)=>s+r.contValor,0);
+
+  document.getElementById('conc-m-index').textContent      = indexMap.size + ' desc.';
+  document.getElementById('conc-m-index-val').textContent  = 'R$ ' + fmt(totalIndex);
+  document.getElementById('conc-m-contador').textContent   = contMap.size + ' desc.';
+  document.getElementById('conc-m-contador-val').textContent = 'R$ ' + fmt(totalCont);
+  document.getElementById('conc-m-match').textContent      = both.length + ' desc.';
+  document.getElementById('conc-m-match-val').textContent  = 'R$ ' + fmt(totalBoth);
+  document.getElementById('conc-m-div').textContent        = onlyIndex.length + onlyCount.length + ' desc.';
+  document.getElementById('badge-only-index').textContent  = onlyIndex.length;
+  document.getElementById('badge-only-contador').textContent = onlyCount.length;
+  document.getElementById('badge-both').textContent        = both.length;
+
+  function makeTable(rows, valField) {
+    if (!rows.length) return '<p class="conc-empty">Nenhuma divergência neste grupo ✓</p>';
+    const qtyField = valField === 'indexValor' ? 'indexQty' : 'contQty';
+    const totalGrp = rows.reduce((s,r)=>s+r[valField],0);
+    return `<div class="tbl-wrap"><table>
+      <thead><tr>
+        <th>Descrição</th>
+        <th>NCM</th>
+        <th style="text-align:right">Registros</th>
+        <th style="text-align:right">Valor Líquido</th>
+        <th style="text-align:right">% do total</th>
+      </tr></thead>
+      <tbody>${rows.map(r => {
+        const pct = totalGrp ? (r[valField]/totalGrp*100).toFixed(1) : '0.0';
+        return `<tr>
+          <td style="font-size:13px">${r.desc}</td>
+          <td style="color:var(--text2);font-size:11px">${r.ncm||'—'}</td>
+          <td style="text-align:right;color:var(--text2)">${r[qtyField]}</td>
+          <td style="text-align:right;font-family:monospace;font-size:13px">R$ ${fmt(r[valField])}</td>
+          <td style="text-align:right;color:var(--text2);font-size:12px">${pct}%</td>
+        </tr>`;
+      }).join('')}</tbody>
+      <tfoot><tr>
+        <td colspan="3" style="font-weight:700;font-size:12px">Total</td>
+        <td style="text-align:right;font-weight:700;font-family:monospace">R$ ${fmt(totalGrp)}</td>
+        <td></td>
+      </tr></tfoot>
+    </table></div>`;
+  }
+
+  function makeBothTable(rows) {
+    if (!rows.length) return '<p class="conc-empty">—</p>';
+    const total = rows.reduce((s,r)=>s+r.indexValor,0);
+    return `<div class="tbl-wrap"><table>
+      <thead><tr>
+        <th>Descrição</th>
+        <th>NCM</th>
+        <th style="text-align:right">Reg. Index</th>
+        <th style="text-align:right">Reg. Contador</th>
+        <th style="text-align:right">Vl. Index</th>
+        <th style="text-align:right">Vl. Contador</th>
+      </tr></thead>
+      <tbody>${rows.map(r => `<tr>
+        <td style="font-size:13px">${r.desc}</td>
+        <td style="color:var(--text2);font-size:11px">${r.ncm||'—'}</td>
+        <td style="text-align:right;color:var(--text2)">${r.indexQty}</td>
+        <td style="text-align:right;color:var(--text2)">${r.contQty}</td>
+        <td style="text-align:right;font-family:monospace;font-size:13px">R$ ${fmt(r.indexValor)}</td>
+        <td style="text-align:right;font-family:monospace;font-size:13px">R$ ${fmt(r.contValor)}</td>
+      </tr>`).join('')}</tbody>
+      <tfoot><tr>
+        <td colspan="4" style="font-weight:700;font-size:12px">Total</td>
+        <td style="text-align:right;font-weight:700;font-family:monospace">R$ ${fmt(total)}</td>
+        <td style="text-align:right;font-weight:700;font-family:monospace">R$ ${fmt(rows.reduce((s,r)=>s+r.contValor,0))}</td>
+      </tr></tfoot>
+    </table></div>`;
+  }
+
+  document.getElementById('body-only-index').innerHTML   = makeTable(onlyIndex,  'indexValor');
+  document.getElementById('body-only-contador').innerHTML = makeTable(onlyCount, 'contValor');
+  document.getElementById('body-both').innerHTML          = makeBothTable(both);
+  document.getElementById('conc-results').style.display  = 'block';
+
+  // Abre automaticamente seções com divergências
+  if (onlyIndex.length) _concOpen('body-only-index');
+  if (onlyCount.length) _concOpen('body-only-contador');
+}
+
+function concToggle(bodyId, hdr) {
+  const body = document.getElementById(bodyId);
+  const chevron = hdr.querySelector('.conc-chevron');
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  if (chevron) chevron.classList.toggle('open', !isOpen);
+}
+
+function _concOpen(bodyId) {
+  const body = document.getElementById(bodyId);
+  if (!body.classList.contains('open')) {
+    body.classList.add('open');
+    const hdr = body.previousElementSibling;
+    const chevron = hdr && hdr.querySelector('.conc-chevron');
+    if (chevron) chevron.classList.add('open');
+  }
+}
+
+function clearConciliacao() {
+  _concContadorItems = null;
+  const fi = document.getElementById('conc-file-input');
+  if (fi) fi.value = '';
+  document.getElementById('conc-run-bar').style.display = 'none';
+  document.getElementById('conc-upload-zone').style.display = 'block';
+  document.getElementById('conc-results').style.display  = 'none';
+  // Fecha todos os painéis
+  ['body-only-index','body-only-contador','body-both'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) { b.classList.remove('open'); b.innerHTML = '<p class="conc-empty">Carregando…</p>'; }
+  });
+}
+
 // ══════════════════════════════════════════════════════════════
 //  STARTUP INIT
 // ══════════════════════════════════════════════════════════════
