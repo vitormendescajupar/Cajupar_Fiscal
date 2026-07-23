@@ -481,7 +481,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
         <div class="tbl-wrap">
           <table>
             <thead>
-              <tr><th>Tipo</th><th>NF</th><th>Data</th><th>Empresa</th><th>Descrição</th><th>NCM</th><th>CFOP</th><th>CST/CSOSN</th><th>Un</th><th>Qtd</th><th>Vl Unit</th><th>Vl Total</th><th>Desconto</th><th>Trib</th><th>ICMS</th><th>ICMS-ST</th><th>PIS</th><th>COFINS</th><th>Manifesto</th><th>Chave de Acesso</th></tr>
+              <tr><th>Tipo</th><th>NF</th><th>Data</th><th>Empresa</th><th>Descrição</th><th>NCM</th><th>CFOP</th><th>CST/CSOSN</th><th>Un</th><th>Qtd</th><th>Vl Unit</th><th>Vl Total</th><th>Desconto</th><th>Trib</th><th>Monofásico</th><th>ICMS</th><th>ICMS-ST</th><th>PIS</th><th>COFINS</th><th>Manifesto</th><th>Chave de Acesso</th></tr>
               <tr class="col-filter-row">
                 <th><select id="cf-tipo-itens" onchange="loadItens(1)"><option value="">Todos</option><option value="NFC-e">NFC-e</option><option value="NF-e">NF-e</option></select></th>
                 <th><input id="cf-num-itens" placeholder="Nº" oninput="debounce(()=>loadItens(1),350,'cf-num-itens')"/></th>
@@ -492,7 +492,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
                 <th><input id="cf-cfop-itens" placeholder="CFOP" oninput="debounce(()=>loadItens(1),350,'cf-cfop-itens')"/></th>
                 <th><input id="cf-cst-itens" placeholder="CST" oninput="debounce(()=>loadItens(1),350,'cf-cst-itens')"/></th>
                 <th></th><th></th><th></th><th></th><th></th>
-                <th><select id="cf-trib-itens" onchange="loadItens(1)"><option value="">Todos</option><option value="mono">Monofásico</option><option value="naomono">Não Monofásico</option></select></th>
+                <th><select id="cf-trib-itens" onchange="loadItens(1)"><option value="">Todos</option><option value="comst">Com ST</option><option value="semst">Sem ST</option></select></th>
+                <th><select id="cf-mono-itens" onchange="loadItens(1)"><option value="">Todos</option><option value="sim">Sim</option><option value="nao">Não</option></select></th>
                 <th></th><th></th><th></th><th></th>
                 <th><select id="cf-manif-itens" onchange="loadItens(1)"><option value="">Todos</option><option value="Aceita">Aceita</option><option value="Cancelada">Cancelada</option></select></th>
                 <th><input id="cf-chave-itens" placeholder="Chave" oninput="debounce(()=>loadItens(1),350,'cf-chave-itens')"/></th>
@@ -857,6 +858,8 @@ const MONO_KEYWORDS = [
   'SCHWEPPES','KUAT','H2OH','H2O',
   // Marcas — energéticos e maté (NCM 2202 Ex 05)
   'RED BULL','REDBULL','MONSTER','BURN','BAER MATE',
+  // Água com grafia alternativa (zero no lugar da letra O)
+  'H20',
   // Marcas — agua
   'MAMBA','CRYSTAL','INDAIA','BONAFONT','PERRIER','SAN PELLEGRINO',
 ];
@@ -870,11 +873,14 @@ const ANTI_KEYWORDS = [
   'MOELA','COSTELINHA','COSTELA','FRANGO AO','CAMARAO',
   // Coqueteis preparados (nao produto monofasico em si)
   'GIN TONICA','GIN TONICO',
-  // Preparações/pratos que incluem marca de cerveja como ingrediente
-  // (ex: "PREPARO COZUMEL", "CALDERETA BRAHMA") — NCM não é 2201/2202/2203
-  'PREPARO','CALDERETA',
+  // Preparações/pratos que incluem marca de cerveja como ingrediente — NCM não é 2201/2202/2203
+  // NOTA: usa padrões específicos para não bloquear "CHOPP CALDERETA - BRAHMA 300ml" (é chopp),
+  // apenas "CALDERETA BRAHMA" (prato) e "CALDERETA STELLA" (prato com Stella).
+  'PREPARO',
+  'CALDERETA BRAHMA',   // prato: ex "RUA VOLANTE CALDERETA BRAHMA"
+  'CALDERETA STELLA',   // prato: ex "CALDERETA STELLA PURE GOLD 330ml"
   // Água de coco — NCM 2009 (suco de fruta), fora do regime monofásico Lei 13.097/2015
-  'AGUA DE COCO','COCO',
+  'AGUA DE COCO',
   // Bebidas espirituosas NCM 2208 — fora do regime monofásico
   // (tributação normal de PIS/COFINS; a Lei 13.097/2015 cobre apenas 2201/2202/2203)
   'APEROL','BAILEYS','BALLENA',
@@ -2712,6 +2718,7 @@ async function loadItens(page = 1) {
   const cfCfop  = (document.getElementById('cf-cfop-itens')?.value||'').trim().toLowerCase();
   const cfCst   = (document.getElementById('cf-cst-itens')?.value||'').trim().toLowerCase();
   const cfTrib  = (document.getElementById('cf-trib-itens')?.value||'');
+  const cfMono  = (document.getElementById('cf-mono-itens')?.value||'');
   const cfManifI= (document.getElementById('cf-manif-itens')?.value||'');
   const cfChave = (document.getElementById('cf-chave-itens')?.value||'').trim().toLowerCase();
 
@@ -2732,8 +2739,10 @@ async function loadItens(page = 1) {
   if (cfNcm)   all = all.filter(i => (i.ncm||'').includes(cfNcm));
   if (cfCfop)  all = all.filter(i => (i.cfop||'').includes(cfCfop));
   if (cfCst)   all = all.filter(i => ((i.cst_icms||'')+(i.csosn||'')).toLowerCase().includes(cfCst));
-  if (cfTrib === 'mono')    all = all.filter(i => isMonofasico(i.descricao));
-  if (cfTrib === 'naomono') all = all.filter(i => !isMonofasico(i.descricao));
+  if (cfTrib === 'comst')  all = all.filter(i => i.tem_st);
+  if (cfTrib === 'semst')  all = all.filter(i => !i.tem_st);
+  if (cfMono === 'sim')    all = all.filter(i => isMonofasico(i.descricao));
+  if (cfMono === 'nao')    all = all.filter(i => !isMonofasico(i.descricao));
   if (cfManifI) all = all.filter(i => (i.manifesto||'Aceita') === cfManifI);
   if (cfChave)  all = all.filter(i => (i.chave_acesso||'').toLowerCase().includes(cfChave));
   // Build date tree from pre-date-filtered set
@@ -2775,7 +2784,7 @@ async function loadItens(page = 1) {
   const slice = all.slice((page-1)*PER_PAGE, page*PER_PAGE);
   const tbody = document.getElementById('itens-body');
   if (!slice.length) {
-    tbody.innerHTML = `<tr><td colspan="20"><div class="empty-state"><div class="icon">📦</div><p>Nenhum item encontrado</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="21"><div class="empty-state"><div class="icon">📦</div><p>Nenhum item encontrado</p></div></td></tr>`;
     document.getElementById('itens-pag').innerHTML = '';
     return;
   }
@@ -2790,7 +2799,8 @@ async function loadItens(page = 1) {
     <td style="text-align:right">${fmt(i.valor_unitario)}</td>
     <td style="text-align:right;font-weight:700">${fmt(i.valor_item)}</td>
     <td style="text-align:right;color:var(--text2)">${(i.desconto_item||0)>0?fmt(i.desconto_item):'—'}</td>
-    <td>${isMonofasico(i.descricao)?'<span class="badge badge-warn" style="background:rgba(234,179,8,.15);color:#eab308;border-color:#eab308">Monofásico</span>':'<span class="badge '+(i.tem_st?'badge-warn':'')+'">'+(i.tipo_trib||'—')+'</span>'}</td>
+    <td><span class="badge ${i.tem_st?'badge-warn':''}">${i.tipo_trib||'—'}</span></td>
+    <td style="text-align:center">${isMonofasico(i.descricao)?'<span class="badge badge-warn" style="background:rgba(234,179,8,.15);color:#eab308;border-color:#eab308">Sim</span>':'<span style="color:var(--text3);font-size:11px">—</span>'}</td>
     <td style="text-align:right;color:var(--yellow)">${fmt(i.valor_icms)}</td>
     <td style="text-align:right;color:var(--red)">${fmt(i.valor_icms_st)}</td>
     <td style="text-align:right">${fmt(i.valor_pis)}</td>
