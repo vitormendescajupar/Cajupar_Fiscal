@@ -3752,21 +3752,34 @@ function runConciliacaoAuto() {
 // Lê o arquivo Excel/CSV do contador
 function handleConciliacaoFile(file) {
   if (!file) return;
+
+  // Mostra erro diretamente na zona de upload (não depende de toast)
+  function concErr(msg) {
+    const zone = document.getElementById('conc-upload-zone');
+    const old = zone.querySelector('.conc-err-msg');
+    if (old) old.remove();
+    const el = document.createElement('div');
+    el.className = 'conc-err-msg';
+    el.style.cssText = 'margin-top:12px;color:#ef4444;font-size:13px;font-weight:600';
+    el.textContent = '⚠️ ' + msg;
+    zone.appendChild(el);
+    console.error('[Conciliação]', msg);
+  }
+
+  // Limpa erro anterior
+  const oldErr = document.getElementById('conc-upload-zone').querySelector('.conc-err-msg');
+  if (oldErr) oldErr.remove();
+
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      let rows;
-      if (file.name.toLowerCase().endsWith('.csv')) {
-        // CSV: usar SheetJS para consistência
-        const wb = XLSX.read(e.target.result, {type:'binary'});
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        rows = XLSX.utils.sheet_to_json(ws, {defval:'', raw:false});
-      } else {
-        const wb = XLSX.read(e.target.result, {type:'binary'});
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        rows = XLSX.utils.sheet_to_json(ws, {defval:'', raw:false});
-      }
-      if (!rows.length) { showToast('Arquivo vazio ou formato inválido','error'); return; }
+      // Usa raw:true para obter números JS nativos (não strings formatadas)
+      const wb = XLSX.read(e.target.result, {type:'binary'});
+      if (!wb.SheetNames.length) { concErr('Arquivo sem abas'); return; }
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval:'', raw:true});
+
+      if (!rows.length) { concErr('Arquivo vazio ou formato inválido'); return; }
 
       // Detecção flexível de colunas — suporta nomes PT-BR e nomes internos
       const keys = Object.keys(rows[0]);
@@ -3777,37 +3790,45 @@ function handleConciliacaoFile(file) {
         }
         return null;
       }
-      const kDesc = findKey('descri');
-      const kNcm  = findKey('^ncm');
-      const kCfop = findKey('^cfop');
-      const kVal  = findKey('vl.?total|valor_item');
-      const kDesc2= findKey('desconto');
-      const kEmp  = findKey('empresa|estabelec');
-      const kMes  = findKey('mes.?ref');
+      const kDesc  = findKey('descri');
+      const kNcm   = findKey('^ncm');
+      const kCfop  = findKey('^cfop');
+      const kVal   = findKey('vl.?total|valor_item');
+      const kDesc2 = findKey('desconto');
+      const kEmp   = findKey('empresa|estabelec');
+      const kMes   = findKey('mes.?ref');
+
+      // Log colunas detectadas para debug
+      console.log('[Conciliação] Colunas detectadas:', {kDesc,kNcm,kCfop,kVal,kDesc2,kEmp,kMes});
+      console.log('[Conciliação] Todas as colunas:', keys);
+      console.log('[Conciliação] Primeira linha:', rows[0]);
 
       function pn(v) {
         if (typeof v === 'number') return isNaN(v) ? 0 : v;
-        // tenta número BR (1.234,56) senão número EN (1234.56)
-        const s = String(v||'0').trim();
-        const br = parseFloat(s.replace(/\./g,'').replace(',','.'));
-        if (!isNaN(br)) return br;
+        const s = String(v||'0').trim().replace(/[R$\s]/g,'');
+        // Tenta BR (1.234,56)
+        if (/^\d{1,3}(\.\d{3})*,\d+$/.test(s)) return parseFloat(s.replace(/\./g,'').replace(',','.'));
+        // Tenta EN (1234.56)
         return parseFloat(s) || 0;
       }
 
       _concContadorItems = rows
         .map(r => ({
-          descricao: String(kDesc ? r[kDesc] : '').trim(),
-          ncm:       String(kNcm  ? r[kNcm]  : '').trim(),
-          cfop:      String(kCfop ? r[kCfop] : '').trim(),
-          valor:     pn(kVal ? r[kVal] : 0),
+          descricao: String(kDesc  ? r[kDesc]  : '').trim(),
+          ncm:       String(kNcm   ? r[kNcm]   : '').trim(),
+          cfop:      String(kCfop  ? r[kCfop]  : '').trim(),
+          valor:     pn(kVal   ? r[kVal]   : 0),
           desconto:  pn(kDesc2 ? r[kDesc2] : 0),
-          empresa:   String(kEmp ? r[kEmp] : '').trim(),
-          mes_ref:   String(kMes ? r[kMes] : '').trim(),
+          empresa:   String(kEmp  ? r[kEmp]  : '').trim(),
+          mes_ref:   String(kMes  ? r[kMes]  : '').trim(),
         }))
         .filter(r => r.descricao);
 
+      console.log('[Conciliação] Itens parseados:', _concContadorItems.length);
+
       if (!_concContadorItems.length) {
-        showToast('Nenhum item encontrado — verifique o arquivo','error'); return;
+        concErr('Nenhum item com descrição encontrado — coluna "Descricao" não localizada. Colunas: ' + keys.join(', '));
+        return;
       }
 
       // Auto-seleciona empresa/mês se arquivo tiver um único valor
@@ -3831,10 +3852,11 @@ function handleConciliacaoFile(file) {
       // Roda análise automaticamente após upload
       runConciliacao();
     } catch(err) {
-      showToast('Erro ao ler arquivo: ' + err.message, 'error');
-      console.error(err);
+      concErr('Erro ao ler arquivo: ' + err.message);
+      console.error('[Conciliação] Exceção:', err);
     }
   };
+  reader.onerror = () => concErr('Falha ao ler o arquivo');
   reader.readAsBinaryString(file);
 }
 
