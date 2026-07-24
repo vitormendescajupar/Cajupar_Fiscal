@@ -800,6 +800,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
         <div class="conc-upload-icon">📊</div>
         <div class="conc-upload-text">Arraste aqui o Excel do contador</div>
         <div class="conc-upload-sub">ou clique para selecionar — mesma estrutura do processar.py, já filtrado para monofásicos</div>
+        <div class="conc-upload-sub" style="margin-top:8px;color:var(--yellow)">⚠️ Selecione a empresa e o mês nos filtros acima antes de importar</div>
         <input type="file" id="conc-file-input" accept=".xlsx,.xls,.csv" style="display:none"
                onchange="handleConciliacaoFile(this.files[0])"/>
       </div>
@@ -814,6 +815,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 
       <!-- Results -->
       <div id="conc-results" style="display:none">
+
+        <!-- Contexto da comparação -->
+        <div id="conc-context" style="font-size:13px;color:var(--text2);margin-bottom:16px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px"></div>
 
         <!-- Summary -->
         <div class="conc-summary">
@@ -3773,10 +3777,23 @@ function handleConciliacaoFile(file) {
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      // Usa raw:true para obter números JS nativos (não strings formatadas)
       const wb = XLSX.read(e.target.result, {type:'binary'});
       if (!wb.SheetNames.length) { concErr('Arquivo sem abas'); return; }
-      const ws   = wb.Sheets[wb.SheetNames[0]];
+
+      // Procura a aba que contenha coluna de descrição de item
+      // (ignora abas de notas/resumo que não têm essa coluna)
+      let ws = null, usedSheet = '';
+      for (const sName of wb.SheetNames) {
+        const candidate = wb.Sheets[sName];
+        const hdr = XLSX.utils.sheet_to_json(candidate, {header:1, defval:''})[0] || [];
+        const hasDesc = hdr.some(h => /descri/i.test(String(h)));
+        if (hasDesc) { ws = candidate; usedSheet = sName; break; }
+      }
+      if (!ws) {
+        concErr(`Nenhuma aba com coluna "Descricao" encontrada. Abas disponíveis: ${wb.SheetNames.join(', ')}`);
+        return;
+      }
+      console.log('[Conciliação] Usando aba:', usedSheet);
       const rows = XLSX.utils.sheet_to_json(ws, {defval:'', raw:true});
 
       if (!rows.length) { concErr('Arquivo vazio ou formato inválido'); return; }
@@ -3931,6 +3948,12 @@ function _renderConciliacao({onlyIndex, onlyCount, both, indexMap, contMap}) {
   const totalCont  = [...contMap.values()].reduce((s,v) => s+v.valor, 0);
   const totalBoth  = both.reduce((s,r) => s+r.indexValor, 0);
   const totalDiv   = onlyIndex.reduce((s,r)=>s+r.indexValor,0) + onlyCount.reduce((s,r)=>s+r.contValor,0);
+
+  // Contexto da comparação
+  const emp = document.getElementById('conc-empresa').value || 'Todas as empresas';
+  const mes = document.getElementById('conc-mes').value    || 'Todos os meses';
+  const ctx = document.getElementById('conc-context');
+  if (ctx) ctx.innerHTML = `🏢 <strong>${emp}</strong> &nbsp;|&nbsp; 📅 <strong>${mes}</strong> &nbsp;|&nbsp; Index: ${indexMap.size} descrições únicas vs Contador: ${contMap.size} descrições únicas`;
 
   document.getElementById('conc-m-index').textContent      = indexMap.size + ' desc.';
   document.getElementById('conc-m-index-val').textContent  = 'R$ ' + fmt(totalIndex);
