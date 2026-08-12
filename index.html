@@ -238,32 +238,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:16px;max-width:480px;width:100%;padding:28px}
 .modal-box h3{font-size:16px;font-weight:700;margin-bottom:12px}
 .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
-/* CONCILIAÇÃO */
-.conc-upload-zone{border:2px dashed var(--border);border-radius:12px;padding:48px 32px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg2);margin-bottom:20px}
-.conc-upload-zone:hover,.conc-upload-zone.drag-over{border-color:var(--primary);background:rgba(249,115,22,.05)}
-.conc-upload-icon{font-size:44px;margin-bottom:14px}
-.conc-upload-text{font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px}
-.conc-upload-sub{font-size:13px;color:var(--text2)}
-.conc-run-bar{display:none;align-items:center;gap:12px;padding:14px 18px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:20px}
-.conc-file-info{font-size:13px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.conc-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
-.conc-metric{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
-.conc-metric-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:6px}
-.conc-metric-value{font-size:15px;font-weight:800;color:var(--text)}
-.conc-metric-sub{font-size:11px;color:var(--text3);margin-top:3px}
-.conc-section{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-bottom:16px;overflow:hidden}
-.conc-section-hdr{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;transition:background .15s}
-.conc-section-hdr:hover{background:var(--bg3)}
-.conc-section-hdr h3{font-size:14px;font-weight:700;flex:1}
-.conc-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
-.conc-badge-warn{background:rgba(234,179,8,.15);color:#eab308;border:1px solid rgba(234,179,8,.3)}
-.conc-badge-err{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
-.conc-badge-ok{background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3)}
-.conc-chevron{font-size:11px;color:var(--text3);transition:transform .2s;display:inline-block}
-.conc-chevron.open{transform:rotate(90deg)}
-.conc-section-body{display:none}
-.conc-section-body.open{display:block}
-.conc-empty{padding:16px 18px;font-size:13px;color:var(--text2)}
 </style>
 </head>
 <body>
@@ -330,7 +304,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
       <div class="nav-section">Dados</div>
       <button class="nav-item" onclick="showPage('notas')"><span class="icon">🧾</span>Notas Fiscais</button>
       <button class="nav-item" onclick="showPage('itens')"><span class="icon">📦</span>Itens</button>
-      <button class="nav-item" onclick="showPage('conciliacao')"><span class="icon">⚖️</span>Conciliação</button>
       <div class="nav-section">Importar</div>
       <button class="nav-item" onclick="showPage('drive')"><span class="icon">📁</span>Google Drive</button>
     </nav>
@@ -508,7 +481,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
         <div class="tbl-wrap">
           <table>
             <thead>
-              <tr><th>Tipo</th><th>NF</th><th>Data</th><th>Empresa</th><th>Descrição</th><th>NCM</th><th>CFOP</th><th>CST/CSOSN</th><th>Un</th><th>Qtd</th><th>Vl Unit</th><th>Vl Total</th><th>Desconto</th><th>Trib</th><th>Monofásico</th><th>ICMS</th><th>ICMS-ST</th><th>PIS</th><th>COFINS</th><th>Manifesto</th><th>Chave de Acesso</th></tr>
+              <tr><th>Tipo</th><th>NF</th><th>Data</th><th>Empresa</th><th>Descrição</th><th>NCM</th><th>CFOP</th><th>CST/CSOSN</th><th>Un</th><th>Qtd</th><th>Vl Unit</th><th>Vl Total</th><th>Desconto</th><th>Trib</th><th>ICMS</th><th>ICMS-ST</th><th>PIS</th><th>COFINS</th><th>Manifesto</th><th>Chave de Acesso</th></tr>
               <tr class="col-filter-row">
                 <th><select id="cf-tipo-itens" onchange="loadItens(1)"><option value="">Todos</option><option value="NFC-e">NFC-e</option><option value="NF-e">NF-e</option></select></th>
                 <th><input id="cf-num-itens" placeholder="Nº" oninput="debounce(()=>loadItens(1),350,'cf-num-itens')"/></th>
@@ -519,8 +492,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
                 <th><input id="cf-cfop-itens" placeholder="CFOP" oninput="debounce(()=>loadItens(1),350,'cf-cfop-itens')"/></th>
                 <th><input id="cf-cst-itens" placeholder="CST" oninput="debounce(()=>loadItens(1),350,'cf-cst-itens')"/></th>
                 <th></th><th></th><th></th><th></th><th></th>
-                <th><select id="cf-trib-itens" onchange="loadItens(1)"><option value="">Todos</option><option value="comst">Com ST</option><option value="semst">Sem ST</option></select></th>
-                <th><select id="cf-mono-itens" onchange="loadItens(1)"><option value="">Todos</option><option value="sim">Sim</option><option value="nao">Não</option></select></th>
+                <th><select id="cf-trib-itens" onchange="loadItens(1)"><option value="">Todos</option><option value="mono">Monofásico</option><option value="naomono">Não Monofásico</option></select></th>
                 <th></th><th></th><th></th><th></th>
                 <th><select id="cf-manif-itens" onchange="loadItens(1)"><option value="">Todos</option><option value="Aceita">Aceita</option><option value="Cancelada">Cancelada</option></select></th>
                 <th><input id="cf-chave-itens" placeholder="Chave" oninput="debounce(()=>loadItens(1),350,'cf-chave-itens')"/></th>
@@ -586,6 +558,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
             <table><thead><tr>
               <th>Grupo</th><th>Empresa</th><th>CNPJ</th><th>Mês</th>
               <th>Fat. Fiscal (R$)</th>
+              <th>Descontos em NF (R$)</th>
               <th class="edit-col">Fat. Everest ✏️</th>
               <th>Δ Fat. (R$)</th>
               <th class="edit-col">Gorjeta ✏️</th>
@@ -782,106 +755,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
       </div>
     </div>
 
-    <!-- CONCILIAÇÃO MONOFÁSICO -->
-    <div id="page-conciliacao" class="page">
-      <div class="top-bar">
-        <span class="page-title">Conciliação Monofásico</span>
-        <select id="conc-empresa" onchange="runConciliacaoAuto()" style="min-width:180px"><option value="">Todas as empresas</option></select>
-        <select id="conc-mes" onchange="runConciliacaoAuto()" style="min-width:130px"><option value="">Todos os meses</option></select>
-        <button class="btn btn-icon" onclick="runConciliacaoAuto()" title="Atualizar">🔄</button>
-      </div>
-
-      <!-- Upload zone -->
-      <div id="conc-upload-zone" class="conc-upload-zone"
-           onclick="document.getElementById('conc-file-input').click()"
-           ondragover="event.preventDefault();this.classList.add('drag-over')"
-           ondragleave="this.classList.remove('drag-over')"
-           ondrop="event.preventDefault();this.classList.remove('drag-over');handleConciliacaoFile(event.dataTransfer.files[0])">
-        <div class="conc-upload-icon">📊</div>
-        <div class="conc-upload-text">Arraste aqui o Excel do contador</div>
-        <div class="conc-upload-sub">ou clique para selecionar — mesma estrutura do processar.py, já filtrado para monofásicos</div>
-        <div class="conc-upload-sub" style="margin-top:8px;color:var(--yellow)">⚠️ Selecione a empresa e o mês nos filtros acima antes de importar</div>
-        <input type="file" id="conc-file-input" accept=".xlsx,.xls,.csv" style="display:none"
-               onchange="handleConciliacaoFile(this.files[0])"/>
-      </div>
-
-      <!-- File loaded bar -->
-      <div id="conc-run-bar" class="conc-run-bar">
-        <span>📄</span>
-        <span id="conc-file-info" class="conc-file-info">—</span>
-        <button class="btn btn-primary btn-sm" onclick="runConciliacao()">🔍 Analisar divergências</button>
-        <button class="btn btn-outline btn-sm" onclick="clearConciliacao()">✕ Remover</button>
-      </div>
-
-      <!-- Results -->
-      <div id="conc-results" style="display:none">
-
-        <!-- Contexto da comparação -->
-        <div id="conc-context" style="font-size:13px;color:var(--text2);margin-bottom:16px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px"></div>
-
-        <!-- Summary -->
-        <div class="conc-summary">
-          <div class="conc-metric">
-            <div class="conc-metric-label">Index (keywords)</div>
-            <div class="conc-metric-value" id="conc-m-index">—</div>
-            <div class="conc-metric-sub" id="conc-m-index-val">—</div>
-          </div>
-          <div class="conc-metric">
-            <div class="conc-metric-label">Contador (Excel)</div>
-            <div class="conc-metric-value" id="conc-m-contador">—</div>
-            <div class="conc-metric-sub" id="conc-m-contador-val">—</div>
-          </div>
-          <div class="conc-metric">
-            <div class="conc-metric-label" style="color:var(--green)">✅ Concordam</div>
-            <div class="conc-metric-value" id="conc-m-match">—</div>
-            <div class="conc-metric-sub" id="conc-m-match-val">—</div>
-          </div>
-          <div class="conc-metric">
-            <div class="conc-metric-label" style="color:var(--red)">⚠️ Divergências</div>
-            <div class="conc-metric-value" id="conc-m-div">—</div>
-            <div class="conc-metric-sub">descrições únicas</div>
-          </div>
-        </div>
-
-        <!-- Index SIM / Contador NÃO -->
-        <div class="conc-section">
-          <div class="conc-section-hdr" onclick="concToggle('body-only-index',this)">
-            <h3>⚠️ Index SIM &nbsp;/&nbsp; Contador NÃO</h3>
-            <span id="badge-only-index" class="conc-badge conc-badge-warn">0</span>
-            <span class="conc-chevron">▶</span>
-          </div>
-          <div id="body-only-index" class="conc-section-body">
-            <p class="conc-empty">Carregando…</p>
-          </div>
-        </div>
-
-        <!-- Contador SIM / Index NÃO -->
-        <div class="conc-section">
-          <div class="conc-section-hdr" onclick="concToggle('body-only-contador',this)">
-            <h3>❌ Contador SIM &nbsp;/&nbsp; Index NÃO</h3>
-            <span id="badge-only-contador" class="conc-badge conc-badge-err">0</span>
-            <span class="conc-chevron">▶</span>
-          </div>
-          <div id="body-only-contador" class="conc-section-body">
-            <p class="conc-empty">Carregando…</p>
-          </div>
-        </div>
-
-        <!-- Ambos concordam -->
-        <div class="conc-section">
-          <div class="conc-section-hdr" onclick="concToggle('body-both',this)">
-            <h3>✅ Ambos concordam</h3>
-            <span id="badge-both" class="conc-badge conc-badge-ok">0</span>
-            <span class="conc-chevron">▶</span>
-          </div>
-          <div id="body-both" class="conc-section-body">
-            <p class="conc-empty">Carregando…</p>
-          </div>
-        </div>
-
-      </div><!-- /conc-results -->
-    </div><!-- /page-conciliacao -->
-
   </div><!-- /content -->
 </div><!-- /app -->
 
@@ -983,10 +856,8 @@ const MONO_KEYWORDS = [
   // Marcas — refrigerantes
   'COCA COLA','COCA-COLA','PEPSI','GUARANA','SPRITE','FANTA',
   'SCHWEPPES','KUAT','H2OH','H2O',
-  // Marcas — energéticos e maté (NCM 2202 Ex 05)
-  'RED BULL','REDBULL','MONSTER','BURN','BAER MATE',
-  // Água com grafia alternativa (zero no lugar da letra O)
-  'H20',
+  // Marcas — energéticos
+  'RED BULL','REDBULL','MONSTER','BURN',
   // Marcas — agua
   'MAMBA','CRYSTAL','INDAIA','BONAFONT','PERRIER','SAN PELLEGRINO',
 ];
@@ -1000,17 +871,6 @@ const ANTI_KEYWORDS = [
   'MOELA','COSTELINHA','COSTELA','FRANGO AO','CAMARAO',
   // Coqueteis preparados (nao produto monofasico em si)
   'GIN TONICA','GIN TONICO',
-  // Preparações/pratos que incluem marca de cerveja como ingrediente — NCM não é 2201/2202/2203
-  // NOTA: usa padrões específicos para não bloquear "CHOPP CALDERETA - BRAHMA 300ml" (é chopp),
-  // apenas "CALDERETA BRAHMA" (prato) e "CALDERETA STELLA" (prato com Stella).
-  'PREPARO',
-  'CALDERETA BRAHMA',   // prato: ex "RUA VOLANTE CALDERETA BRAHMA"
-  'CALDERETA STELLA',   // prato: ex "CALDERETA STELLA PURE GOLD 330ml"
-  // Água de coco — NCM 2009 (suco de fruta), fora do regime monofásico Lei 13.097/2015
-  'AGUA DE COCO',
-  // Bebidas espirituosas NCM 2208 — fora do regime monofásico
-  // (tributação normal de PIS/COFINS; a Lei 13.097/2015 cobre apenas 2201/2202/2203)
-  'APEROL','BAILEYS','BALLENA',
 ];
 
 // Normaliza string: remove acentos e converte para maiusculas
@@ -1250,20 +1110,6 @@ const CFOP_DESC = {
   '6929':'Lançamento efetuado em decorrência de emissão de documento fiscal relativo a operação ou prestação também registrada em Emissor de Cupom Fiscal (ECF)',
   '6933':'Prestação de serviço tributado pelo ISSQN',
   '6949':'Outra saída de mercadoria ou prestação de serviço não especificado',
-  // ── 1000/2000 Devoluções de venda ─────────────────────────
-  '1201': 'Devolução de venda de produção do estabelecimento',
-  '2201': 'Devolução de venda de produção do estabelecimento',
-  '1202': 'Devolução de venda de mercadoria adquirida ou recebida de terceiros',
-  '2202': 'Devolução de venda de mercadoria adquirida ou recebida de terceiros',
-  '3202': 'Devolução de venda de mercadoria adquirida ou recebida de terceiros',
-  '1203': 'Devolução de venda de produção do estabelecimento destinada à ZFM',
-  '2203': 'Devolução de venda de produção do estabelecimento destinada à ZFM',
-  '1204': 'Devolução de venda de mercadoria destinada à ZFM',
-  '2204': 'Devolução de venda de mercadoria destinada à ZFM',
-  '1410': 'Devolução de venda de mercadoria destinada a não-contribuinte',
-  '2410': 'Devolução de venda de mercadoria destinada a não-contribuinte',
-  '1411': 'Devolução de venda em consignação mercantil',
-  '2411': 'Devolução de venda em consignação mercantil',
 };
 
 function isCFOPVenda(cfop) {
@@ -1283,27 +1129,6 @@ function hasVendaCFOP(cfopsStr) {
   if (!cfopsStr) return false;
   return String(cfopsStr).split(/[,;\/\s]+/).some(c => isCFOPVenda(c.trim()));
 }
-
-// CFOPs de devolução de venda (entrada de mercadoria devolvida pelo cliente)
-const CFOPS_DEVOLUCAO = new Set([
-  '1201','2201','3201',  // devolução de venda de produção própria
-  '1202','2202','3202',  // devolução de venda de mercadoria adquirida/recebida de terceiros
-  '1203','2203','3203',  // devolução prod. própria ZFM
-  '1204','2204','3204',  // devolução mercadoria ZFM
-  '1410','2410',         // devolução venda destinada a não-contribuinte
-  '1411','2411',         // devolução de consignação mercantil
-]);
-
-function isCFOPDevolucao(cfop) {
-  return CFOPS_DEVOLUCAO.has(String(cfop).trim());
-}
-
-function isDevolucaoNota(cfopsStr) {
-  if (!cfopsStr) return false;
-  const lista = String(cfopsStr).split(',').map(c => c.trim()).filter(Boolean);
-  return lista.length > 0 && lista.every(c => isCFOPDevolucao(c));
-}
-
 const PER_PAGE = 50;
 
 // ══════════════════════════════════════════════════════════════
@@ -2192,15 +2017,15 @@ function parseExcelFile(buf, fileName, origem = 'drive') {
     const gruposMes = {};
     notas.forEach(n => {
       if (n.manifesto === 'Cancelada') return;          // excluir canceladas
-      if (!hasVendaCFOP(n.cfops)) return;
+      if (!hasVendaCFOP(n.cfops)) return;               // excluir não-venda
       const t  = n.tipo_doc || 'NF-e';
       const mr = n.mes_ref  || mes_ref; // mes_ref real da nota (da data de emissão)
       const k  = `${mr}|${t}`;
       if (!gruposMes[k]) gruposMes[k] = {mes_ref:mr, tipo:t, qtd:0,fat:0,desc:0,icms:0,st:0,fcp:0,pis:0,cof:0};
       const g = gruposMes[k];
-      g.qtd++; g.fat+=(n.valor_total||0); g.desc+=(n.desconto||0);
-      g.icms+=(n.valor_icms||0); g.st+=(n.valor_icms_st||0); g.fcp+=(n.valor_fcp_st||0);
-      g.pis+=(n.valor_pis||0); g.cof+=(n.valor_cofins||0);
+      g.qtd++; g.fat+=n.valor_total||0; g.desc+=n.desconto||0;
+      g.icms+=n.valor_icms||0; g.st+=n.valor_icms_st||0; g.fcp+=n.valor_fcp_st||0;
+      g.pis+=n.valor_pis||0; g.cof+=n.valor_cofins||0;
     });
     for (const [, v] of Object.entries(gruposMes)) {
       metricas.push({
@@ -2429,8 +2254,7 @@ const PAGE_LOADERS = {
   notas:     () => loadNotas(1),
   itens:     () => loadItens(1),
   auditoria: () => loadAuditoria(),
-  drive:        () => {},
-  conciliacao:  () => loadConciliacao(),
+  drive:     () => {},
 };
 
 function showPage(name) {
@@ -2804,7 +2628,7 @@ async function loadNotas(page = 1) {
     return;
   }
   tbody.innerHTML = slice.map(n => `<tr>
-    <td><span class="badge ${n.tipo_doc==='NF-e'?'badge-nfe':'badge-nfce'}">${n.tipo_doc||'—'}</span>${isDevolucaoNota(n.cfops)?'<span style="font-size:10px;background:rgba(239,68,68,.15);color:#ef4444;border:1px solid #ef444444;padding:1px 5px;border-radius:4px;margin-left:4px;font-weight:700">DEV</span>':''}</td>
+    <td><span class="badge ${n.tipo_doc==='NF-e'?'badge-nfe':'badge-nfce'}">${n.tipo_doc||'—'}</span></td>
     <td>${n.numero||'—'}</td><td>${fmtDate(n.data_emissao)}</td>
     <td title="${n.empresa}">${(n.empresa||'').slice(0,18)}</td>
     <td><span style="font-size:10px;background:var(--bg3);padding:1px 5px;border-radius:3px">${n.grupo||'—'}</span></td>
@@ -2846,7 +2670,6 @@ async function loadItens(page = 1) {
   const cfCfop  = (document.getElementById('cf-cfop-itens')?.value||'').trim().toLowerCase();
   const cfCst   = (document.getElementById('cf-cst-itens')?.value||'').trim().toLowerCase();
   const cfTrib  = (document.getElementById('cf-trib-itens')?.value||'');
-  const cfMono  = (document.getElementById('cf-mono-itens')?.value||'');
   const cfManifI= (document.getElementById('cf-manif-itens')?.value||'');
   const cfChave = (document.getElementById('cf-chave-itens')?.value||'').trim().toLowerCase();
 
@@ -2867,10 +2690,8 @@ async function loadItens(page = 1) {
   if (cfNcm)   all = all.filter(i => (i.ncm||'').includes(cfNcm));
   if (cfCfop)  all = all.filter(i => (i.cfop||'').includes(cfCfop));
   if (cfCst)   all = all.filter(i => ((i.cst_icms||'')+(i.csosn||'')).toLowerCase().includes(cfCst));
-  if (cfTrib === 'comst')  all = all.filter(i => i.tem_st);
-  if (cfTrib === 'semst')  all = all.filter(i => !i.tem_st);
-  if (cfMono === 'sim')    all = all.filter(i => isMonofasico(i.descricao));
-  if (cfMono === 'nao')    all = all.filter(i => !isMonofasico(i.descricao));
+  if (cfTrib === 'mono')    all = all.filter(i => isMonofasico(i.descricao));
+  if (cfTrib === 'naomono') all = all.filter(i => !isMonofasico(i.descricao));
   if (cfManifI) all = all.filter(i => (i.manifesto||'Aceita') === cfManifI);
   if (cfChave)  all = all.filter(i => (i.chave_acesso||'').toLowerCase().includes(cfChave));
   // Build date tree from pre-date-filtered set
@@ -2898,10 +2719,7 @@ async function loadItens(page = 1) {
       document.getElementById('sub-st-itens').textContent    = 'R$ ' + fmt(sumSt);
       document.getElementById('sub-pis-itens').textContent   = 'R$ ' + fmt(sumPis);
       document.getElementById('sub-cof-itens').textContent   = 'R$ ' + fmt(sumCof);
-      // Monofásico: apenas CFOPs de venda, valor líquido (valor_item − desconto_item) — igual à Auditoria
-      const monoItens = all.filter(i => isMonofasico(i.descricao) && isCFOPVenda(i.cfop));
-      const monoVal   = monoItens.reduce((s,i) => s + Number(i.valor_item||0) - Number(i.desconto_item||0), 0);
-      document.getElementById('sub-mono-itens').textContent  = monoItens.length + ' itens monofásicos (R$ ' + fmt(monoVal) + ')';
+      document.getElementById('sub-mono-itens').textContent  = qtdMono + ' itens monofásicos (R$ ' + fmt(all.filter(i=>isMonofasico(i.descricao)).reduce((s,i)=>s+Number(i.valor_item||0),0)) + ')';
       subDiv.style.display = 'flex';
     } else if (subDiv) {
       subDiv.style.display = 'none';
@@ -2912,7 +2730,7 @@ async function loadItens(page = 1) {
   const slice = all.slice((page-1)*PER_PAGE, page*PER_PAGE);
   const tbody = document.getElementById('itens-body');
   if (!slice.length) {
-    tbody.innerHTML = `<tr><td colspan="21"><div class="empty-state"><div class="icon">📦</div><p>Nenhum item encontrado</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="20"><div class="empty-state"><div class="icon">📦</div><p>Nenhum item encontrado</p></div></td></tr>`;
     document.getElementById('itens-pag').innerHTML = '';
     return;
   }
@@ -2926,9 +2744,8 @@ async function loadItens(page = 1) {
     <td style="text-align:right">${Number(i.quantidade||0).toFixed(2)}</td>
     <td style="text-align:right">${fmt(i.valor_unitario)}</td>
     <td style="text-align:right;font-weight:700">${fmt(i.valor_item)}</td>
-    <td style="text-align:right;color:var(--text2)">${(i.desconto_item||0)>0?fmt(i.desconto_item):'—'}</td>
-    <td><span class="badge ${i.tem_st?'badge-warn':''}">${i.tipo_trib||'—'}</span></td>
-    <td style="text-align:center">${isMonofasico(i.descricao)?'<span class="badge badge-warn" style="background:rgba(234,179,8,.15);color:#eab308;border-color:#eab308">Sim</span>':'<span style="color:var(--text3);font-size:11px">—</span>'}</td>
+    <td style="text-align:right;color:var(--text2)">${i.desconto>0?fmt(i.desconto):'—'}</td>
+    <td>${isMonofasico(i.descricao)?'<span class="badge badge-warn" style="background:rgba(234,179,8,.15);color:#eab308;border-color:#eab308">Monofásico</span>':'<span class="badge '+(i.tem_st?'badge-warn':'')+'">'+(i.tipo_trib||'—')+'</span>'}</td>
     <td style="text-align:right;color:var(--yellow)">${fmt(i.valor_icms)}</td>
     <td style="text-align:right;color:var(--red)">${fmt(i.valor_icms_st)}</td>
     <td style="text-align:right">${fmt(i.valor_pis)}</td>
@@ -3028,47 +2845,18 @@ async function loadAuditoria() {
   if (gr) itens = itens.filter(i => i.grupo === gr);
   if (mes) itens = itens.filter(i => i.mes_ref === mes);
 
-  // Carregar notas uma única vez (reutilizado no bloco de devoluções)
-  const todasNotas = await idbAll('notas');
-
   const monoMap = {}, stMap = {};
   itens.forEach(it => {
     // Apenas itens de CFOPs de venda entram no cálculo de monofásico e ST
     if (!isCFOPVenda(it.cfop)) return;
     const k = `${it.empresa}||${it.mes_ref}`;
     if (isMonofasico(it.descricao)) {
-      // Usa valor líquido (valor_item − desconto_item) para não inflar a base monofásica
-      const vlMono = (it.valor_item||0) - (it.desconto_item||0);
-      monoMap[k] = (monoMap[k]||0) + vlMono;
+      monoMap[k] = (monoMap[k]||0) + (it.valor_item||0);
     }
     if (it.tem_st) {
-      const vlST = (it.valor_item||0) - (it.desconto_item||0);
-      stMap[k] = (stMap[k]||0) + vlST;
+      stMap[k] = (stMap[k]||0) + (it.valor_item||0);
     }
   });
-
-  // ── Dedução de devoluções (direto das notas, não depende de reimport) ────
-  const todasNotasDev = todasNotas.filter(n =>
-    isDevolucaoNota(n.cfops) &&
-    (!gr  || (n.grupo || '').toUpperCase() === gr.toUpperCase()) &&
-    (!mes || n.mes_ref === mes)
-  );
-  for (const n of todasNotasDev) {
-    const k = `${n.empresa}||${n.mes_ref}`;
-    if (!byKey[k]) {
-      const cnpj = CNPJ_BY_NOME[n.empresa] || '';
-      byKey[k] = {
-        empresa: n.empresa, grupo: n.grupo || '', mes_ref: n.mes_ref, cnpj,
-        fat: 0, desconto: 0, icms: 0, icms_st: 0, pis: 0, cofins: 0, qtd: 0,
-      };
-    }
-    byKey[k].fat      -= (n.valor_total  || 0);
-    byKey[k].desconto -= (n.desconto     || 0);
-    byKey[k].icms     -= (n.valor_icms   || 0);
-    byKey[k].pis      -= (n.valor_pis    || 0);
-    byKey[k].cofins   -= (n.valor_cofins || 0);
-  }
-  // ────────────────────────────────────────────────────────────────────────
 
   auditRows = Object.values(byKey).map(r => {
     const k = `${r.empresa}||${r.mes_ref}`;
@@ -3097,13 +2885,14 @@ function refreshAuditTables() {
 function renderAuditFat() {
   const tbody = document.getElementById('body-fat'); if (!tbody) return;
   let rows='', lastG='';
-  let tFat=0,tEv=0,tGorj=0,tIf=0,tIcms=0,tMono=0,tBC=0,tPis=0,tCof=0,tDPis=0,tDCof=0;
-  let gFat=0,gEv=0,gGorj=0,gIf=0,gIcms=0,gMono=0,gBC=0,gPis=0,gCof=0;
+  let tFat=0,tDesc=0,tEv=0,tGorj=0,tIf=0,tIcms=0,tMono=0,tBC=0,tPis=0,tCof=0,tDPis=0,tDCof=0;
+  let gFat=0,gDesc=0,gEv=0,gGorj=0,gIf=0,gIcms=0,gMono=0,gBC=0,gPis=0,gCof=0;
   const flushGroup = () => {
     if (!lastG) return;
     rows+=`<tr class="audit-subtotal-row">
       <td colspan="4">∑ ${lastG}</td>
       <td style="text-align:right">${fmt(gFat)}</td>
+      <td style="text-align:right;color:var(--text2)">${gDesc?fmt(gDesc):'—'}</td>
       <td style="text-align:right">${fmt(gEv)}</td>
       <td style="text-align:right">${gEv?fmtD(gEv-gFat):'—'}</td>
       <td style="text-align:right">${fmt(gGorj)}</td>
@@ -3115,7 +2904,7 @@ function renderAuditFat() {
       <td style="text-align:right">${fmt(gCof)}</td>
       <td colspan="4"></td>
     </tr>`;
-    gFat=gEv=gGorj=gIf=gIcms=gMono=gBC=gPis=gCof=0;
+    gFat=gDesc=gEv=gGorj=gIf=gIcms=gMono=gBC=gPis=gCof=0;
   };
   auditRows.forEach(r => {
     const gorj=ai(r.empresa,r.mes_ref,'gorj'), ifood=ai(r.empresa,r.mes_ref,'ifood');
@@ -3125,10 +2914,10 @@ function renderAuditFat() {
     const bc=Math.max(0,r.fat-gorj-ifood-r.icms-r.fat_mono);
     const pisC=bc*AP.PIS, cofC=bc*AP.COF;
     const difP=dPis-pisC, difC=dCof-cofC;
-    tFat+=r.fat;tEv+=ev;tGorj+=gorj;tIf+=ifood;tIcms+=r.icms;tMono+=r.fat_mono;
+    tFat+=r.fat;tDesc+=r.desconto||0;tEv+=ev;tGorj+=gorj;tIf+=ifood;tIcms+=r.icms;tMono+=r.fat_mono;
     tBC+=bc;tPis+=pisC;tCof+=cofC;tDPis+=difP;tDCof+=difC;
-    if(r.grupo!==lastG){flushGroup();rows+=grpRow(18,r.grupo);lastG=r.grupo;}
-    gFat+=r.fat;gEv+=ev;gGorj+=gorj;gIf+=ifood;gIcms+=r.icms;gMono+=r.fat_mono;
+    if(r.grupo!==lastG){flushGroup();rows+=grpRow(19,r.grupo);lastG=r.grupo;}
+    gFat+=r.fat;gDesc+=r.desconto||0;gEv+=ev;gGorj+=gorj;gIf+=ifood;gIcms+=r.icms;gMono+=r.fat_mono;
     gBC+=bc;gPis+=pisC;gCof+=cofC;
     rows+=`<tr>
       <td style="font-size:11px;opacity:.5">${r.grupo}</td>
@@ -3136,6 +2925,7 @@ function renderAuditFat() {
       <td style="font-size:11px;font-family:monospace;color:var(--text2)">${fmtCNPJ(r.cnpj)}</td>
       <td style="white-space:nowrap">${mesLabel(r.mes_ref)}</td>
       <td style="text-align:right;font-weight:700">${fmt(r.fat)}</td>
+      <td style="text-align:right;color:var(--text2)">${r.desconto>0?fmt(r.desconto):'—'}</td>
       <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'ev')}</td>
       <td style="text-align:right">${ev?fmtD(dFat):'—'}</td>
       <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'gorj')}</td>
@@ -3152,10 +2942,11 @@ function renderAuditFat() {
     </tr>`;
   });
   flushGroup();
-  tbody.innerHTML = rows || `<tr><td colspan="18"><div class="empty-state"><div class="icon">📂</div><p>Carregue planilhas via Google Drive para ver a auditoria</p></div></td></tr>`;
+  tbody.innerHTML = rows || `<tr><td colspan="19"><div class="empty-state"><div class="icon">📂</div><p>Carregue planilhas via Google Drive para ver a auditoria</p></div></td></tr>`;
   document.getElementById('foot-fat').innerHTML = `<tr class="audit-total-row">
     <td colspan="4">TOTAL GERAL</td>
     <td style="text-align:right">${fmt(tFat)}</td>
+    <td style="text-align:right;color:var(--text2)">${tDesc?fmt(tDesc):'—'}</td>
     <td style="text-align:right">${fmt(tEv)}</td>
     <td style="text-align:right">${tEv?fmtD(tEv-tFat):'—'}</td>
     <td style="text-align:right">${fmt(tGorj)}</td>
@@ -3434,25 +3225,7 @@ function _tableToAOA(tableEl) {
     const cells = [];
     tr.querySelectorAll('th, td').forEach(td => {
       const span = parseInt(td.getAttribute('colspan')||'1');
-      // Captura valor de input/select editáveis; caso contrário usa innerText
-      const inp = td.querySelector('input, select');
-      let val;
-      if (inp) {
-        const raw = inp.value.trim();
-        // Tenta converter para número (valores monetários)
-        const num = parseBRNum(raw);
-        val = (!isNaN(num) && raw !== '') ? num : raw;
-      } else {
-        const txt = td.innerText.trim();
-        // Tenta converter colunas numéricas (ex: "1.234,56")
-        if (/^[-\d.,]+$/.test(txt.replace(/\s/g,''))) {
-          const num = parseBRNum(txt);
-          val = (!isNaN(num) && txt !== '' && txt !== '—') ? num : txt;
-        } else {
-          val = txt;
-        }
-      }
-      cells.push(val);
+      cells.push(td.innerText.trim());
       for (let i=1;i<span;i++) cells.push('');
     });
     rows.push(cells);
@@ -3460,33 +3233,14 @@ function _tableToAOA(tableEl) {
   return rows;
 }
 
-function _applyExcelStyle(ws, aoa) {
-  // Largura automática por coluna
-  const colWidths = aoa[0]?.map((_,ci) => ({
-    wch: Math.max(...aoa.map(r => String(r[ci]||'').length), 8)
-  }));
-  if (colWidths) ws['!cols'] = colWidths;
-
-  // Formata células numéricas como moeda BRL
-  const range = XLSX.utils.decode_range(ws['!ref']);
-  for (let R = range.s.r; R <= range.e.r; R++) {
-    for (let C = range.s.c; C <= range.e.c; C++) {
-      const addr = XLSX.utils.encode_cell({r:R,c:C});
-      const cell = ws[addr];
-      if (!cell) continue;
-      if (cell.t === 'n') {
-        cell.z = '#,##0.00'; // formato numérico padrão Excel
-      }
-    }
-  }
-}
-
 function _exportTableExcel(tableId, filename) {
   const tbl = document.getElementById(tableId);
   if (!tbl) { toast('Tabela não encontrada', 'err'); return; }
   const aoa = _tableToAOA(tbl);
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  _applyExcelStyle(ws, aoa);
+  // Auto-width
+  const colWidths = aoa[0]?.map((_,ci) => ({wch: Math.max(...aoa.map(r => (r[ci]||'').length), 8)}));
+  if (colWidths) ws['!cols'] = colWidths;
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Relatório');
   XLSX.writeFile(wb, filename);
@@ -3725,347 +3479,6 @@ function doLogout() {
   notasCache = []; itensCache = []; auditRows = [];
   showLoginScreen();
 }
-// ══════════════════════════════════════════════════════════════
-//  CONCILIAÇÃO MONOFÁSICO
-// ══════════════════════════════════════════════════════════════
-let _concContadorItems = null; // itens do Excel do contador (após parse)
-
-// Popula dropdowns de empresa/mês com dados do IndexedDB
-async function loadConciliacao() {
-  const all = await idbAll('itens');
-  const empresas = [...new Set(all.map(i => i.empresa).filter(Boolean))].sort();
-  const meses    = [...new Set(all.map(i => i.mes_ref).filter(Boolean))].sort().reverse();
-
-  const empSel = document.getElementById('conc-empresa');
-  const mesSel = document.getElementById('conc-mes');
-
-  const empVal = empSel.value;
-  const mesVal = mesSel.value;
-
-  empSel.innerHTML = '<option value="">Todas as empresas</option>' +
-    empresas.map(e => `<option value="${e}"${e===empVal?' selected':''}>${e}</option>`).join('');
-  mesSel.innerHTML = '<option value="">Todos os meses</option>' +
-    meses.map(m => `<option value="${m}"${m===mesVal?' selected':''}>${m}</option>`).join('');
-}
-
-// Chamado ao trocar filtros quando resultado já existe
-function runConciliacaoAuto() {
-  if (_concContadorItems) runConciliacao();
-}
-
-// Lê o arquivo Excel/CSV do contador
-function handleConciliacaoFile(file) {
-  if (!file) return;
-
-  // Mostra erro diretamente na zona de upload (não depende de toast)
-  function concErr(msg) {
-    const zone = document.getElementById('conc-upload-zone');
-    const old = zone.querySelector('.conc-err-msg');
-    if (old) old.remove();
-    const el = document.createElement('div');
-    el.className = 'conc-err-msg';
-    el.style.cssText = 'margin-top:12px;color:#ef4444;font-size:13px;font-weight:600';
-    el.textContent = '⚠️ ' + msg;
-    zone.appendChild(el);
-    console.error('[Conciliação]', msg);
-  }
-
-  // Limpa erro anterior
-  const oldErr = document.getElementById('conc-upload-zone').querySelector('.conc-err-msg');
-  if (oldErr) oldErr.remove();
-
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const wb = XLSX.read(e.target.result, {type:'binary'});
-      if (!wb.SheetNames.length) { concErr('Arquivo sem abas'); return; }
-
-      // Procura a aba que contenha coluna de descrição de item
-      // (ignora abas de notas/resumo que não têm essa coluna)
-      let ws = null, usedSheet = '';
-      for (const sName of wb.SheetNames) {
-        const candidate = wb.Sheets[sName];
-        const hdr = XLSX.utils.sheet_to_json(candidate, {header:1, defval:''})[0] || [];
-        const hasDesc = hdr.some(h => /descri/i.test(String(h)));
-        if (hasDesc) { ws = candidate; usedSheet = sName; break; }
-      }
-      if (!ws) {
-        concErr(`Nenhuma aba com coluna "Descricao" encontrada. Abas disponíveis: ${wb.SheetNames.join(', ')}`);
-        return;
-      }
-      console.log('[Conciliação] Usando aba:', usedSheet);
-      const rows = XLSX.utils.sheet_to_json(ws, {defval:'', raw:true});
-
-      if (!rows.length) { concErr('Arquivo vazio ou formato inválido'); return; }
-
-      // Detecção flexível de colunas — suporta nomes PT-BR e nomes internos
-      const keys = Object.keys(rows[0]);
-      function findKey(...patterns) {
-        for (const p of patterns) {
-          const k = keys.find(k => new RegExp(p,'i').test(k));
-          if (k) return k;
-        }
-        return null;
-      }
-      const kDesc  = findKey('descri');
-      const kNcm   = findKey('^ncm');
-      const kCfop  = findKey('^cfop');
-      const kVal   = findKey('vl.?total|valor_item');
-      const kDesc2 = findKey('desconto');
-      const kEmp   = findKey('empresa|estabelec');
-      const kMes   = findKey('mes.?ref');
-
-      // Log colunas detectadas para debug
-      console.log('[Conciliação] Colunas detectadas:', {kDesc,kNcm,kCfop,kVal,kDesc2,kEmp,kMes});
-      console.log('[Conciliação] Todas as colunas:', keys);
-      console.log('[Conciliação] Primeira linha:', rows[0]);
-
-      function pn(v) {
-        if (typeof v === 'number') return isNaN(v) ? 0 : v;
-        const s = String(v||'0').trim().replace(/[R$\s]/g,'');
-        // Tenta BR (1.234,56)
-        if (/^\d{1,3}(\.\d{3})*,\d+$/.test(s)) return parseFloat(s.replace(/\./g,'').replace(',','.'));
-        // Tenta EN (1234.56)
-        return parseFloat(s) || 0;
-      }
-
-      _concContadorItems = rows
-        .map(r => ({
-          descricao: String(kDesc  ? r[kDesc]  : '').trim(),
-          ncm:       String(kNcm   ? r[kNcm]   : '').trim(),
-          cfop:      String(kCfop  ? r[kCfop]  : '').trim(),
-          valor:     pn(kVal   ? r[kVal]   : 0),
-          desconto:  pn(kDesc2 ? r[kDesc2] : 0),
-          empresa:   String(kEmp  ? r[kEmp]  : '').trim(),
-          mes_ref:   String(kMes  ? r[kMes]  : '').trim(),
-        }))
-        .filter(r => r.descricao);
-
-      console.log('[Conciliação] Itens parseados:', _concContadorItems.length);
-
-      if (!_concContadorItems.length) {
-        concErr('Nenhum item com descrição encontrado — coluna "Descricao" não localizada. Colunas: ' + keys.join(', '));
-        return;
-      }
-
-      // Auto-seleciona empresa/mês se arquivo tiver um único valor
-      const fileEmpresas = [...new Set(_concContadorItems.map(i => i.empresa).filter(Boolean))];
-      const fileMeses    = [...new Set(_concContadorItems.map(i => i.mes_ref).filter(Boolean))];
-      const empSel = document.getElementById('conc-empresa');
-      const mesSel = document.getElementById('conc-mes');
-      if (fileEmpresas.length === 1) {
-        [...empSel.options].forEach(o => { if (o.value === fileEmpresas[0]) empSel.value = fileEmpresas[0]; });
-      }
-      if (fileMeses.length === 1) {
-        [...mesSel.options].forEach(o => { if (o.value === fileMeses[0]) mesSel.value = fileMeses[0]; });
-      }
-
-      const parts = [file.name, `${_concContadorItems.length} itens`];
-      if (fileEmpresas.length) parts.push(fileEmpresas.slice(0,2).join(', '));
-      if (fileMeses.length)    parts.push(fileMeses.slice(0,3).join(', '));
-      document.getElementById('conc-file-info').textContent = parts.join(' — ');
-      document.getElementById('conc-run-bar').style.display = 'flex';
-      document.getElementById('conc-upload-zone').style.display = 'none';
-      // Roda análise automaticamente após upload
-      runConciliacao();
-    } catch(err) {
-      concErr('Erro ao ler arquivo: ' + err.message);
-      console.error('[Conciliação] Exceção:', err);
-    }
-  };
-  reader.onerror = () => concErr('Falha ao ler o arquivo');
-  reader.readAsBinaryString(file);
-}
-
-// Compara itens do IndexedDB com os do Excel do contador
-async function runConciliacao() {
-  if (!_concContadorItems) return;
-  const emp = document.getElementById('conc-empresa').value;
-  const mes = document.getElementById('conc-mes').value;
-
-  // Carrega todos os itens do IndexedDB e filtra
-  let indexItems = await idbAll('itens');
-  if (emp) indexItems = indexItems.filter(i => i.empresa === emp);
-  if (mes) indexItems = indexItems.filter(i => i.mes_ref === mes);
-
-  // Filtra os itens do contador conforme os filtros ativos
-  let cItems = _concContadorItems;
-  if (emp) cItems = cItems.filter(i => !i.empresa || i.empresa === emp);
-  if (mes) cItems = cItems.filter(i => !i.mes_ref  || i.mes_ref  === mes);
-
-  // Mapa: descrição normalizada → {desc, ncm, valor, qty} para o INDEX (isMonofasico=true)
-  const indexMap = new Map();
-  for (const it of indexItems) {
-    if (!isMonofasico(it.descricao)) continue;
-    const nd = normStr(it.descricao);
-    if (!indexMap.has(nd)) indexMap.set(nd, {desc: it.descricao, ncm: it.ncm||'', valor: 0, qty: 0});
-    const e = indexMap.get(nd);
-    e.valor += (Number(it.valor_item||0) - Number(it.desconto_item||0));
-    e.qty++;
-  }
-
-  // Mapa: descrição normalizada → {desc, ncm, valor, qty} para o CONTADOR (todos os itens do arquivo)
-  const contMap = new Map();
-  for (const it of cItems) {
-    const nd = normStr(it.descricao);
-    if (!contMap.has(nd)) contMap.set(nd, {desc: it.descricao, ncm: it.ncm||'', valor: 0, qty: 0});
-    const e = contMap.get(nd);
-    e.valor += (it.valor - it.desconto);
-    e.qty++;
-  }
-
-  // Computa grupos
-  const allKeys    = new Set([...indexMap.keys(), ...contMap.keys()]);
-  const onlyIndex  = []; // index=true, contador=false
-  const onlyCount  = []; // index=false, contador=true
-  const both       = []; // ambos=true
-
-  for (const nd of allKeys) {
-    const inI = indexMap.has(nd);
-    const inC = contMap.has(nd);
-    const row = {
-      desc:        inI ? indexMap.get(nd).desc  : contMap.get(nd).desc,
-      ncm:         inI ? indexMap.get(nd).ncm   : contMap.get(nd).ncm,
-      indexValor:  inI ? indexMap.get(nd).valor : 0,
-      indexQty:    inI ? indexMap.get(nd).qty   : 0,
-      contValor:   inC ? contMap.get(nd).valor  : 0,
-      contQty:     inC ? contMap.get(nd).qty    : 0,
-    };
-    if      ( inI && !inC) onlyIndex.push(row);
-    else if (!inI &&  inC) onlyCount.push(row);
-    else                   both.push(row);
-  }
-
-  // Ordena por valor descrescente
-  const byVal = (a,b) => (b.indexValor+b.contValor) - (a.indexValor+a.contValor);
-  onlyIndex.sort(byVal); onlyCount.sort(byVal); both.sort(byVal);
-
-  _renderConciliacao({onlyIndex, onlyCount, both, indexMap, contMap});
-}
-
-function _renderConciliacao({onlyIndex, onlyCount, both, indexMap, contMap}) {
-  const totalIndex = [...indexMap.values()].reduce((s,v) => s+v.valor, 0);
-  const totalCont  = [...contMap.values()].reduce((s,v) => s+v.valor, 0);
-  const totalBoth  = both.reduce((s,r) => s+r.indexValor, 0);
-  const totalDiv   = onlyIndex.reduce((s,r)=>s+r.indexValor,0) + onlyCount.reduce((s,r)=>s+r.contValor,0);
-
-  // Contexto da comparação
-  const emp = document.getElementById('conc-empresa').value || 'Todas as empresas';
-  const mes = document.getElementById('conc-mes').value    || 'Todos os meses';
-  const ctx = document.getElementById('conc-context');
-  if (ctx) ctx.innerHTML = `🏢 <strong>${emp}</strong> &nbsp;|&nbsp; 📅 <strong>${mes}</strong> &nbsp;|&nbsp; Index: ${indexMap.size} descrições únicas vs Contador: ${contMap.size} descrições únicas`;
-
-  document.getElementById('conc-m-index').textContent      = indexMap.size + ' desc.';
-  document.getElementById('conc-m-index-val').textContent  = 'R$ ' + fmt(totalIndex);
-  document.getElementById('conc-m-contador').textContent   = contMap.size + ' desc.';
-  document.getElementById('conc-m-contador-val').textContent = 'R$ ' + fmt(totalCont);
-  document.getElementById('conc-m-match').textContent      = both.length + ' desc.';
-  document.getElementById('conc-m-match-val').textContent  = 'R$ ' + fmt(totalBoth);
-  document.getElementById('conc-m-div').textContent        = onlyIndex.length + onlyCount.length + ' desc.';
-  document.getElementById('badge-only-index').textContent  = onlyIndex.length;
-  document.getElementById('badge-only-contador').textContent = onlyCount.length;
-  document.getElementById('badge-both').textContent        = both.length;
-
-  function makeTable(rows, valField) {
-    if (!rows.length) return '<p class="conc-empty">Nenhuma divergência neste grupo ✓</p>';
-    const qtyField = valField === 'indexValor' ? 'indexQty' : 'contQty';
-    const totalGrp = rows.reduce((s,r)=>s+r[valField],0);
-    return `<div class="tbl-wrap"><table>
-      <thead><tr>
-        <th>Descrição</th>
-        <th>NCM</th>
-        <th style="text-align:right">Registros</th>
-        <th style="text-align:right">Valor Líquido</th>
-        <th style="text-align:right">% do total</th>
-      </tr></thead>
-      <tbody>${rows.map(r => {
-        const pct = totalGrp ? (r[valField]/totalGrp*100).toFixed(1) : '0.0';
-        return `<tr>
-          <td style="font-size:13px">${r.desc}</td>
-          <td style="color:var(--text2);font-size:11px">${r.ncm||'—'}</td>
-          <td style="text-align:right;color:var(--text2)">${r[qtyField]}</td>
-          <td style="text-align:right;font-family:monospace;font-size:13px">R$ ${fmt(r[valField])}</td>
-          <td style="text-align:right;color:var(--text2);font-size:12px">${pct}%</td>
-        </tr>`;
-      }).join('')}</tbody>
-      <tfoot><tr>
-        <td colspan="3" style="font-weight:700;font-size:12px">Total</td>
-        <td style="text-align:right;font-weight:700;font-family:monospace">R$ ${fmt(totalGrp)}</td>
-        <td></td>
-      </tr></tfoot>
-    </table></div>`;
-  }
-
-  function makeBothTable(rows) {
-    if (!rows.length) return '<p class="conc-empty">—</p>';
-    const total = rows.reduce((s,r)=>s+r.indexValor,0);
-    return `<div class="tbl-wrap"><table>
-      <thead><tr>
-        <th>Descrição</th>
-        <th>NCM</th>
-        <th style="text-align:right">Reg. Index</th>
-        <th style="text-align:right">Reg. Contador</th>
-        <th style="text-align:right">Vl. Index</th>
-        <th style="text-align:right">Vl. Contador</th>
-      </tr></thead>
-      <tbody>${rows.map(r => `<tr>
-        <td style="font-size:13px">${r.desc}</td>
-        <td style="color:var(--text2);font-size:11px">${r.ncm||'—'}</td>
-        <td style="text-align:right;color:var(--text2)">${r.indexQty}</td>
-        <td style="text-align:right;color:var(--text2)">${r.contQty}</td>
-        <td style="text-align:right;font-family:monospace;font-size:13px">R$ ${fmt(r.indexValor)}</td>
-        <td style="text-align:right;font-family:monospace;font-size:13px">R$ ${fmt(r.contValor)}</td>
-      </tr>`).join('')}</tbody>
-      <tfoot><tr>
-        <td colspan="4" style="font-weight:700;font-size:12px">Total</td>
-        <td style="text-align:right;font-weight:700;font-family:monospace">R$ ${fmt(total)}</td>
-        <td style="text-align:right;font-weight:700;font-family:monospace">R$ ${fmt(rows.reduce((s,r)=>s+r.contValor,0))}</td>
-      </tr></tfoot>
-    </table></div>`;
-  }
-
-  document.getElementById('body-only-index').innerHTML   = makeTable(onlyIndex,  'indexValor');
-  document.getElementById('body-only-contador').innerHTML = makeTable(onlyCount, 'contValor');
-  document.getElementById('body-both').innerHTML          = makeBothTable(both);
-  document.getElementById('conc-results').style.display  = 'block';
-
-  // Abre automaticamente seções com divergências
-  if (onlyIndex.length) _concOpen('body-only-index');
-  if (onlyCount.length) _concOpen('body-only-contador');
-}
-
-function concToggle(bodyId, hdr) {
-  const body = document.getElementById(bodyId);
-  const chevron = hdr.querySelector('.conc-chevron');
-  const isOpen = body.classList.contains('open');
-  body.classList.toggle('open', !isOpen);
-  if (chevron) chevron.classList.toggle('open', !isOpen);
-}
-
-function _concOpen(bodyId) {
-  const body = document.getElementById(bodyId);
-  if (!body.classList.contains('open')) {
-    body.classList.add('open');
-    const hdr = body.previousElementSibling;
-    const chevron = hdr && hdr.querySelector('.conc-chevron');
-    if (chevron) chevron.classList.add('open');
-  }
-}
-
-function clearConciliacao() {
-  _concContadorItems = null;
-  const fi = document.getElementById('conc-file-input');
-  if (fi) fi.value = '';
-  document.getElementById('conc-run-bar').style.display = 'none';
-  document.getElementById('conc-upload-zone').style.display = 'block';
-  document.getElementById('conc-results').style.display  = 'none';
-  // Fecha todos os painéis
-  ['body-only-index','body-only-contador','body-both'].forEach(id => {
-    const b = document.getElementById(id);
-    if (b) { b.classList.remove('open'); b.innerHTML = '<p class="conc-empty">Carregando…</p>'; }
-  });
-}
-
 // ══════════════════════════════════════════════════════════════
 //  STARTUP INIT
 // ══════════════════════════════════════════════════════════════
