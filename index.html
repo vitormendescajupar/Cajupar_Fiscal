@@ -207,6 +207,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 
 .badge-cancel{background:#fee2e2;color:#dc2626}
 .badge-aceita{background:#dcfce7;color:#16a34a}
+.badge-dev{background:#fff3e0;color:#c2410c}
 /* EXCEL-LIKE COLUMN FILTERS */
 .col-filter-row th{background:var(--bg);padding:4px 6px;position:sticky;top:34px;z-index:1}
 .col-filter-row th input,.col-filter-row th select{
@@ -559,6 +560,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
               <th>Grupo</th><th>Empresa</th><th>CNPJ</th><th>Mês</th>
               <th>Fat. Fiscal (R$)</th>
               <th>Descontos em NF (R$)</th>
+              <th>Desconto 100% (Conta Assinada)</th>
               <th class="edit-col">Fat. Everest ✏️</th>
               <th>Δ Fat. (R$)</th>
               <th class="edit-col">Gorjeta ✏️</th>
@@ -1128,6 +1130,19 @@ function isCFOPVenda(cfop) {
 function hasVendaCFOP(cfopsStr) {
   if (!cfopsStr) return false;
   return String(cfopsStr).split(/[,;\/\s]+/).some(c => isCFOPVenda(c.trim()));
+}
+// Devolução de venda (reduz faturamento): 1201-1215 e 2201-2215
+function isCFOPDevolucao(cfop) {
+  if (!cfop) return false;
+  const n = parseInt(String(cfop).trim().replace(/\D/g,''));
+  if (isNaN(n)) return false;
+  if (n >= 1201 && n <= 1215) return true;
+  if (n >= 2201 && n <= 2215) return true;
+  return false;
+}
+function hasDevolucaoCFOP(cfopsStr) {
+  if (!cfopsStr) return false;
+  return String(cfopsStr).split(/[,;\/\s]+/).some(c => isCFOPDevolucao(c.trim()));
 }
 const PER_PAGE = 50;
 
@@ -2017,21 +2032,31 @@ function parseExcelFile(buf, fileName, origem = 'drive') {
     const gruposMes = {};
     notas.forEach(n => {
       if (n.manifesto === 'Cancelada') return;          // excluir canceladas
-      if (!hasVendaCFOP(n.cfops)) return;               // excluir não-venda
+      const isVendaN = hasVendaCFOP(n.cfops);
+      const isDevN   = !isVendaN && hasDevolucaoCFOP(n.cfops);
+      if (!isVendaN && !isDevN) return;                 // excluir CFOPs sem relação com venda
       const t  = n.tipo_doc || 'NF-e';
       const mr = n.mes_ref  || mes_ref; // mes_ref real da nota (da data de emissão)
       const k  = `${mr}|${t}`;
-      if (!gruposMes[k]) gruposMes[k] = {mes_ref:mr, tipo:t, qtd:0,fat:0,desc:0,icms:0,st:0,fcp:0,pis:0,cof:0};
+      if (!gruposMes[k]) gruposMes[k] = {mes_ref:mr, tipo:t, qtd:0,fat:0,desc:0,desc100:0,icms:0,st:0,fcp:0,pis:0,cof:0};
       const g = gruposMes[k];
-      g.qtd++; g.fat+=n.valor_total||0; g.desc+=n.desconto||0;
-      g.icms+=n.valor_icms||0; g.st+=n.valor_icms_st||0; g.fcp+=n.valor_fcp_st||0;
-      g.pis+=n.valor_pis||0; g.cof+=n.valor_cofins||0;
+      if (isDevN) {
+        // Devolução de venda: subtrai do faturamento, não conta em qtd/impostos
+        g.fat -= n.valor_total||0;
+      } else {
+        g.qtd++; g.fat+=n.valor_total||0; g.desc+=n.desconto||0;
+        // Desconto 100%: nota com desconto igual ao valor total (conta assinada)
+        if ((n.desconto||0) > 0 && (n.valor_total||0) > 0 && (n.desconto||0) >= (n.valor_total||0) * 0.99)
+          g.desc100 += n.valor_total||0;
+        g.icms+=n.valor_icms||0; g.st+=n.valor_icms_st||0; g.fcp+=n.valor_fcp_st||0;
+        g.pis+=n.valor_pis||0; g.cof+=n.valor_cofins||0;
+      }
     });
     for (const [, v] of Object.entries(gruposMes)) {
       metricas.push({
         key:`${empresa}__${v.mes_ref}__${v.tipo}`, empresa, grupo,
         mes_ref: v.mes_ref, tipo_doc: v.tipo,
-        qtd_notas: v.qtd, fat: v.fat, desconto: v.desc,
+        qtd_notas: v.qtd, fat: v.fat, desconto: v.desc, desc100: v.desc100||0,
         icms: v.icms, icms_st: v.st, fcp_st: v.fcp, pis: v.pis, cofins: v.cof,
       });
     }
@@ -2495,7 +2520,7 @@ async function loadCFOP() {
       datasets: [{
         label: 'Valor Total (R$)',
         data: top15.map(r => r.valor),
-        backgroundColor: top15.map(r => isCFOPVenda(r.cfop) ? '#22c55e' : '#ef4444'),
+        backgroundColor: top15.map(r => isCFOPVenda(r.cfop) ? '#22c55e' : isCFOPDevolucao(r.cfop) ? '#f97316' : '#ef4444'),
         borderRadius: 4,
         minBarLength: 4,
       }]
@@ -2525,8 +2550,13 @@ async function loadCFOP() {
   }
   tbody.innerHTML = rows.map(r => {
     const isVenda = isCFOPVenda(r.cfop);
+    const isDev   = isCFOPDevolucao(r.cfop);
     const desc = CFOP_DESC[r.cfop] || '—';
-    const pct = (totalVenda > 0 && isVenda) ? (r.valor/totalVenda*100).toFixed(1)+'%' : '—';
+    let pct = '—';
+    if (isVenda && totalVenda > 0) pct = (r.valor/totalVenda*100).toFixed(1)+'%';
+    else if (isDev && totalVenda > 0) pct = '-'+(r.valor/totalVenda*100).toFixed(1)+'%';
+    const badgeClass = isVenda ? 'badge-aceita' : isDev ? 'badge-dev' : 'badge-cancel';
+    const badgeLabel = isVenda ? '✓ Venda' : isDev ? '↩ Devolução' : '✗ Excluído';
     return `<tr style="${r.cfop==='5929'||r.cfop==='5202'||r.cfop==='6202'?'opacity:.7':''}">
       <td><b>${r.cfop}</b></td>
       <td style="font-size:11px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${desc}">${desc}</td>
@@ -2534,7 +2564,7 @@ async function loadCFOP() {
       <td style="text-align:right">${r.qtd_notas.toLocaleString('pt-BR')}</td>
       <td style="text-align:right;font-weight:700">R$ ${fmt(r.valor)}</td>
       <td style="text-align:right">${pct}</td>
-      <td style="text-align:center"><span class="badge ${isVenda?'badge-aceita':'badge-cancel'}">${isVenda?'✓ Venda':'✗ Excluído'}</span></td>
+      <td style="text-align:center"><span class="badge ${badgeClass}">${badgeLabel}</span></td>
     </tr>`;
   }).join('');
   // Somatório
@@ -2834,9 +2864,9 @@ async function loadAuditoria() {
     const k = `${m.empresa}||${m.mes_ref}`;
     const cnpj = CNPJ_BY_NOME[m.empresa] || '';
     if (!byKey[k]) byKey[k] = {empresa:m.empresa,grupo:m.grupo,mes_ref:m.mes_ref,cnpj,
-      fat:0,desconto:0,icms:0,icms_st:0,pis:0,cofins:0,qtd:0};
+      fat:0,desconto:0,desc100:0,icms:0,icms_st:0,pis:0,cofins:0,qtd:0};
     const r = byKey[k];
-    r.fat+=m.fat||0; r.desconto+=m.desconto||0; r.icms+=m.icms||0;
+    r.fat+=m.fat||0; r.desconto+=m.desconto||0; r.desc100+=m.desc100||0; r.icms+=m.icms||0;
     r.icms_st+=m.icms_st||0; r.pis+=m.pis||0; r.cofins+=m.cofins||0; r.qtd+=m.qtd_notas||0;
   });
 
@@ -2885,14 +2915,15 @@ function refreshAuditTables() {
 function renderAuditFat() {
   const tbody = document.getElementById('body-fat'); if (!tbody) return;
   let rows='', lastG='';
-  let tFat=0,tDesc=0,tEv=0,tGorj=0,tIf=0,tIcms=0,tMono=0,tBC=0,tPis=0,tCof=0,tDPis=0,tDCof=0;
-  let gFat=0,gDesc=0,gEv=0,gGorj=0,gIf=0,gIcms=0,gMono=0,gBC=0,gPis=0,gCof=0;
+  let tFat=0,tDesc=0,tDesc100=0,tEv=0,tGorj=0,tIf=0,tIcms=0,tMono=0,tBC=0,tPis=0,tCof=0,tDPis=0,tDCof=0;
+  let gFat=0,gDesc=0,gDesc100=0,gEv=0,gGorj=0,gIf=0,gIcms=0,gMono=0,gBC=0,gPis=0,gCof=0;
   const flushGroup = () => {
     if (!lastG) return;
     rows+=`<tr class="audit-subtotal-row">
       <td colspan="4">∑ ${lastG}</td>
       <td style="text-align:right">${fmt(gFat)}</td>
       <td style="text-align:right;color:var(--text2)">${gDesc?fmt(gDesc):'—'}</td>
+      <td style="text-align:right;color:var(--text2)">${gDesc100?fmt(gDesc100):'—'}</td>
       <td style="text-align:right">${fmt(gEv)}</td>
       <td style="text-align:right">${gEv?fmtD(gEv-gFat):'—'}</td>
       <td style="text-align:right">${fmt(gGorj)}</td>
@@ -2904,7 +2935,7 @@ function renderAuditFat() {
       <td style="text-align:right">${fmt(gCof)}</td>
       <td colspan="4"></td>
     </tr>`;
-    gFat=gDesc=gEv=gGorj=gIf=gIcms=gMono=gBC=gPis=gCof=0;
+    gFat=gDesc=gDesc100=gEv=gGorj=gIf=gIcms=gMono=gBC=gPis=gCof=0;
   };
   auditRows.forEach(r => {
     const gorj=ai(r.empresa,r.mes_ref,'gorj'), ifood=ai(r.empresa,r.mes_ref,'ifood');
@@ -2914,10 +2945,10 @@ function renderAuditFat() {
     const bc=Math.max(0,r.fat-gorj-ifood-r.icms-r.fat_mono);
     const pisC=bc*AP.PIS, cofC=bc*AP.COF;
     const difP=dPis-pisC, difC=dCof-cofC;
-    tFat+=r.fat;tDesc+=r.desconto||0;tEv+=ev;tGorj+=gorj;tIf+=ifood;tIcms+=r.icms;tMono+=r.fat_mono;
+    tFat+=r.fat;tDesc+=r.desconto||0;tDesc100+=r.desc100||0;tEv+=ev;tGorj+=gorj;tIf+=ifood;tIcms+=r.icms;tMono+=r.fat_mono;
     tBC+=bc;tPis+=pisC;tCof+=cofC;tDPis+=difP;tDCof+=difC;
-    if(r.grupo!==lastG){flushGroup();rows+=grpRow(19,r.grupo);lastG=r.grupo;}
-    gFat+=r.fat;gDesc+=r.desconto||0;gEv+=ev;gGorj+=gorj;gIf+=ifood;gIcms+=r.icms;gMono+=r.fat_mono;
+    if(r.grupo!==lastG){flushGroup();rows+=grpRow(20,r.grupo);lastG=r.grupo;}
+    gFat+=r.fat;gDesc+=r.desconto||0;gDesc100+=r.desc100||0;gEv+=ev;gGorj+=gorj;gIf+=ifood;gIcms+=r.icms;gMono+=r.fat_mono;
     gBC+=bc;gPis+=pisC;gCof+=cofC;
     rows+=`<tr>
       <td style="font-size:11px;opacity:.5">${r.grupo}</td>
@@ -2926,6 +2957,7 @@ function renderAuditFat() {
       <td style="white-space:nowrap">${mesLabel(r.mes_ref)}</td>
       <td style="text-align:right;font-weight:700">${fmt(r.fat)}</td>
       <td style="text-align:right;color:var(--text2)">${r.desconto>0?fmt(r.desconto):'—'}</td>
+      <td style="text-align:right;color:var(--text2)">${(r.desc100||0)>0?fmt(r.desc100):'—'}</td>
       <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'ev')}</td>
       <td style="text-align:right">${ev?fmtD(dFat):'—'}</td>
       <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'gorj')}</td>
@@ -2942,11 +2974,12 @@ function renderAuditFat() {
     </tr>`;
   });
   flushGroup();
-  tbody.innerHTML = rows || `<tr><td colspan="19"><div class="empty-state"><div class="icon">📂</div><p>Carregue planilhas via Google Drive para ver a auditoria</p></div></td></tr>`;
+  tbody.innerHTML = rows || `<tr><td colspan="20"><div class="empty-state"><div class="icon">📂</div><p>Carregue planilhas via Google Drive para ver a auditoria</p></div></td></tr>`;
   document.getElementById('foot-fat').innerHTML = `<tr class="audit-total-row">
     <td colspan="4">TOTAL GERAL</td>
     <td style="text-align:right">${fmt(tFat)}</td>
     <td style="text-align:right;color:var(--text2)">${tDesc?fmt(tDesc):'—'}</td>
+    <td style="text-align:right;color:var(--text2)">${tDesc100?fmt(tDesc100):'—'}</td>
     <td style="text-align:right">${fmt(tEv)}</td>
     <td style="text-align:right">${tEv?fmtD(tEv-tFat):'—'}</td>
     <td style="text-align:right">${fmt(tGorj)}</td>
