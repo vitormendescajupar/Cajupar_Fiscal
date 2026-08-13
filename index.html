@@ -2045,9 +2045,9 @@ function parseExcelFile(buf, fileName, origem = 'drive') {
         g.fat -= n.valor_total||0;
       } else {
         g.qtd++; g.fat+=n.valor_total||0; g.desc+=n.desconto||0;
-        // Desconto 100%: nota com desconto igual ao valor total (conta assinada)
-        if ((n.desconto||0) > 0 && (n.valor_total||0) > 0 && (n.desconto||0) >= (n.valor_total||0) * 0.99)
-          g.desc100 += n.valor_total||0;
+        // Desconto 100%: nota com valor_total zerado (conta assinada) — soma o desconto
+        if ((n.desconto||0) > 0 && (n.valor_total||0) < 0.01)
+          g.desc100 += n.desconto||0;
         g.icms+=n.valor_icms||0; g.st+=n.valor_icms_st||0; g.fcp+=n.valor_fcp_st||0;
         g.pis+=n.valor_pis||0; g.cof+=n.valor_cofins||0;
       }
