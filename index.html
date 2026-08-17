@@ -2870,7 +2870,7 @@ async function loadAuditoria() {
     r.icms_st+=m.icms_st||0; r.pis+=m.pis||0; r.cofins+=m.cofins||0; r.qtd+=m.qtd_notas||0;
   });
 
-  // Calcular monofásico e vendas c/ ST a partir dos itens
+  // Calcular monofásico, vendas c/ ST e desconto 100% a partir das notas/itens
   let itens = await idbAll('itens');
   if (gr) itens = itens.filter(i => i.grupo === gr);
   if (mes) itens = itens.filter(i => i.mes_ref === mes);
@@ -2888,9 +2888,24 @@ async function loadAuditoria() {
     }
   });
 
+  // Desconto 100% (conta assinada): notas aceitas com valor_total = 0 e desconto > 0
+  const desc100Map = {};
+  {
+    let notasAll = await idbAll('notas');
+    if (gr)  notasAll = notasAll.filter(n => n.grupo   === gr);
+    if (mes) notasAll = notasAll.filter(n => n.mes_ref === mes);
+    notasAll.forEach(n => {
+      if ((n.manifesto||'Aceita') === 'Cancelada') return;
+      if ((n.desconto||0) <= 0) return;
+      if ((n.valor_total||0) >= 0.01) return;   // só notas com valor_total = 0
+      const k = `${n.empresa}||${n.mes_ref}`;
+      desc100Map[k] = (desc100Map[k]||0) + (n.desconto||0);
+    });
+  }
+
   auditRows = Object.values(byKey).map(r => {
     const k = `${r.empresa}||${r.mes_ref}`;
-    return {...r, fat_mono: monoMap[k]||0, fat_st: stMap[k]||0};
+    return {...r, fat_mono: monoMap[k]||0, fat_st: stMap[k]||0, desc100: desc100Map[k]||0};
   });
 
   auditRows.sort((a,b) => {
