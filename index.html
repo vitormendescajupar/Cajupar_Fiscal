@@ -3016,8 +3016,8 @@ const DRE_EMP_DEFAULT = {
 // Parâmetros do SOMASES (coluna M = "Classificação DRE 2"). Para trocar um critério, altere só o texto aqui.
 const DRE_CRIT_RECEITA   = 'Receita Bruta';
 const DRE_CRIT_INCENTIVO = 'Incentivo Delivery (Cupom)';
-const DRE_CRIT_CUSTO     = 'INVESTIMENTOS EM CUSTO DE ENTREGA (99 FOOD)';   // antes: "Custo de entrega"
-const DRE_VERSAO = 2;                                                       // sobe quando o critério muda (DREs antigas precisam ser reenviadas)
+const DRE_CRIT_CUSTO     = 'INVESTIMENTOS EM CUSTO DE ENTREGA (99 FOOD)';   // coluna L (DRE GERENCIAL); antes: "Custo de entrega" na coluna M
+const DRE_VERSAO = 3;                                                       // sobe quando o critério muda (DREs antigas precisam ser reenviadas)
 // Excel compara texto sem diferenciar maiúsculas/minúsculas (e sem aparar espaços)
 const _dreN    = s => String(s==null?'':s).normalize('NFC').toLowerCase();
 const _dreNorm = s => String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
@@ -3039,14 +3039,23 @@ function dreMesKey(v) {
   return s;
 }
 
+// Layout da aba Depara_empresas:
+//  novo  (2026-10): A C. Centro Custo | B Descrição | C DE-PARA (DRE GERENCIAL) = chave (Empresa PG) | D DE-PARA (BOLETIM FINANCEIRO) = Empresa (NA) | E Grupo
+//  antigo         : A Plano gerencial = chave | B Relatórios analíticos = Empresa (NA) | C Grupo
+function dreLayoutEmpresas(dEmp) {
+  const h = i => _dreNorm(((dEmp&&dEmp[0])||[])[i]);
+  if (h(2).includes('dre gerencial') && h(3).includes('boletim')) return 'novo';
+  if (h(1).includes('relat')) return 'antigo';
+  return '';
+}
 function dreValidarCabecalhos(bd, dEmp, dDre) {
   const h = (a,i) => _dreNorm(((a&&a[0])||[])[i]);
   const hdr = a => ((a&&a[0])||[]).map(x=>x==null?'':String(x)).join(' | ');
   if (!bd || bd.length<2) return 'A aba BD_DRE Gerencial_Everest está vazia.';
   if (!(h(bd,0).includes('database') && h(bd,1).includes('empresa') && h(bd,2).includes('descri') && h(bd,3).includes('dre')))
     return `Cabeçalho inesperado na aba BD_DRE Gerencial_Everest (esperado: Database | Empresa (PG) | Descrição | DRE GERENCIAL). Encontrado: ${hdr(bd)}`;
-  if (!h(dEmp,1).includes('relat'))
-    return `Cabeçalho inesperado na aba Depara_empresas (esperado: Plano gerencial | Relatórios analíticos | Grupo). Encontrado: ${hdr(dEmp)}`;
+  if (!dreLayoutEmpresas(dEmp))
+    return `Cabeçalho inesperado na aba Depara_empresas (esperado: C. Centro Custo | Descrição C. Centro Custo | DE-PARA (DRE GERENCIAL) | DE-PARA (BOLETIM FINANCEIRO) | Grupo). Encontrado: ${hdr(dEmp)}`;
   if (!(h(dDre,0).includes('cod') && h(dDre,2).includes('original') && h(dDre,3).includes('dre gerencial') && h(dDre,7).includes('analitica')))
     return `Cabeçalho inesperado na aba Depara_DRE (esperado colunas A=CÓD. EVEREST, C=DESCRIÇÃO (ORIGINAL), D=DRE GERENCIAL, H=De para DRE Analítica). Encontrado: ${hdr(dDre)}`;
   return '';
@@ -3054,9 +3063,11 @@ function dreValidarCabecalhos(bd, dEmp, dDre) {
 
 // bd / dEmp / dDre: matrizes (linha 0 = cabeçalho), colunas na mesma ordem da planilha
 function dreCalcular(bd, dEmp, dDre) {
-  // Depara_empresas: A = plano gerencial (chave), B = Empresa (NA)
-  const empMap = new Map(), empGrupo = new Map();
-  for (let i=1;i<dEmp.length;i++) { const r=dEmp[i]||[]; const k=_dreK(r[0]); if (k!==null && !empMap.has(k)) { empMap.set(k, r[1]); empGrupo.set(k, r[2]); } }
+  const novo = dreLayoutEmpresas(dEmp) === 'novo';
+  const cKey = novo ? 2 : 0, cNA = novo ? 3 : 1, cGrp = novo ? 4 : 2;
+  // Depara_empresas: chave = Empresa (PG); devolve Empresa (NA) e Grupo (1ª ocorrência, como XLOOKUP/PROCV)
+  const empIdx = new Map();
+  for (let i=1;i<dEmp.length;i++) { const r=dEmp[i]||[]; const k=_dreK(r[cKey]); if (k!==null && !empIdx.has(k)) empIdx.set(k, r); }
   // Depara_DRE: índices por C (descrição), A (código) e D (DRE GERENCIAL) — sempre a 1ª ocorrência, como PROCV/XLOOKUP
   const byDesc=new Map(), byCod=new Map(), byDre=new Map();
   for (let i=1;i<dDre.length;i++) {
@@ -3066,49 +3077,51 @@ function dreCalcular(bd, dEmp, dDre) {
     const kr=_dreK(r[3]); if (kr!==null && !byDre.has(kr))  byDre.set(kr,r);
   }
   const blank0 = v => (v==null||v==='') ? 0 : v;   // PROCV devolve 0 para célula vazia
-
-  // Reproduz as colunas E (Empresa NA), K (Cod.), J (Class. Rateio), L (Class. DRE) e M (Class. DRE 2)
-  function classificar(r) {
-    const eNA = empMap.get(_dreK(r[1]));
-    if (eNA==null || eNA==='') return null;                                        // E = #N/D
-    const rowDesc = byDesc.get(_dreK(r[2]));                                       // K = XLOOKUP(C; Depara_DRE!C:C; A:A)
-    if (!rowDesc) return {eNA, sem:'desc'};
-    const rowCod = byCod.get(_dreK(blank0(rowDesc[0])));                           // VLOOKUP(K; Depara_DRE!A:G; …)
-    if (!rowCod) return {eNA, sem:'cod'};
-    const eN = _dreN(eNA);
-    const J = (eN==='mult 07 - fermult servicos' || eN==='caju holding - cajupar servicos') ? rowCod[4]   // RATEIO CSC
-            : (eN==='mult 01 - cpd' || eN==='nfe 05 - cpd')                                  ? rowCod[5]   // RATEIO CPD
-            :                                                                                  rowCod[6];  // RATEIO ESPECÍFICO
-    const jZero = (J==null || J==='' || J===0 || (typeof J==='string' && _dreN(J)==='n/a'));
-    const L = jZero ? blank0(rowCod[3]) : 'Rateio';                                // L
-    const rowL = byDre.get(_dreK(L));                                              // M = VLOOKUP(L; Depara_DRE!D:H; 5)
-    if (!rowL) return {eNA, L, M:null};
-    return {eNA, L, M: blank0(rowL[7])};
-  }
-
-  // Linha completa (colunas A–P da aba BD_DRE) como a planilha mostraria: erros de PROCV/XLOOKUP aparecem como #N/D
   const ND = '#N/D', SP24 = ' '.repeat(24);
+  // Regras do layout novo (grupo "NZ + CP"): categorias que vão para o CPD (coluna E) e que usam o rateio CPD (coluna J)
+  const NZ_EMP = new Set(['materiais de apoio a venda','higiene e limpeza','reposição de utensílios']);
+  const NZ_RAT = new Set(['cmv','higiene e limpeza','materiais de apoio a venda','reposição de utensílios']);
+
+  // Reproduz as colunas E (Empresa NA), F (Grupo), K (Cod.), J (Class. Rateio), L (DRE GERENCIAL) e M (DRE - SINTÉTICA).
+  // Erros de PROCV/XLOOKUP viram '#N/D', como na planilha.
+  function derivar(r) {
+    const o = {E:ND, F:ND, K:ND, J:ND, L:ND, M:ND};
+    const idx = empIdx.get(_dreK(r[1]));                                           // XLOOKUP(B; Depara_empresas)
+    const rowDesc = byDesc.get(_dreK(r[2]));                                       // K = XLOOKUP(C; Depara_DRE!C:C; A:A)
+    if (rowDesc) o.K = blank0(rowDesc[0]);
+    const rowCod = rowDesc ? byCod.get(_dreK(o.K)) : null;                         // VLOOKUP(K; Depara_DRE!A:…)
+    if (idx) {
+      o.F = blank0(idx[cGrp]);
+      const nz = novo && _dreN(o.F)==='nz + cp';
+      const catDre = rowCod ? blank0(rowCod[3]) : '';                              // IFERROR(VLOOKUP(K;A:D;4);"")
+      o.E = (nz && NZ_EMP.has(_dreN(catDre))) ? 'MULT 01 - CPD' : blank0(idx[cNA]);
+      if (rowCod) {
+        const eN = _dreN(o.E);
+        const rateioCPD = eN==='mult 01 - cpd' || eN==='nfe 05 - cpd' || (nz && NZ_RAT.has(_dreN(catDre)));
+        o.J = blank0((eN==='mult 07 - fermult servicos' || eN==='caju holding - cajupar servicos') ? rowCod[4]   // RATEIO CSC
+                   : rateioCPD ? rowCod[5]                                                                     // RATEIO CPD
+                   : rowCod[6]);                                                                               // RATEIO ESPECÍFICO
+        o.L = (o.J===0 || (typeof o.J==='string' && _dreN(o.J)==='n/a')) ? blank0(rowCod[3]) : 'Rateio';
+        const rowL = byDre.get(_dreK(o.L));                                        // M = VLOOKUP(L; Depara_DRE!D:H; 5)
+        if (rowL) o.M = blank0(rowL[7]);
+      }
+    }
+    o.rowDesc = rowDesc; o.rowCod = rowCod;
+    return o;
+  }
+  function classificar(r) {
+    const d = derivar(r);
+    if (d.E===ND || d.E===0 || d.E==='') return null;                              // empresa sem de-para
+    if (!d.rowDesc) return {eNA:d.E, sem:'desc'};
+    if (!d.rowCod)  return {eNA:d.E, sem:'cod'};
+    return {eNA:d.E, L:d.L, M: d.M===ND ? null : d.M};
+  }
+  // Linha completa (colunas A–M da aba BD_DRE) para a visão tipo Excel
   function linhaCompleta(r, mes) {
-    const kE = _dreK(r[1]);
-    const E = empMap.has(kE) ? blank0(empMap.get(kE)) : ND;
-    const F = empGrupo.has(kE) ? blank0(empGrupo.get(kE)) : ND;
+    const d = derivar(r);
     const desc = r[2]==null ? '' : String(r[2]);
     const I = desc.slice(0,24)===SP24 ? 'Analítica' : 'Sintética';
-    const rowDesc = byDesc.get(_dreK(r[2]));
-    const K = rowDesc ? blank0(rowDesc[0]) : ND;
-    const rowCod = rowDesc ? byCod.get(_dreK(K)) : null;
-    let J=ND, L=ND, M=ND, N=ND;
-    if (rowCod && E!==ND) {
-      const eN = _dreN(E);
-      J = blank0((eN==='mult 07 - fermult servicos' || eN==='caju holding - cajupar servicos') ? rowCod[4]
-              : (eN==='mult 01 - cpd' || eN==='nfe 05 - cpd') ? rowCod[5] : rowCod[6]);
-      L = (J===0 || (typeof J==='string' && _dreN(J)==='n/a')) ? blank0(rowCod[3]) : 'Rateio';
-      const rowL = byDre.get(_dreK(L));
-      if (rowL) { M = blank0(rowL[7]); N = blank0(rowL[9]); }
-    }
-    const O = rowDesc ? blank0(rowDesc[7])  : ND;
-    const P = rowDesc ? blank0(rowDesc[10]) : ND;
-    return [mes, r[1]==null?'':r[1], desc, r[3]==null?'':r[3], E, F, +mes.slice(3), +mes.slice(0,2), I, J, K, L, M, N, O, P];
+    return [mes, r[1]==null?'':r[1], desc, r[3]==null?'':r[3], d.E, d.F, +mes.slice(3), +mes.slice(0,2), I, d.J, d.K, d.L, d.M];
   }
 
   const meses = {};   // 'MM/AAAA' → { 'Empresa NA' → {receita, incentivo, custo} }
@@ -3124,13 +3137,13 @@ function dreCalcular(bd, dEmp, dDre) {
     const c = classificar(r);
     if (!c) { if (r[1]!=null) empSemDepara.add(String(r[1])); continue; }
     if (c.sem==='desc') { semDescricao.add(String(r[2]).trim()); continue; }
-    if (c.M==null) continue;
     if (typeof r[3]!=='number') continue;                                          // SOMASES ignora texto
-    const mN=_dreN(c.M);
+    const mN = c.M==null ? null : _dreN(c.M);
     let tipo;
-    if (mN===_dreN(DRE_CRIT_RECEITA)) { if (_dreN(c.L)==='restituição de perdas') continue; tipo='receita'; }   // L:L <> "RESTITUIÇÃO DE PERDAS"
+    if (_dreN(c.L)===_dreN(DRE_CRIT_CUSTO))  { tipo='custo'; custoLinhas++; }      // L:L = "INVESTIMENTOS EM CUSTO DE ENTREGA (99 FOOD)"
+    else if (mN===null) continue;
+    else if (mN===_dreN(DRE_CRIT_RECEITA)) { if (_dreN(c.L)==='restituição de perdas') continue; tipo='receita'; }   // L:L <> "RESTITUIÇÃO DE PERDAS"
     else if (mN===_dreN(DRE_CRIT_INCENTIVO)) tipo='incentivo';
-    else if (mN===_dreN(DRE_CRIT_CUSTO))     { tipo='custo'; custoLinhas++; }
     else continue;
     const m  = meses[mes] || (meses[mes] = {});
     const e  = m[c.eNA]   || (m[c.eNA]   = {receita:0,incentivo:0,custo:0});
@@ -3139,7 +3152,7 @@ function dreCalcular(bd, dEmp, dDre) {
   for (const m of Object.values(meses)) for (const e of Object.values(m)) {
     e.receita=Math.round(e.receita*100)/100; e.incentivo=Math.round(e.incentivo*100)/100; e.custo=Math.round(e.custo*100)/100;
   }
-  const empresasNA = [...new Set(dEmp.slice(1).map(r=>r&&r[1]).filter(x=>x && _dreN(x)!=='desativado'))].sort();
+  const empresasNA = [...new Set(dEmp.slice(1).map(r=>r&&r[cNA]).filter(x=>x && _dreN(x)!=='desativado'))].sort();
 
   // Conferência: se a DRE já traz as colunas calculadas (E, L, M) comparamos com as nossas
   let conf = 0, divergentes = 0;
@@ -3207,7 +3220,7 @@ function dreAtualizarChip() {
   const velha = d.v !== DRE_VERSAO;
   el.textContent = 'DRE: ' + ms.join(' · ') + (velha ? ' ⚠️ reenviar' : '');
   el.className = velha ? 'dre-chip' : 'dre-chip on';
-  el.title = (velha ? 'O critério do custo de entrega mudou — suba a DRE novamente para recalcular.\n' : '') + ms.map(m => `${m}: ${(d.arquivos&&d.arquivos[m]&&d.arquivos[m].nome)||'—'}`).join('\n');
+  el.title = (velha ? 'O cálculo da DRE mudou (custo de entrega / nova Depara_empresas) — suba a DRE novamente para recalcular.\n' : '') + ms.map(m => `${m}: ${(d.arquivos&&d.arquivos[m]&&d.arquivos[m].nome)||'—'}`).join('\n');
 }
 
 // ── upload ───────────────────────────────────────────────────
@@ -3247,7 +3260,7 @@ async function dreOnFile(inp) {
       console.warn('[DRE] linhas cuja classificação difere das colunas calculadas da planilha:', res.conferencia.exemplos);
       toast(`Atenção: ${res.conferencia.divergentes} de ${res.conferencia.linhas} linhas da DRE têm classificação diferente da calculada pela planilha (detalhes no console do navegador).`, 'err', 10000);
     }
-    if (!res.custoLinhas) toast(`Atenção: nenhuma linha da DRE tem "${DRE_CRIT_CUSTO}" na coluna M (Classificação DRE 2) — o custo de entrega ficou zerado. Confira a aba Depara_DRE (coluna H).`, 'err', 12000);
+    if (!res.custoLinhas) toast(`Atenção: nenhuma linha da DRE tem "${DRE_CRIT_CUSTO}" na coluna L (DRE GERENCIAL) — o custo de entrega ficou zerado. Confira a aba Depara_DRE (coluna D).`, 'err', 12000);
     if (res.semDescricao.length) console.warn('[DRE] descrições sem correspondência na Depara_DRE (ignoradas):', res.semDescricao);
     if (res.empSemDepara.length) console.warn('[DRE] empresas (PG) sem correspondência na Depara_empresas (ignoradas):', res.empSemDepara);
     if (dreAlertas().length) dreAbrirGerenciador();      // mostra o que ficou sem mapeamento
@@ -3280,8 +3293,8 @@ async function dreRowsGet(mes) { try { const r = await _dreTx('readonly', st => 
 async function dreRowsExcluir(mes) { try { await _dreTx('readwrite', st => mes==='*' ? st.clear() : st.delete(mes)); } catch(e) { console.warn('[DRE] não foi possível apagar as linhas', e); } }
 
 const DRE_COLS = [
-  ['Database',84],['Empresa (PG)',175],['Descrição',270],['DRE GERENCIAL',125],['Empresa (NA)',185],['Grupo',80],['Ano',58],['Mês',54],
-  ['Classificação',105],['Class. Rateio',112],['Cod.',72],['Class. DRE',150],['Class. DRE 2',130],['Class. DRE OUTPUT Faturamento',190],['Class. DRE OUTPUT Rateios',150],['Class. DRE OUTPUT SG&A',150]
+  ['Database',84],['Empresa (PG)',175],['Descrição',270],['Valor',125],['Empresa (NA)',185],['Grupo',90],['Ano',58],['Mês',54],
+  ['Classificação',105],['Class. Rateio',112],['Cod.',72],['DRE GERENCIAL',200],['DRE - SINTÉTICA',170]
 ];
 const DV = {rows:[], txt:[], view:[], mes:'', q:'', f:{}, sort:null, meses:[]};
 const _dvLetra = i => String.fromCharCode(65+i);
@@ -3387,7 +3400,7 @@ function dvRender() {
   const body = document.getElementById('dv-body'), sc = document.getElementById('dv-scroll'); if (!body || !sc) return;
   const n = DV.view.length, vis = Math.ceil(sc.clientHeight / DV_RH) + 30;
   const ini = Math.max(0, Math.floor(sc.scrollTop / DV_RH) - 15), fim = Math.min(n, ini + vis);
-  let h = ini ? `<tr class="dv-sp"><td colspan="16" style="height:${ini*DV_RH}px"></td></tr>` : '';
+  let h = ini ? `<tr class="dv-sp"><td colspan="${DRE_COLS.length}" style="height:${ini*DV_RH}px"></td></tr>` : '';
   for (let k = ini; k < fim; k++) {
     const r = DV.rows[DV.view[k]];
     h += '<tr>' + r.map((v, c) => {
@@ -3399,8 +3412,8 @@ function dvRender() {
       return `<td title="${_dreEsc(String(v).trim())}">${_dreEsc(v)}</td>`;
     }).join('') + '</tr>';
   }
-  if (fim < n) h += `<tr class="dv-sp"><td colspan="16" style="height:${(n-fim)*DV_RH}px"></td></tr>`;
-  if (!n) h = `<tr class="dv-sp"><td colspan="16" style="height:auto;padding:30px;text-align:center;color:var(--text2)">Nenhuma linha para os filtros atuais.</td></tr>`;
+  if (fim < n) h += `<tr class="dv-sp"><td colspan="${DRE_COLS.length}" style="height:${(n-fim)*DV_RH}px"></td></tr>`;
+  if (!n) h = `<tr class="dv-sp"><td colspan="${DRE_COLS.length}" style="height:auto;padding:30px;text-align:center;color:var(--text2)">Nenhuma linha para os filtros atuais.</td></tr>`;
   body.innerHTML = h;
 }
 function dvChips() {
@@ -3416,7 +3429,7 @@ function dvRodape() {
   let soma = 0, pos = 0, neg = 0;
   DV.view.forEach(i => { const v = DV.rows[i][3]; if (typeof v === 'number') { soma += v; if (v>=0) pos += v; else neg += v; } });
   info.textContent = `${DV.view.length.toLocaleString('pt-BR')} de ${DV.rows.length.toLocaleString('pt-BR')} linhas`;
-  el.innerHTML = `<span>Soma de DRE GERENCIAL (filtro atual): <strong>${fmt(soma)}</strong></span><span>Positivos: <strong>${fmt(pos)}</strong></span><span>Negativos: <strong>${fmt(neg)}</strong></span>` +
+  el.innerHTML = `<span>Soma do Valor (filtro atual): <strong>${fmt(soma)}</strong></span><span>Positivos: <strong>${fmt(pos)}</strong></span><span>Negativos: <strong>${fmt(neg)}</strong></span>` +
     `<span style="margin-left:auto">Clique no título para ordenar · ▾ para filtrar · Esc fecha</span>`;
 }
 
