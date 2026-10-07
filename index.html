@@ -2239,7 +2239,25 @@ async function populateFilterOptions() {
       if (cur && anos.includes(cur)) el.value = cur;
     }
   }
+
+  // Padrão ao abrir o site: filtrar o mês anterior ao atual (mês em conciliação).
+  // Aplica uma única vez — depois disso vale o que o usuário escolher.
+  if (!_mesPadraoAplicado && meses.length) {
+    const hoje = new Date(); hoje.setDate(1); hoje.setMonth(hoje.getMonth() - 1);
+    const ano = String(hoje.getFullYear()), mm = String(hoje.getMonth() + 1).padStart(2, '0'), ref = `${ano}-${mm}`;
+    if (meses.includes(ref)) {
+      _mesPadraoAplicado = true;
+      ['f-mes-notas','f-mes-itens','audit-mes','f-mes-cfop'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ref; });
+      ['top-ano','anual-ano','f-ano-cfop'].forEach(id => { const el = document.getElementById(id); if (el && anos.includes(ano)) el.value = ano; });
+      const tm = document.getElementById('top-mes'); if (tm) tm.value = mm;
+    }
+  }
 }
+let _mesPadraoAplicado = false;
+// Se o usuário mexer em qualquer filtro de mês/ano, não sobrescrevemos mais a escolha dele
+document.addEventListener('change', e => {
+  if (e.isTrusted && ['f-mes-notas','f-mes-itens','audit-mes','f-mes-cfop','top-mes','top-ano','anual-ano','f-ano-cfop'].includes(e.target.id)) _mesPadraoAplicado = true;
+});
 
 function onFilterChange() {
   const grupo  = document.getElementById('top-grupo').value;
