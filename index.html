@@ -2972,7 +2972,7 @@ function grpRow(cols, grupo) {
 //  DRE GERENCIAL → FAT. EVEREST
 //  Substitui o SOMASES da planilha de apuração:
 //    Fat. Everest = Receita Bruta (exceto "RESTITUIÇÃO DE PERDAS")
-//                   − Incentivo Delivery (Cupom) − Custo de entrega
+//                   − Incentivo Delivery (Cupom) − INVESTIMENTOS EM CUSTO DE ENTREGA (99 FOOD)
 //  por Empresa (NA) e mês. As colunas E, J, K, L e M da aba
 //  "BD_DRE Gerencial_Everest" são fórmulas (VLOOKUP/XLOOKUP) sobre as abas
 //  Depara_empresas e Depara_DRE — aqui elas são reproduzidas a partir de
@@ -3013,6 +3013,11 @@ const DRE_EMP_DEFAULT = {
 };
 
 // <DRE-CORE-START> (funções puras — também testadas fora do navegador)
+// Parâmetros do SOMASES (coluna M = "Classificação DRE 2"). Para trocar um critério, altere só o texto aqui.
+const DRE_CRIT_RECEITA   = 'Receita Bruta';
+const DRE_CRIT_INCENTIVO = 'Incentivo Delivery (Cupom)';
+const DRE_CRIT_CUSTO     = 'INVESTIMENTOS EM CUSTO DE ENTREGA (99 FOOD)';   // antes: "Custo de entrega"
+const DRE_VERSAO = 2;                                                       // sobe quando o critério muda (DREs antigas precisam ser reenviadas)
 // Excel compara texto sem diferenciar maiúsculas/minúsculas (e sem aparar espaços)
 const _dreN    = s => String(s==null?'':s).normalize('NFC').toLowerCase();
 const _dreNorm = s => String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
@@ -3110,6 +3115,7 @@ function dreCalcular(bd, dEmp, dDre) {
   const rowsPorMes = {};   // 'MM/AAAA' → linhas completas (visão tipo Excel)
   let linhas = 0;
   const empSemDepara = new Set(), semDescricao = new Set();
+  let custoLinhas = 0;
   for (let i=1;i<bd.length;i++) {
     const r = bd[i]; if (!r) continue;
     const mes = dreMesKey(r[0]); if (!mes) continue;
@@ -3122,9 +3128,9 @@ function dreCalcular(bd, dEmp, dDre) {
     if (typeof r[3]!=='number') continue;                                          // SOMASES ignora texto
     const mN=_dreN(c.M);
     let tipo;
-    if (mN==='receita bruta') { if (_dreN(c.L)==='restituição de perdas') continue; tipo='receita'; }   // L:L <> "RESTITUIÇÃO DE PERDAS"
-    else if (mN==='incentivo delivery (cupom)') tipo='incentivo';
-    else if (mN==='custo de entrega')           tipo='custo';
+    if (mN===_dreN(DRE_CRIT_RECEITA)) { if (_dreN(c.L)==='restituição de perdas') continue; tipo='receita'; }   // L:L <> "RESTITUIÇÃO DE PERDAS"
+    else if (mN===_dreN(DRE_CRIT_INCENTIVO)) tipo='incentivo';
+    else if (mN===_dreN(DRE_CRIT_CUSTO))     { tipo='custo'; custoLinhas++; }
     else continue;
     const m  = meses[mes] || (meses[mes] = {});
     const e  = m[c.eNA]   || (m[c.eNA]   = {receita:0,incentivo:0,custo:0});
@@ -3148,7 +3154,7 @@ function dreCalcular(bd, dEmp, dDre) {
     conf++;
     if (!(cmp(eC, c.eNA) && cmp(lC, c.L) && cmp(mC, c.M))) { divergentes++; if (exemplos.length<5) exemplos.push({linha:i+1, descricao:r[2], planilha:[eC,lC,mC], site:[c.eNA,c.L,c.M]}); }
   }
-  return {meses, rowsPorMes, linhas, empSemDepara:[...empSemDepara], semDescricao:[...semDescricao], empresasNA, conferencia:{linhas:conf, divergentes, exemplos}};
+  return {meses, rowsPorMes, linhas, custoLinhas, empSemDepara:[...empSemDepara], semDescricao:[...semDescricao], empresasNA, conferencia:{linhas:conf, divergentes, exemplos}};
 }
 // <DRE-CORE-END>
 
@@ -3159,6 +3165,7 @@ function dreLoad() {
   return _dreCache;
 }
 function dreSave(d) {
+  if (d) d.v = DRE_VERSAO;
   _dreCache = d;
   try { if (d && Object.keys(d.meses).length) localStorage.setItem(DRE_LS, JSON.stringify(d)); else { localStorage.removeItem(DRE_LS); _dreCache = null; } }
   catch(e) { toast('Não foi possível salvar a DRE no navegador: '+e.message, 'err'); }
@@ -3189,7 +3196,7 @@ function dreEv(emp, mesRef) {
   return {v: Math.round((x.receita - x.incentivo - x.custo)*100)/100, receita:x.receita, incentivo:x.incentivo, custo:x.custo, na:key};
 }
 function dreEvCell(x) {
-  const tip = `Fat. Everest calculado da DRE (${x.na})\nReceita Bruta: ${fmt(x.receita)}\n− Incentivo Delivery (Cupom): ${fmt(x.incentivo)}\n− Custo de entrega: ${fmt(x.custo)}`;
+  const tip = `Fat. Everest calculado da DRE (${x.na})\nReceita Bruta: ${fmt(x.receita)}\n− Incentivo Delivery (Cupom): ${fmt(x.incentivo)}\n− Investimentos em custo de entrega (99 Food): ${fmt(x.custo)}`;
   return `<span class="ev-dre" title="${_dreEsc(tip)}">${fmt(x.v)}</span>`;
 }
 function dreAtualizarChip() {
@@ -3197,9 +3204,10 @@ function dreAtualizarChip() {
   const d = dreLoad();
   const ms = d ? Object.keys(d.meses).sort((a,b)=>_dreMesOrd(a).localeCompare(_dreMesOrd(b))) : [];
   if (!ms.length) { el.textContent='DRE: nenhuma carregada'; el.className='dre-chip'; el.title='Suba a DRE Gerencial do mês para preencher o Fat. Everest automaticamente'; return; }
-  el.textContent = 'DRE: ' + ms.join(' · ');
-  el.className = 'dre-chip on';
-  el.title = ms.map(m => `${m}: ${(d.arquivos&&d.arquivos[m]&&d.arquivos[m].nome)||'—'}`).join('\n');
+  const velha = d.v !== DRE_VERSAO;
+  el.textContent = 'DRE: ' + ms.join(' · ') + (velha ? ' ⚠️ reenviar' : '');
+  el.className = velha ? 'dre-chip' : 'dre-chip on';
+  el.title = (velha ? 'O critério do custo de entrega mudou — suba a DRE novamente para recalcular.\n' : '') + ms.map(m => `${m}: ${(d.arquivos&&d.arquivos[m]&&d.arquivos[m].nome)||'—'}`).join('\n');
 }
 
 // ── upload ───────────────────────────────────────────────────
@@ -3239,6 +3247,7 @@ async function dreOnFile(inp) {
       console.warn('[DRE] linhas cuja classificação difere das colunas calculadas da planilha:', res.conferencia.exemplos);
       toast(`Atenção: ${res.conferencia.divergentes} de ${res.conferencia.linhas} linhas da DRE têm classificação diferente da calculada pela planilha (detalhes no console do navegador).`, 'err', 10000);
     }
+    if (!res.custoLinhas) toast(`Atenção: nenhuma linha da DRE tem "${DRE_CRIT_CUSTO}" na coluna M (Classificação DRE 2) — o custo de entrega ficou zerado. Confira a aba Depara_DRE (coluna H).`, 'err', 12000);
     if (res.semDescricao.length) console.warn('[DRE] descrições sem correspondência na Depara_DRE (ignoradas):', res.semDescricao);
     if (res.empSemDepara.length) console.warn('[DRE] empresas (PG) sem correspondência na Depara_empresas (ignoradas):', res.empSemDepara);
     if (dreAlertas().length) dreAbrirGerenciador();      // mostra o que ficou sem mapeamento
