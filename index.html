@@ -639,7 +639,7 @@ body.side-off #side-toggle{display:block}
               <th>Desconto 100% (Conta Assinada)</th>
               <th class="edit-col" title="Preenchido automaticamente pela DRE (📥 Subir DRE). Sem DRE para o mês/empresa, digite manualmente.">Fat. Everest ✏️</th>
               <th>Δ Fat. (R$)</th>
-              <th class="edit-col">Gorjeta ✏️</th>
+              <th class="edit-col" title="Calculada dos itens (Cod Produto 9999999999997, notas aceitas). Sem itens carregados para o mês, digite manualmente.">Gorjeta ✏️</th>
               <th class="edit-col">iFood ✏️</th>
               <th>ICMS dest. (R$)</th>
               <th>Monofásico (R$)</th>
@@ -669,7 +669,7 @@ body.side-off #side-toggle{display:block}
             <table><thead><tr>
               <th>Grupo</th><th>Empresa</th><th>CNPJ</th><th>Mês</th>
               <th>Receita Bruta (R$)</th>
-              <th class="edit-col">Gorjeta ✏️</th>
+              <th class="edit-col" title="Calculada dos itens (Cod Produto 9999999999997, notas aceitas). Sem itens carregados para o mês, digite manualmente.">Gorjeta ✏️</th>
               <th>Vendas c/ ST (R$)</th>
               <th>Monofásico (R$)</th>
               <th class="edit-col">Devoluções ✏️</th>
@@ -699,7 +699,7 @@ body.side-off #side-toggle{display:block}
             <table><thead><tr>
               <th>Grupo</th><th>Empresa</th><th>CNPJ</th><th>Mês</th>
               <th>Fat. Fiscal (R$)</th>
-              <th class="edit-col">Gorjeta ✏️</th>
+              <th class="edit-col" title="Calculada dos itens (Cod Produto 9999999999997, notas aceitas). Sem itens carregados para o mês, digite manualmente.">Gorjeta ✏️</th>
               <th class="edit-col">iFood ✏️</th>
               <th>ICMS dest. (R$)</th>
               <th>Monofásico (R$)</th>
@@ -2957,6 +2957,24 @@ function showAuditTab(tab) {
   if (typeof auditFit==='function') auditFit();
 }
 
+// ── Gorjeta calculada a partir dos itens (código 9999999999997, notas aceitas) ──
+const GORJ_COD = '9999999999997';
+let AUD_GORJ = {}, AUD_ITENS = new Set();
+const _gorjCod = c => String(c==null?'':c).trim().replace(/\.0+$/,'') === GORJ_COD;
+const _gorjValor = it => (it.total_sem_desconto!=null && it.total_sem_desconto!=='' && !isNaN(Number(it.total_sem_desconto)))
+  ? Number(it.total_sem_desconto) : (Number(it.valor_item)||0) - (Number(it.desconto_item)||0);
+// null = os itens dessa empresa/mês não estão carregados → continua a digitação manual
+function gorjAuto(emp, mes) {
+  const k = `${emp}||${mes}`;
+  return AUD_ITENS.has(k) ? Math.round((AUD_GORJ[k]||0)*100)/100 : null;
+}
+function gorjVal(emp, mes) { const a = gorjAuto(emp, mes); return a !== null ? a : ai(emp, mes, 'gorj'); }
+function gorjCell(emp, mes) {
+  const a = gorjAuto(emp, mes);
+  if (a === null) return aiInput(emp, mes, 'gorj');
+  return `<span class="ev-dre" title="${_dreEsc('Gorjeta calculada dos itens: soma dos itens com Cod Produto '+GORJ_COD+' em notas aceitas (Manifesto = Aceita)')}">${fmt(a)}</span>`;
+}
+
 function aiInput(emp, per, field) {
   const v = ai(emp, per, field);
   const eid = `_ai_${btoa(emp+per+field).replace(/[^a-z0-9]/gi,'')}`;
@@ -3588,6 +3606,14 @@ async function loadAuditoria() {
   if (gr) itens = itens.filter(i => i.grupo === gr);
   if (mes) itens = itens.filter(i => i.mes_ref === mes);
 
+  // Gorjeta = soma dos itens com código 9999999999997 em notas aceitas (SOMASES da apuração: Cod Produto + Manifesto "Aceita")
+  AUD_GORJ = {}; AUD_ITENS = new Set();
+  itens.forEach(it => {
+    const k = `${it.empresa}||${it.mes_ref}`;
+    AUD_ITENS.add(k);
+    if (_gorjCod(it.codigo_produto) && (it.manifesto||'Aceita') === 'Aceita') AUD_GORJ[k] = (AUD_GORJ[k]||0) + _gorjValor(it);
+  });
+
   const monoMap = {}, stMap = {};
   itens.forEach(it => {
     // Apenas itens de CFOPs de venda entram no cálculo de monofásico e ST
@@ -3691,7 +3717,7 @@ function renderAuditFat() {
     gFat=gDesc=gDesc100=gEv=gGorj=gIf=gIcms=gMono=gBC=gPis=gCof=0;
   };
   auditRows.forEach(r => {
-    const gorj=ai(r.empresa,r.mes_ref,'gorj'), ifood=ai(r.empresa,r.mes_ref,'ifood');
+    const gorj=gorjVal(r.empresa,r.mes_ref), ifood=ai(r.empresa,r.mes_ref,'ifood');
     const evD=dreEv(r.empresa,r.mes_ref);                       // Fat. Everest vindo da DRE (se carregada)
     const ev=evD?evD.v:ai(r.empresa,r.mes_ref,'ev');
     const dPis=ai(r.empresa,r.mes_ref,'darf_pis'), dCof=ai(r.empresa,r.mes_ref,'darf_cof');
@@ -3714,7 +3740,7 @@ function renderAuditFat() {
       <td style="text-align:right;color:var(--text2)">${(r.desc100||0)>0?fmt(r.desc100):'—'}</td>
       <td style="text-align:right">${evD?dreEvCell(evD):aiInput(r.empresa,r.mes_ref,'ev')}</td>
       <td style="text-align:right">${ev?fmtD(dFat):'—'}</td>
-      <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'gorj')}</td>
+      <td style="text-align:right">${gorjCell(r.empresa,r.mes_ref)}</td>
       <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'ifood')}</td>
       <td style="text-align:right;color:var(--yellow)">${fmt(r.icms)}</td>
       <td style="text-align:right;color:var(--text2)">${fmt(r.fat_mono)}</td>
@@ -3774,7 +3800,7 @@ function renderAuditICMS() {
     gFat=gGorj=gST=gMono=gDev=gBC=gIcms=gFu=gFac=0;
   };
   auditRows.forEach(r => {
-    const gorj=ai(r.empresa,r.mes_ref,'gorj'), dev=ai(r.empresa,r.mes_ref,'dev');
+    const gorj=gorjVal(r.empresa,r.mes_ref), dev=ai(r.empresa,r.mes_ref,'dev');
     const pago=ai(r.empresa,r.mes_ref,'darf_icms');
     const bc=Math.max(0,r.fat-gorj-r.fat_st-r.fat_mono-dev);
     const icmsC=bc*AP.ICMS, fu=bc*AP.FUND_UNIV, fac=bc*AP.FAC;
@@ -3790,7 +3816,7 @@ function renderAuditICMS() {
       <td style="font-size:11px;font-family:monospace;color:var(--text2)">${fmtCNPJ(r.cnpj)}</td>
       <td style="white-space:nowrap">${mesLabel(r.mes_ref)}</td>
       <td style="text-align:right;font-weight:700">${fmt(r.fat)}</td>
-      <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'gorj')}</td>
+      <td style="text-align:right">${gorjCell(r.empresa,r.mes_ref)}</td>
       <td style="text-align:right;color:var(--text2)">${fmt(r.fat_st)}</td>
       <td style="text-align:right;color:var(--text2)">${fmt(r.fat_mono)}</td>
       <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'dev')}</td>
@@ -3845,7 +3871,7 @@ function renderAuditPISCOF() {
     gFat=gGorj=gIf=gIcms=gMono=gBC=gPis=gCof=0;
   };
   auditRows.forEach(r => {
-    const gorj=ai(r.empresa,r.mes_ref,'gorj'), ifood=ai(r.empresa,r.mes_ref,'ifood');
+    const gorj=gorjVal(r.empresa,r.mes_ref), ifood=ai(r.empresa,r.mes_ref,'ifood');
     const dPis=ai(r.empresa,r.mes_ref,'darf_pis'), dCof=ai(r.empresa,r.mes_ref,'darf_cof');
     const bc=Math.max(0,r.fat-gorj-ifood-r.icms-r.fat_mono);
     const pisC=bc*AP.PIS, cofC=bc*AP.COF;
@@ -3861,7 +3887,7 @@ function renderAuditPISCOF() {
       <td style="font-size:11px;font-family:monospace;color:var(--text2)">${fmtCNPJ(r.cnpj)}</td>
       <td style="white-space:nowrap">${mesLabel(r.mes_ref)}</td>
       <td style="text-align:right;font-weight:700">${fmt(r.fat)}</td>
-      <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'gorj')}</td>
+      <td style="text-align:right">${gorjCell(r.empresa,r.mes_ref)}</td>
       <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'ifood')}</td>
       <td style="text-align:right;color:var(--yellow)">${fmt(r.icms)}</td>
       <td style="text-align:right;color:var(--text2)">${fmt(r.fat_mono)}</td>
