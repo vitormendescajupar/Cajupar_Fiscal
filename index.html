@@ -2960,7 +2960,12 @@ function showAuditTab(tab) {
 // ── Gorjeta calculada a partir dos itens (código 9999999999997, notas aceitas) ──
 const GORJ_COD = '9999999999997';
 let AUD_GORJ = {}, AUD_ITENS = new Set();
-const _gorjCod = c => String(c==null?'':c).trim().replace(/\.0+$/,'') === GORJ_COD;
+// Exceções: empresas cujo item de gorjeta tem outro código (empresa do site → códigos aceitos)
+const GORJ_COD_EMP = { 'FOSTER BOSQUE': ['99999'] };
+const _gorjCod = (c, emp) => {
+  const cod = String(c==null?'':c).trim().replace(/\.0+$/,'');
+  return (GORJ_COD_EMP[emp] || [GORJ_COD]).includes(cod);
+};
 const _gorjValor = it => (it.total_sem_desconto!=null && it.total_sem_desconto!=='' && !isNaN(Number(it.total_sem_desconto)))
   ? Number(it.total_sem_desconto) : (Number(it.valor_item)||0) - (Number(it.desconto_item)||0);
 // null = os itens dessa empresa/mês não estão carregados → continua a digitação manual
@@ -2972,7 +2977,7 @@ function gorjVal(emp, mes) { const a = gorjAuto(emp, mes); return a !== null ? a
 function gorjCell(emp, mes) {
   const a = gorjAuto(emp, mes);
   if (a === null) return aiInput(emp, mes, 'gorj');
-  return `<span class="ev-dre" title="${_dreEsc('Gorjeta calculada dos itens: soma dos itens com Cod Produto '+GORJ_COD+' em notas aceitas (Manifesto = Aceita)')}">${fmt(a)}</span>`;
+  return `<span class="ev-dre" title="${_dreEsc('Gorjeta calculada dos itens: soma dos itens com Cod Produto '+(GORJ_COD_EMP[emp]||[GORJ_COD]).join(' / ')+' em notas aceitas (Manifesto = Aceita)')}">${fmt(a)}</span>`;
 }
 
 function aiInput(emp, per, field) {
@@ -3611,7 +3616,7 @@ async function loadAuditoria() {
   itens.forEach(it => {
     const k = `${it.empresa}||${it.mes_ref}`;
     AUD_ITENS.add(k);
-    if (_gorjCod(it.codigo_produto) && (it.manifesto||'Aceita') === 'Aceita') AUD_GORJ[k] = (AUD_GORJ[k]||0) + _gorjValor(it);
+    if (_gorjCod(it.codigo_produto, it.empresa) && (it.manifesto||'Aceita') === 'Aceita') AUD_GORJ[k] = (AUD_GORJ[k]||0) + _gorjValor(it);
   });
 
   const monoMap = {}, stMap = {};
