@@ -157,6 +157,17 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .audit-tab-btn.active{color:var(--primary);border-bottom-color:var(--primary)}
 .audit-input{background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);color:var(--text);border-radius:5px;padding:4px 8px;font-size:12px;font-weight:600;width:110px;text-align:right;outline:none;transition:border .15s}
 .audit-input:focus{border-color:var(--primary);background:rgba(249,115,22,.15)}
+/* Fat. Everest vindo da DRE (somente leitura) */
+.ev-dre{display:inline-flex;align-items:center;justify-content:flex-end;gap:6px;min-width:110px;font-size:12px;font-weight:700;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:5px;padding:4px 8px;color:var(--text);cursor:help}
+.ev-dre::before{content:'DRE';font-size:9px;font-weight:800;letter-spacing:.5px;color:var(--green)}
+.dre-chip{font-size:12px;color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:5px 12px;white-space:nowrap}
+.dre-chip.on{color:var(--green);border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.08)}
+.dre-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.dre-tbl th,.dre-tbl td{padding:6px 8px;border-bottom:1px solid var(--border);white-space:normal;text-align:left;position:static}
+.dre-tbl th{background:transparent;font-size:10px}
+.dre-tbl select{font-size:12px;padding:4px 6px}
+.dre-warn{background:#2a1a00;border:1px solid #f9731633;border-radius:8px;padding:10px 12px;font-size:12px;color:var(--yellow);margin-bottom:12px;line-height:1.6}
+.dre-sec{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin:14px 0 6px}
 .edit-col{background:rgba(249,115,22,.06);color:var(--primary)!important}
 .diff-pos{color:var(--red);font-weight:700}
 .diff-neg{color:var(--green);font-weight:700}
@@ -208,6 +219,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .badge-cancel{background:#fee2e2;color:#dc2626}
 .badge-aceita{background:#dcfce7;color:#16a34a}
 .badge-dev{background:#fff3e0;color:#c2410c}
+.badge-salao{background:#dcfce7;color:#16a34a}
+.badge-ifood{background:#fee2e2;color:#b91c1c}
+.badge-99{background:#fef9c3;color:#854d0e}
+.badge-delivery{background:#dbeafe;color:#1e40af}
 /* EXCEL-LIKE COLUMN FILTERS */
 .col-filter-row th{background:var(--bg);padding:4px 6px;position:sticky;top:34px;z-index:1}
 .col-filter-row th input,.col-filter-row th select{
@@ -439,7 +454,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
         <div class="tbl-wrap">
           <table>
             <thead>
-              <tr><th>Tipo</th><th>Número</th><th>Data</th><th>Empresa</th><th>Grupo</th><th>CFOPs</th><th>Destinatário</th><th>Valor Total</th><th>Desconto</th><th>ICMS</th><th>ICMS-ST</th><th>PIS</th><th>COFINS</th><th>Pagamento</th><th>Manifesto</th><th>Origem</th><th>Chave de Acesso</th></tr>
+              <tr><th>Tipo</th><th>Número</th><th>Data</th><th>Empresa</th><th>Grupo</th><th>CFOPs</th><th>Destinatário</th><th>Valor Total</th><th>Desconto</th><th>ICMS</th><th>ICMS-ST</th><th>PIS</th><th>COFINS</th><th>Pagamento</th><th>Manifesto</th><th>Canal</th><th>Origem</th><th>Chave de Acesso</th></tr>
               <tr class="col-filter-row">
                 <th><select id="cf-tipo-notas" onchange="loadNotas(1)"><option value="">Todos</option><option value="NFC-e">NFC-e</option><option value="NF-e">NF-e</option></select></th>
                 <th><input id="cf-num-notas" placeholder="Nº" oninput="debounce(()=>loadNotas(1),350,'cf-num-notas')"/></th>
@@ -451,6 +466,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
                 <th></th><th></th><th></th><th></th><th></th><th></th>
                 <th><select id="cf-pgto-notas" onchange="loadNotas(1)"><option value="">Todos</option></select></th>
                 <th><select id="cf-manif-notas" onchange="loadNotas(1)"><option value="">Todos</option><option value="Aceita">Aceita</option><option value="Cancelada">Cancelada</option></select></th>
+                <th><select id="cf-canal-notas" onchange="loadNotas(1)"><option value="">Todos</option><option value="Salão">Salão</option><option value="iFood">iFood</option><option value="99 Pop">99 Pop</option><option value="Delivery">Delivery</option></select></th>
                 <th><select id="cf-origem-notas" onchange="loadNotas(1)"><option value="">Todos</option><option value="drive">Drive</option><option value="manual">Manual</option></select></th>
                 <th><input id="cf-chave-notas" placeholder="Chave" oninput="debounce(()=>loadNotas(1),350,'cf-chave-notas')"/></th>
               </tr>
@@ -522,6 +538,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
         <span class="page-title">Auditoria Fiscal</span>
         <select id="audit-grupo" onchange="loadAuditoria()"><option value="">Todos os grupos</option></select>
         <select id="audit-mes" onchange="loadAuditoria()"><option value="">Todos os meses</option></select>
+        <button class="btn btn-sm btn-outline" onclick="document.getElementById('dre-file').click()" title="Subir a DRE Gerencial do mês (xlsx) — preenche o Fat. Everest automaticamente">📥 Subir DRE</button>
+        <input type="file" id="dre-file" accept=".xlsx,.xlsm,.xlsb,.xls" style="display:none" onchange="dreOnFile(this)"/>
+        <button class="btn btn-sm btn-outline" onclick="dreAbrirGerenciador()" title="DREs carregadas, exclusão e mapeamento de empresas">⚙️ DRE</button>
+        <span id="dre-chip" class="dre-chip">DRE: nenhuma carregada</span>
         <button class="btn btn-sm btn-outline" onclick="exportAuditoriaExcel()" title="Exportar Excel">📊 Excel</button>
         <button class="btn btn-sm btn-outline" onclick="exportAuditoriaPDF()" title="Exportar PDF">🖨️ PDF</button>
         <button class="btn btn-icon" onclick="loadAuditoria()" title="Atualizar">🔄</button>
@@ -561,7 +581,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
               <th>Fat. Fiscal (R$)</th>
               <th>Descontos em NF (R$)</th>
               <th>Desconto 100% (Conta Assinada)</th>
-              <th class="edit-col">Fat. Everest ✏️</th>
+              <th class="edit-col" title="Preenchido automaticamente pela DRE (📥 Subir DRE). Sem DRE para o mês/empresa, digite manualmente.">Fat. Everest ✏️</th>
               <th>Δ Fat. (R$)</th>
               <th class="edit-col">Gorjeta ✏️</th>
               <th class="edit-col">iFood ✏️</th>
@@ -821,6 +841,7 @@ const COL_NOTAS = {
   'FCP-ST (R$)':'valor_fcp_st','PIS (R$)':'valor_pis','COFINS (R$)':'valor_cofins',
   'Pagamento':'forma_pagamento',
   'Manifesto':'manifesto','Situação':'manifesto','Situacao':'manifesto','Status':'manifesto','Status NF':'manifesto',
+  'Canal Venda':'canal_venda','Canal':'canal_venda',
 };
 
 // Mapeamento colunas Excel → campos internos (aba Itens)
@@ -837,6 +858,7 @@ const COL_ITENS = {
   'Base ICMS-ST (R$)':'base_icms_st','ICMS-ST (R$)':'valor_icms_st',
   'FCP-ST (R$)':'valor_fcp_st','PIS (R$)':'valor_pis','COFINS (R$)':'valor_cofins',
   'Manifesto':'manifesto','Situação':'manifesto','Situacao':'manifesto','Status':'manifesto',
+  'Canal Venda':'canal_venda','Canal':'canal_venda',
 };
 
 const MESES_NOME=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -862,17 +884,53 @@ const MONO_KEYWORDS = [
   'RED BULL','REDBULL','MONSTER','BURN',
   // Marcas — agua
   'MAMBA','CRYSTAL','INDAIA','BONAFONT','PERRIER','SAN PELLEGRINO',
+  // Rodizio de bebidas (NAZO GOIANIA)
+  'BEBIDAS - RODIZIO',
+  // Chas industrializados (CST PIS/COFINS 04 confirmado)
+  'CHA MATE','BAER MATE',
+  // Outras marcas/produtos monofasicos confirmados
+  // 'HANA' foi removido — sozinho batia dentro de "BUCHANANS" (BUCH-ANA-NS)
+  // e o proprio "CMB1 HANA" nao e monofasico. Ver ANTI_KEYWORDS/comentario.
+  'LEMONADE',
+  'ANTARCTICA',
+  'COCA KS',
+  'H20',
 ];
 
 // ── EXCLUSÕES — batem em MONO_KEYWORDS mas NÃO são monofásicos
 // (pratos que levam bebida como ingrediente, coquetéis preparados, etc.)
 // Adicione novos falsos positivos aqui conforme forem aparecendo.
 const ANTI_KEYWORDS = [
+  // Produtos que batem em 'AGUA' mas nao sao monofasicos
+  'AGUA DE COCO',
+  // Bebidas quentes / destilados — NUNCA sao monofasicos, mesmo em combo
+  // com algo monofasico (ex: whisky com coca-cola, vodka com red bull).
+  // Termos genericos de categoria (pegam qualquer marca, atual ou futura):
+  'WHISKY','WHISKEY','VODKA','GIN','RUM','CACHACA','TEQUILA',
+  'CONHAQUE','LICOR','DOSE',
+  // Marcas especificas (redundante com os termos acima, mas explicito):
+  'BUCHANANS','CHIVAS','BALLANTINES','WYBOROWA','BEEFEATER','ABSOLUT',
   // Pratos que usam cerveja/bebida como ingrediente
   'NA CERVEJA','COM CERVEJA','A CERVEJA','AO MOLHO DE CERVEJA',
   'MOELA','COSTELINHA','COSTELA','FRANGO AO','CAMARAO',
   // Coqueteis preparados (nao produto monofasico em si)
   'GIN TONICA','GIN TONICO',
+  // Hamburguer / food combos que usam nome de cerveja no nome
+  'BURGER','BURGUER','COMBO ORIGINAL',
+  // Preparos de coquetel
+  'PREPARO COZUMEL','PREPARO DE COZUMEL',
+  // Outro destilado/bebida mista nao coberto pelos termos genericos acima
+  'MUSASHI',      // MUSASHI TONICA (sake + tonica)
+  // Itens administrativos / controles internos
+  'BOLACHA DE CHOPP',  // porta-copo, nao bebida
+  'DESPERDICIO',       // controle de perda de chopp
+  'BOLAO',             // item promocional
+  '- UNIDADE',         // itens de referencia/devolucao
+  // Coqueteis com tonica que nao sao produto monofasico
+  'LA BOCA',           // La Boca Tonica = coquetel
+  // Combos de lanche com nome de cerveja + tamanho P/M/G
+  'ORIGINAL- P','ORIGINAL- M','ORIGINAL- G',
+  'ORIGINAL - P','ORIGINAL - M','ORIGINAL - G',
 ];
 
 // Normaliza string: remove acentos e converte para maiusculas
@@ -2611,6 +2669,7 @@ async function loadNotas(page = 1) {
   const cfPgto  = (document.getElementById('cf-pgto-notas')?.value||'').toLowerCase();
   const cfChave = (document.getElementById('cf-chave-notas')?.value||'').trim().toLowerCase();
   const cfManif  = (document.getElementById('cf-manif-notas')?.value||'');
+  const cfCanal  = (document.getElementById('cf-canal-notas')?.value||'');
   const cfOrigem = (document.getElementById('cf-origem-notas')?.value||'');
 
   let all = await idbAll('notas');
@@ -2634,6 +2693,7 @@ async function loadNotas(page = 1) {
   if (cfDest)  all = all.filter(n => (n.dest_nome||'').toLowerCase().includes(cfDest));
   if (cfPgto)  all = all.filter(n => (n.forma_pagamento||'').toLowerCase().includes(cfPgto));
   if (cfManif)  all = all.filter(n => (n.manifesto||'Aceita') === cfManif);
+  if (cfCanal)  all = all.filter(n => (n.canal_venda||'Salão') === cfCanal);
   if (cfOrigem) all = all.filter(n => (n.origem||'drive') === cfOrigem);
   if (cfChave)  all = all.filter(n => (n.chave_acesso||'').toLowerCase().includes(cfChave));
   // Build date tree from pre-date-filtered set
@@ -2653,7 +2713,7 @@ async function loadNotas(page = 1) {
   const slice = all.slice((page-1)*PER_PAGE, page*PER_PAGE);
   const tbody = document.getElementById('notas-body');
   if (!slice.length) {
-    tbody.innerHTML = `<tr><td colspan="17"><div class="empty-state"><div class="icon">🧾</div><p>Nenhuma nota encontrada</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="18"><div class="empty-state"><div class="icon">🧾</div><p>Nenhuma nota encontrada</p></div></td></tr>`;
     document.getElementById('notas-pag').innerHTML = '';
     return;
   }
@@ -2672,6 +2732,7 @@ async function loadNotas(page = 1) {
     <td style="text-align:right">${fmt(n.valor_cofins)}</td>
     <td style="font-size:11px;color:var(--text2)">${n.forma_pagamento||'—'}</td>
     <td><span class="badge ${(n.manifesto||'Aceita')==='Cancelada'?'badge-cancel':'badge-aceita'}">${n.manifesto||'Aceita'}</span></td>
+    <td style="text-align:center">${(()=>{const c=n.canal_venda||'Salão';const cls=c==='iFood'?'badge-ifood':c==='99 Pop'?'badge-99':c==='Delivery'?'badge-delivery':'badge-salao';return `<span class="badge ${cls}">${c}</span>`;})()}</td>
     <td style="text-align:center">${n.origem==='manual'?'<span style="font-size:10px;background:rgba(59,130,246,.15);color:var(--blue);border:1px solid #3b82f644;padding:1px 6px;border-radius:4px;font-weight:700">📋 Manual</span>':'<span style="font-size:10px;color:var(--text3)">📁 Drive</span>'}</td>
     <td style="font-size:10px;font-family:monospace;color:var(--text3)" title="${n.chave_acesso||''}">${n.chave_acesso ? n.chave_acesso.slice(0,22)+'…' : '—'}</td>
   </tr>`).join('');
@@ -2850,6 +2911,318 @@ function grpRow(cols, grupo) {
   return `<tr class="audit-group-row"><td colspan="${cols}">▸ ${grupo}</td></tr>`;
 }
 
+// ══════════════════════════════════════════════════════════════
+//  DRE GERENCIAL → FAT. EVEREST
+//  Substitui o SOMASES da planilha de apuração:
+//    Fat. Everest = Receita Bruta (exceto "RESTITUIÇÃO DE PERDAS")
+//                   − Incentivo Delivery (Cupom) − Custo de entrega
+//  por Empresa (NA) e mês. As colunas E, J, K, L e M da aba
+//  "BD_DRE Gerencial_Everest" são fórmulas (VLOOKUP/XLOOKUP) sobre as abas
+//  Depara_empresas e Depara_DRE — aqui elas são reproduzidas a partir de
+//  A:D (Database, Empresa PG, Descrição, valor), então a DRE pode ser
+//  subida mesmo sem as fórmulas calculadas.
+// ══════════════════════════════════════════════════════════════
+const DRE_LS     = 'caj_dre_v1';       // { meses:{'09/2026':{'CAJU 01 - ASN':{receita,incentivo,custo}}}, arquivos:{}, empresasNA:[] }
+const DRE_MAP_LS = 'caj_dre_map_v1';   // overrides do mapeamento empresa do site → Empresa (NA)
+
+// Empresa do site → "Empresa (NA)" (Depara_empresas, coluna B). Ajustável em ⚙️ DRE.
+// '' = sem equivalente na DRE.
+const DRE_EMP_DEFAULT = {
+  'CAJU LIMAO ASA NORTE':'CAJU 01 - ASN',
+  'CAJU LIMAO SUDOESTE':'CAJU 03 - SIG',
+  'CAJU ITAIM SP':'CAJU ITAIM/SP',
+  'MULT 01':'MULT 01 - CPD',
+  'NAZO GOIANIA':'MULT 02 - NZ GO',
+  'CAMINITO SUDOESTE':'MULT 03 - CP SG',
+  'MULT 04':'',
+  'CAMINITO ASA NORTE':'MULT 05 - CP AN',
+  'HOLDING FERMULT':'MULT 07 - FERMULT SERVICOS',
+  'CAMINITO AGUAS CLARAS':'MULT 12 - CP AC',
+  'MULT 13':'',
+  'CAMINITO ASA SUL':'MULT 14 - CP AS',
+  'NAZO ASA SUL':'NFE 01 - NZ AS',
+  'NAZO SUSHI BAR':'',
+  'NAZO AGUAS CLARAS':'NFE 03 - NZ AC',
+  'NAZO SUDOESTE':'NFE 04 - NZ SG',
+  'MULT EMPRESAS':'NFE 05 - CPD',
+  'RESPONSA':'RESPONSA BAR',
+  'FOSTER ASA SUL':'FB01 - ASS',
+  'FOSTER BOSQUE':'FB02 - ASN BOSQUE',
+  'FOSTER AGUAS CLARAS':'FB03 - AC',
+  'FERM 04':'',
+  'FOSTER SUDOESTE':'FB04 - SIG',
+  'FOSTER ASA NORTE':'FB05 - ASN',
+};
+
+// <DRE-CORE-START> (funções puras — também testadas fora do navegador)
+// Excel compara texto sem diferenciar maiúsculas/minúsculas (e sem aparar espaços)
+const _dreN    = s => String(s==null?'':s).normalize('NFC').toLowerCase();
+const _dreNorm = s => String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+// Chave de PROCV/XLOOKUP: número e texto são tipos diferentes (6 ≠ "6"); células vazias não casam
+const _dreK    = v => (v==null||v==='') ? null : (typeof v==='number' ? 'n:'+v : 's:'+_dreN(v));
+
+function dreMesKey(v) {
+  if (v==null || v==='') return '';
+  const p2 = n => String(n).padStart(2,'0');
+  if (v instanceof Date) return p2(v.getUTCMonth()+1)+'/'+v.getUTCFullYear();
+  if (typeof v==='number') {                       // serial de data do Excel
+    const d = new Date(Math.round((v-25569)*86400000));
+    return p2(d.getUTCMonth()+1)+'/'+d.getUTCFullYear();
+  }
+  const s = String(v).trim();
+  let m = s.match(/^(\d{1,2})\/(\d{4})$/);              if (m) return p2(m[1])+'/'+m[2];
+  m = s.match(/^\d{1,2}\/(\d{1,2})\/(\d{4})$/);         if (m) return p2(m[1])+'/'+m[2];
+  m = s.match(/^(\d{4})-(\d{1,2})(?:-\d{1,2})?/);       if (m) return p2(m[2])+'/'+m[1];
+  return s;
+}
+
+function dreValidarCabecalhos(bd, dEmp, dDre) {
+  const h = (a,i) => _dreNorm(((a&&a[0])||[])[i]);
+  const hdr = a => ((a&&a[0])||[]).map(x=>x==null?'':String(x)).join(' | ');
+  if (!bd || bd.length<2) return 'A aba BD_DRE Gerencial_Everest está vazia.';
+  if (!(h(bd,0).includes('database') && h(bd,1).includes('empresa') && h(bd,2).includes('descri') && h(bd,3).includes('dre')))
+    return `Cabeçalho inesperado na aba BD_DRE Gerencial_Everest (esperado: Database | Empresa (PG) | Descrição | DRE GERENCIAL). Encontrado: ${hdr(bd)}`;
+  if (!h(dEmp,1).includes('relat'))
+    return `Cabeçalho inesperado na aba Depara_empresas (esperado: Plano gerencial | Relatórios analíticos | Grupo). Encontrado: ${hdr(dEmp)}`;
+  if (!(h(dDre,0).includes('cod') && h(dDre,2).includes('original') && h(dDre,3).includes('dre gerencial') && h(dDre,7).includes('analitica')))
+    return `Cabeçalho inesperado na aba Depara_DRE (esperado colunas A=CÓD. EVEREST, C=DESCRIÇÃO (ORIGINAL), D=DRE GERENCIAL, H=De para DRE Analítica). Encontrado: ${hdr(dDre)}`;
+  return '';
+}
+
+// bd / dEmp / dDre: matrizes (linha 0 = cabeçalho), colunas na mesma ordem da planilha
+function dreCalcular(bd, dEmp, dDre) {
+  // Depara_empresas: A = plano gerencial (chave), B = Empresa (NA)
+  const empMap = new Map();
+  for (let i=1;i<dEmp.length;i++) { const r=dEmp[i]||[]; const k=_dreK(r[0]); if (k!==null && !empMap.has(k)) empMap.set(k, r[1]); }
+  // Depara_DRE: índices por C (descrição), A (código) e D (DRE GERENCIAL) — sempre a 1ª ocorrência, como PROCV/XLOOKUP
+  const byDesc=new Map(), byCod=new Map(), byDre=new Map();
+  for (let i=1;i<dDre.length;i++) {
+    const r=dDre[i]||[];
+    const kd=_dreK(r[2]); if (kd!==null && !byDesc.has(kd)) byDesc.set(kd,r);
+    const kc=_dreK(r[0]); if (kc!==null && !byCod.has(kc))  byCod.set(kc,r);
+    const kr=_dreK(r[3]); if (kr!==null && !byDre.has(kr))  byDre.set(kr,r);
+  }
+  const blank0 = v => (v==null||v==='') ? 0 : v;   // PROCV devolve 0 para célula vazia
+
+  // Reproduz as colunas E (Empresa NA), K (Cod.), J (Class. Rateio), L (Class. DRE) e M (Class. DRE 2)
+  function classificar(r) {
+    const eNA = empMap.get(_dreK(r[1]));
+    if (eNA==null || eNA==='') return null;                                        // E = #N/D
+    const rowDesc = byDesc.get(_dreK(r[2]));                                       // K = XLOOKUP(C; Depara_DRE!C:C; A:A)
+    if (!rowDesc) return {eNA, sem:'desc'};
+    const rowCod = byCod.get(_dreK(blank0(rowDesc[0])));                           // VLOOKUP(K; Depara_DRE!A:G; …)
+    if (!rowCod) return {eNA, sem:'cod'};
+    const eN = _dreN(eNA);
+    const J = (eN==='mult 07 - fermult servicos' || eN==='caju holding - cajupar servicos') ? rowCod[4]   // RATEIO CSC
+            : (eN==='mult 01 - cpd' || eN==='nfe 05 - cpd')                                  ? rowCod[5]   // RATEIO CPD
+            :                                                                                  rowCod[6];  // RATEIO ESPECÍFICO
+    const jZero = (J==null || J==='' || J===0 || (typeof J==='string' && _dreN(J)==='n/a'));
+    const L = jZero ? blank0(rowCod[3]) : 'Rateio';                                // L
+    const rowL = byDre.get(_dreK(L));                                              // M = VLOOKUP(L; Depara_DRE!D:H; 5)
+    if (!rowL) return {eNA, L, M:null};
+    return {eNA, L, M: blank0(rowL[7])};
+  }
+
+  const meses = {};   // 'MM/AAAA' → { 'Empresa NA' → {receita, incentivo, custo} }
+  let linhas = 0;
+  const empSemDepara = new Set(), semDescricao = new Set();
+  for (let i=1;i<bd.length;i++) {
+    const r = bd[i]; if (!r) continue;
+    const mes = dreMesKey(r[0]); if (!mes) continue;
+    linhas++;
+    const c = classificar(r);
+    if (!c) { if (r[1]!=null) empSemDepara.add(String(r[1])); continue; }
+    if (c.sem==='desc') { semDescricao.add(String(r[2]).trim()); continue; }
+    if (c.M==null) continue;
+    if (typeof r[3]!=='number') continue;                                          // SOMASES ignora texto
+    const mN=_dreN(c.M);
+    let tipo;
+    if (mN==='receita bruta') { if (_dreN(c.L)==='restituição de perdas') continue; tipo='receita'; }   // L:L <> "RESTITUIÇÃO DE PERDAS"
+    else if (mN==='incentivo delivery (cupom)') tipo='incentivo';
+    else if (mN==='custo de entrega')           tipo='custo';
+    else continue;
+    const m  = meses[mes] || (meses[mes] = {});
+    const e  = m[c.eNA]   || (m[c.eNA]   = {receita:0,incentivo:0,custo:0});
+    e[tipo] += r[3];
+  }
+  for (const m of Object.values(meses)) for (const e of Object.values(m)) {
+    e.receita=Math.round(e.receita*100)/100; e.incentivo=Math.round(e.incentivo*100)/100; e.custo=Math.round(e.custo*100)/100;
+  }
+  const empresasNA = [...new Set(dEmp.slice(1).map(r=>r&&r[1]).filter(x=>x && _dreN(x)!=='desativado'))].sort();
+
+  // Conferência: se a DRE já traz as colunas calculadas (E, L, M) comparamos com as nossas
+  let conf = 0, divergentes = 0;
+  const exemplos = [];
+  for (let i=1;i<bd.length;i++) {
+    const r=bd[i]; if (!r || !dreMesKey(r[0])) continue;
+    const eC=r[4], lC=r[11], mC=r[12];
+    if (eC==null && lC==null && mC==null) continue;
+    const bad = v => typeof v==='string' && v.charAt(0)==='#';
+    const c = classificar(r) || {};
+    const cmp = (cached, mine) => bad(cached) || cached==null ? (mine==null) : _dreN(cached)===_dreN(mine);
+    conf++;
+    if (!(cmp(eC, c.eNA) && cmp(lC, c.L) && cmp(mC, c.M))) { divergentes++; if (exemplos.length<5) exemplos.push({linha:i+1, descricao:r[2], planilha:[eC,lC,mC], site:[c.eNA,c.L,c.M]}); }
+  }
+  return {meses, linhas, empSemDepara:[...empSemDepara], semDescricao:[...semDescricao], empresasNA, conferencia:{linhas:conf, divergentes, exemplos}};
+}
+// <DRE-CORE-END>
+
+// ── estado (localStorage) ────────────────────────────────────
+let _dreCache = undefined, _dreMapCache = undefined;
+function dreLoad() {
+  if (_dreCache === undefined) { try { _dreCache = JSON.parse(localStorage.getItem(DRE_LS)||'null'); } catch(e) { _dreCache = null; } }
+  return _dreCache;
+}
+function dreSave(d) {
+  _dreCache = d;
+  try { if (d && Object.keys(d.meses).length) localStorage.setItem(DRE_LS, JSON.stringify(d)); else { localStorage.removeItem(DRE_LS); _dreCache = null; } }
+  catch(e) { toast('Não foi possível salvar a DRE no navegador: '+e.message, 'err'); }
+}
+function dreMapa() {
+  if (_dreMapCache === undefined) {
+    let ov = {}; try { ov = JSON.parse(localStorage.getItem(DRE_MAP_LS)||'{}') || {}; } catch(e) {}
+    _dreMapCache = {...DRE_EMP_DEFAULT, ...ov};
+  }
+  return _dreMapCache;
+}
+function dreSetMapa(emp, na) {
+  let ov = {}; try { ov = JSON.parse(localStorage.getItem(DRE_MAP_LS)||'{}') || {}; } catch(e) {}
+  ov[emp] = na; localStorage.setItem(DRE_MAP_LS, JSON.stringify(ov)); _dreMapCache = undefined;
+  refreshAuditTables(); dreAbrirGerenciador();
+}
+const _dreEsc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const _dreMesOrd = m => m.slice(3)+m.slice(0,2);   // 'MM/AAAA' → 'AAAAMM'
+
+// Fat. Everest de uma empresa/mês a partir da DRE (null = sem DRE → entrada manual)
+function dreEv(emp, mesRef) {
+  const d = dreLoad(); if (!d) return null;
+  const na = dreMapa()[emp]; if (!na) return null;
+  const [a,m] = String(mesRef||'').split('-');
+  const dm = d.meses[`${m}/${a}`]; if (!dm) return null;
+  const key = Object.keys(dm).find(k => _dreN(k)===_dreN(na)); if (!key) return null;
+  const x = dm[key];
+  return {v: Math.round((x.receita - x.incentivo - x.custo)*100)/100, receita:x.receita, incentivo:x.incentivo, custo:x.custo, na:key};
+}
+function dreEvCell(x) {
+  const tip = `Fat. Everest calculado da DRE (${x.na})\nReceita Bruta: ${fmt(x.receita)}\n− Incentivo Delivery (Cupom): ${fmt(x.incentivo)}\n− Custo de entrega: ${fmt(x.custo)}`;
+  return `<span class="ev-dre" title="${_dreEsc(tip)}">${fmt(x.v)}</span>`;
+}
+function dreAtualizarChip() {
+  const el = document.getElementById('dre-chip'); if (!el) return;
+  const d = dreLoad();
+  const ms = d ? Object.keys(d.meses).sort((a,b)=>_dreMesOrd(a).localeCompare(_dreMesOrd(b))) : [];
+  if (!ms.length) { el.textContent='DRE: nenhuma carregada'; el.className='dre-chip'; el.title='Suba a DRE Gerencial do mês para preencher o Fat. Everest automaticamente'; return; }
+  el.textContent = 'DRE: ' + ms.join(' · ');
+  el.className = 'dre-chip on';
+  el.title = ms.map(m => `${m}: ${(d.arquivos&&d.arquivos[m]&&d.arquivos[m].nome)||'—'}`).join('\n');
+}
+
+// ── upload ───────────────────────────────────────────────────
+async function dreOnFile(inp) {
+  const f = inp.files && inp.files[0]; inp.value = '';
+  if (!f) return;
+  if (typeof XLSX === 'undefined') { toast('A biblioteca de Excel (SheetJS) não carregou — verifique a conexão e recarregue a página.', 'err', 7000); return; }
+  try {
+    toast('Lendo DRE…', 'info', 2500);
+    const wb = XLSX.read(await f.arrayBuffer(), {type:'array'});
+    const pick = re => wb.SheetNames.find(n => re.test(_dreNorm(n)));
+    const nBD = pick(/^bd_dre/), nEmp = pick(/^depara_empresas/), nDre = pick(/^depara_dre/);
+    if (!nBD || !nEmp || !nDre) {
+      toast(`A planilha precisa ter as abas "BD_DRE Gerencial_Everest", "Depara_empresas" e "Depara_DRE". Abas encontradas: ${wb.SheetNames.join(', ')}`, 'err', 10000); return;
+    }
+    const aoa = n => XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, raw:true, defval:null, blankrows:false});
+    const bd = aoa(nBD), dEmp = aoa(nEmp), dDre = aoa(nDre);
+    const erro = dreValidarCabecalhos(bd, dEmp, dDre);
+    if (erro) { toast(erro, 'err', 12000); return; }
+
+    const res = dreCalcular(bd, dEmp, dDre);
+    const meses = Object.keys(res.meses);
+    if (!meses.length) { toast('Nenhum faturamento (Receita Bruta) encontrado nessa DRE — confira as abas Depara_empresas e Depara_DRE.', 'err', 9000); return; }
+
+    // Substitui apenas os meses presentes no arquivo; os demais continuam carregados
+    const cur = dreLoad() || {meses:{}, arquivos:{}, empresasNA:[]};
+    meses.forEach(m => { cur.meses[m] = res.meses[m]; cur.arquivos[m] = {nome:f.name, em:new Date().toISOString(), linhas:res.linhas}; });
+    cur.empresasNA = res.empresasNA;
+    dreSave(cur);
+    dreAtualizarChip(); refreshAuditTables();
+
+    const nEmpDre = meses.reduce((s,m)=>s+Object.keys(res.meses[m]).length, 0);
+    const total = meses.reduce((s,m)=>s+Object.values(res.meses[m]).reduce((t,e)=>t+e.receita-e.incentivo-e.custo,0), 0);
+    toast(`DRE ${meses.join(', ')} carregada: ${nEmpDre} empresa(s), Fat. Everest total R$ ${fmt(total)}`, 'ok', 6000);
+    if (res.conferencia.linhas && res.conferencia.divergentes) {
+      console.warn('[DRE] linhas cuja classificação difere das colunas calculadas da planilha:', res.conferencia.exemplos);
+      toast(`Atenção: ${res.conferencia.divergentes} de ${res.conferencia.linhas} linhas da DRE têm classificação diferente da calculada pela planilha (detalhes no console do navegador).`, 'err', 10000);
+    }
+    if (res.semDescricao.length) console.warn('[DRE] descrições sem correspondência na Depara_DRE (ignoradas):', res.semDescricao);
+    if (res.empSemDepara.length) console.warn('[DRE] empresas (PG) sem correspondência na Depara_empresas (ignoradas):', res.empSemDepara);
+    if (dreAlertas().length) dreAbrirGerenciador();      // mostra o que ficou sem mapeamento
+  } catch(e) {
+    console.error(e);
+    toast('Erro ao ler a DRE: ' + (e.message||e), 'err', 9000);
+  }
+}
+
+// ── gerenciador: DREs carregadas, exclusão e mapeamento ──────
+function dreAlertas() {
+  const d = dreLoad(); if (!d) return [];
+  const mapa = dreMapa(), out = [];
+  const naMapeadas = new Set(Object.values(mapa).filter(Boolean).map(_dreN));
+  const naNaDre = {};
+  Object.values(d.meses).forEach(dm => Object.entries(dm).forEach(([na,x]) => { naNaDre[_dreN(na)] = na; if (Math.abs(x.receita-x.incentivo-x.custo) > 0.005) naNaDre['$'+_dreN(na)] = na; }));
+  // empresas da DRE com faturamento que nenhuma empresa do site aponta
+  Object.keys(naNaDre).filter(k=>k[0]==='$').forEach(k => { if (!naMapeadas.has(k.slice(1))) out.push(`"${naNaDre[k]}" tem faturamento na DRE mas não está ligada a nenhuma empresa do site.`); });
+  // empresas do site apontando para um nome que não existe na DRE carregada
+  Object.entries(mapa).forEach(([emp,na]) => { if (na && !naNaDre[_dreN(na)]) out.push(`${emp} → "${na}" não aparece na DRE carregada.`); });
+  return out;
+}
+function dreAbrirGerenciador() {
+  const d = dreLoad();
+  const ms = d ? Object.keys(d.meses).sort((a,b)=>_dreMesOrd(b).localeCompare(_dreMesOrd(a))) : [];
+  const alertas = dreAlertas();
+  const mapa = dreMapa();
+  const listaNA = (d && d.empresasNA && d.empresasNA.length) ? d.empresasNA : [...new Set(Object.values(DRE_EMP_DEFAULT).filter(Boolean))].sort();
+
+  let h = '';
+  if (alertas.length) h += `<div class="dre-warn"><strong>⚠️ Confira o mapeamento:</strong><br>${alertas.map(_dreEsc).join('<br>')}</div>`;
+  h += `<div class="dre-sec">DREs carregadas</div>`;
+  h += ms.length ? `<table class="dre-tbl"><thead><tr><th>Mês</th><th>Arquivo</th><th>Carregada em</th><th style="text-align:right">Empresas</th><th style="text-align:right">Fat. Everest</th><th></th></tr></thead><tbody>` +
+    ms.map(m => {
+      const a = (d.arquivos&&d.arquivos[m])||{};
+      const emps = Object.values(d.meses[m]);
+      const tot = emps.reduce((s,e)=>s+e.receita-e.incentivo-e.custo,0);
+      return `<tr><td><strong>${m}</strong></td><td>${_dreEsc(a.nome||'—')}</td><td>${a.em?new Date(a.em).toLocaleString('pt-BR'):'—'}</td><td style="text-align:right">${emps.length}</td><td style="text-align:right">${fmt(tot)}</td><td style="text-align:right"><button class="btn btn-sm btn-outline" onclick="dreConfirmarExcluir('${m}')">🗑️ Excluir</button></td></tr>`;
+    }).join('') + `</tbody></table>`
+    : `<p style="color:var(--text2);font-size:12px">Nenhuma DRE carregada. Use <strong>📥 Subir DRE</strong> com a planilha da DRE Gerencial do mês.</p>`;
+
+  h += `<div class="dre-sec">Mapeamento: empresa do site → Empresa (NA) da DRE</div>`;
+  h += `<table class="dre-tbl"><thead><tr><th>Grupo</th><th>Empresa (site)</th><th>Empresa na DRE</th></tr></thead><tbody>` +
+    Object.entries(MAPA_CNPJ).map(([cnpj,v]) => {
+      const cur = mapa[v.nome] || '';
+      const opts = [''].concat(listaNA.includes(cur)||!cur ? listaNA : [cur].concat(listaNA));
+      return `<tr><td style="opacity:.6">${v.grupo}</td><td><strong>${_dreEsc(v.nome)}</strong></td><td><select onchange="dreSetMapa(this.dataset.emp, this.value)" data-emp="${_dreEsc(v.nome)}">` +
+        opts.map(o => `<option value="${_dreEsc(o)}"${o===cur?' selected':''}>${o?_dreEsc(o):'— sem equivalente —'}</option>`).join('') + `</select></td></tr>`;
+    }).join('') + `</tbody></table>`;
+
+  const box = document.querySelector('#modal-overlay .modal-box'); box.style.maxWidth = '780px'; box.style.maxHeight = '88vh'; box.style.overflowY = 'auto';
+  showModal('DRE Gerencial — Fat. Everest', '', [
+    ...(ms.length ? [{label:'🗑️ Excluir todas as DREs', cls:'btn-outline', action:()=>dreConfirmarExcluir('*')}] : []),
+    {label:'Fechar', cls:'btn-primary', action:closeModal},
+  ]);
+  document.getElementById('modal-body').innerHTML = h;
+}
+function dreConfirmarExcluir(m) {
+  const todas = m === '*';
+  showModal(todas ? 'Excluir todas as DREs?' : `Excluir a DRE de ${m}?`,
+    'O Fat. Everest desses meses volta para a digitação manual. Para atualizar, basta subir a nova planilha da DRE.',
+    [{label:'Cancelar', action:dreAbrirGerenciador},
+     {label:'Excluir', cls:'btn-danger', action:() => {
+        const d = dreLoad();
+        if (d && !todas) { delete d.meses[m]; if (d.arquivos) delete d.arquivos[m]; dreSave(d); } else dreSave(null);
+        dreAtualizarChip(); refreshAuditTables(); closeModal();
+        toast(todas ? 'DREs excluídas.' : `DRE de ${m} excluída.`, 'ok');
+     }}]);
+}
+
 async function loadAuditoria() {
   const gr  = document.getElementById('audit-grupo').value;
   const mes = document.getElementById('audit-mes').value;
@@ -2920,6 +3293,7 @@ async function loadAuditoria() {
 }
 
 function refreshAuditTables() {
+  dreAtualizarChip();
   renderAuditFat();
   renderAuditICMS();
   renderAuditPISCOF();
@@ -2954,7 +3328,8 @@ function renderAuditFat() {
   };
   auditRows.forEach(r => {
     const gorj=ai(r.empresa,r.mes_ref,'gorj'), ifood=ai(r.empresa,r.mes_ref,'ifood');
-    const ev=ai(r.empresa,r.mes_ref,'ev');
+    const evD=dreEv(r.empresa,r.mes_ref);                       // Fat. Everest vindo da DRE (se carregada)
+    const ev=evD?evD.v:ai(r.empresa,r.mes_ref,'ev');
     const dPis=ai(r.empresa,r.mes_ref,'darf_pis'), dCof=ai(r.empresa,r.mes_ref,'darf_cof');
     const dFat=ev-r.fat;
     const bc=Math.max(0,r.fat-gorj-ifood-r.icms-r.fat_mono);
@@ -2973,7 +3348,7 @@ function renderAuditFat() {
       <td style="text-align:right;font-weight:700">${fmt(r.fat)}</td>
       <td style="text-align:right;color:var(--text2)">${r.desconto>0?fmt(r.desconto):'—'}</td>
       <td style="text-align:right;color:var(--text2)">${(r.desc100||0)>0?fmt(r.desc100):'—'}</td>
-      <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'ev')}</td>
+      <td style="text-align:right">${evD?dreEvCell(evD):aiInput(r.empresa,r.mes_ref,'ev')}</td>
       <td style="text-align:right">${ev?fmtD(dFat):'—'}</td>
       <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'gorj')}</td>
       <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'ifood')}</td>
@@ -3463,7 +3838,11 @@ function showModal(title, body, buttons) {
   });
   document.getElementById('modal-overlay').classList.remove('hidden');
 }
-function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
+function closeModal() {
+  document.getElementById('modal-overlay').classList.add('hidden');
+  const box = document.querySelector('#modal-overlay .modal-box');
+  if (box) { box.style.maxWidth = ''; box.style.maxHeight = ''; box.style.overflowY = ''; }
+}
 
 function toggleTheme() {
   const t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
