@@ -157,6 +157,56 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .audit-tab-btn.active{color:var(--primary);border-bottom-color:var(--primary)}
 .audit-input{background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);color:var(--text);border-radius:5px;padding:4px 8px;font-size:12px;font-weight:600;width:110px;text-align:right;outline:none;transition:border .15s}
 .audit-input:focus{border-color:var(--primary);background:rgba(249,115,22,.15)}
+/* Menu lateral recolhível (mais espaço para tabelas largas) */
+body.side-off #sidebar{display:none}
+body.side-off #content{margin-left:0;padding-top:50px}
+#side-toggle{position:fixed;left:24px;top:12px;z-index:200;display:none}
+body.side-off #side-toggle{display:block}
+/* Auditoria compacta: cabe numa tela (sem rolagem horizontal) */
+#content{min-width:0}
+.audit-section .tbl-wrap{overflow-x:auto;overflow-y:visible}
+.audit-section table{width:100%}
+.audit-section th{font-size:9.5px;letter-spacing:.2px;padding:6px 5px;white-space:normal;line-height:1.25;vertical-align:bottom}
+.audit-section td{font-size:11.5px;padding:5px 5px}
+.audit-section .audit-input{width:88px;font-size:11px;padding:3px 5px}
+.audit-section .ev-dre{min-width:88px;font-size:11px;padding:3px 6px;gap:4px}
+.audit-section .ev-dre::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);flex:none}
+.audit-section .audit-group-row td,.audit-section .audit-subtotal-row td{padding:4px 5px}
+.audit-section .audit-total-row td{padding:6px 5px}
+/* Visão da DRE (tipo Excel) */
+#dre-view{position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:14px}
+.dv-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow)}
+.dv-top{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.dv-top select,.dv-top input{width:auto;font-size:12px;padding:6px 10px}
+.dv-top input{min-width:260px}
+.dv-info{font-size:12px;color:var(--text2);margin-left:auto}
+.dv-chips{display:flex;gap:6px;flex-wrap:wrap;padding:0 14px}
+.dv-chips:not(:empty){padding:8px 14px;border-bottom:1px solid var(--border)}
+.dv-chip{font-size:11px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.35);color:var(--primary);border-radius:12px;padding:2px 4px 2px 10px;display:inline-flex;align-items:center;gap:4px}
+.dv-chip button{background:none;border:none;color:inherit;cursor:pointer;font-size:13px;line-height:1;padding:0 4px}
+#dv-scroll{flex:1;overflow:auto;position:relative}
+#dv-tbl{table-layout:fixed;border-collapse:separate;border-spacing:0;width:auto}
+#dv-tbl th{position:sticky;top:0;z-index:2;background:var(--bg3);border-bottom:1px solid var(--border);border-right:1px solid var(--border);font-size:10px;padding:4px 6px;height:38px;text-align:left;vertical-align:middle;white-space:nowrap;overflow:hidden;cursor:pointer;user-select:none}
+#dv-tbl th .dv-l{color:var(--text3);font-size:9px;display:block;line-height:1}
+#dv-tbl th .dv-h{display:flex;align-items:center;gap:4px}
+#dv-tbl th .dv-n{flex:1;overflow:hidden;text-overflow:ellipsis}
+#dv-tbl th .dv-f{background:none;border:1px solid transparent;color:var(--text2);border-radius:4px;font-size:10px;padding:1px 4px;cursor:pointer}
+#dv-tbl th .dv-f:hover{border-color:var(--border);color:var(--primary)}
+#dv-tbl th.dv-on .dv-f{color:var(--primary);border-color:var(--primary);background:rgba(249,115,22,.12)}
+#dv-tbl td{height:24px;line-height:23px;padding:0 6px;font-size:12px;white-space:pre;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid var(--border);border-right:1px solid rgba(255,255,255,.04)}
+#dv-tbl td.num{text-align:right;font-variant-numeric:tabular-nums}
+#dv-tbl td.err{color:var(--text3)}
+#dv-tbl td.ind{padding-left:22px;color:var(--text2)}
+#dv-tbl tr.dv-sp td{height:auto;border:none;padding:0}
+.dv-foot{display:flex;gap:18px;padding:8px 14px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);flex-wrap:wrap}
+.dv-foot strong{color:var(--text)}
+#dv-pop{position:fixed;z-index:700;background:var(--bg2);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow);width:260px;padding:8px;display:flex;flex-direction:column;gap:6px}
+#dv-pop .dv-list{max-height:260px;overflow:auto;border:1px solid var(--border);border-radius:6px;padding:4px}
+#dv-pop label{display:flex;align-items:center;gap:6px;font-size:12px;padding:2px 4px;cursor:pointer;white-space:nowrap}
+#dv-pop label:hover{background:var(--bg3)}
+#dv-pop label input{width:auto}
+#dv-pop label span.c{margin-left:auto;color:var(--text3);font-size:10px}
+#dv-pop .dv-btns{display:flex;gap:6px;justify-content:flex-end}
 /* Fat. Everest vindo da DRE (somente leitura) */
 .ev-dre{display:inline-flex;align-items:center;justify-content:flex-end;gap:6px;min-width:110px;font-size:12px;font-weight:700;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:5px;padding:4px 8px;color:var(--text);cursor:help}
 .ev-dre::before{content:'DRE';font-size:9px;font-weight:800;letter-spacing:.5px;color:var(--green)}
@@ -306,6 +356,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 
 <!-- ── APP ────────────────────────────────────────────────── -->
 <div id="app">
+<button id="side-toggle" class="btn btn-sm btn-outline" onclick="toggleSidebar()" title="Mostrar o menu lateral">☰ Menu</button>
   <div id="sidebar">
     <div class="sidebar-logo">
       <img src="https://vitormendescajupar.github.io/Cajupar_Fiscal/Simbolo_PNG.png" alt="Cajupar" style="width:30px;height:30px;object-fit:contain;border-radius:6px" onerror="this.textContent='C';this.style.background='var(--primary)';this.style.display='flex';this.style.alignItems='center';this.style.justifyContent='center';this.style.color='#fff';this.style.fontWeight='800'"/>
@@ -540,8 +591,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
         <select id="audit-mes" onchange="loadAuditoria()"><option value="">Todos os meses</option></select>
         <button class="btn btn-sm btn-outline" onclick="document.getElementById('dre-file').click()" title="Subir a DRE Gerencial do mês (xlsx) — preenche o Fat. Everest automaticamente">📥 Subir DRE</button>
         <input type="file" id="dre-file" accept=".xlsx,.xlsm,.xlsb,.xls" style="display:none" onchange="dreOnFile(this)"/>
+        <button class="btn btn-sm btn-outline" onclick="dreVerAbrir()" title="Ver a DRE carregada como no Excel (filtro por mês e por coluna)">📊 Ver DRE</button>
         <button class="btn btn-sm btn-outline" onclick="dreAbrirGerenciador()" title="DREs carregadas, exclusão e mapeamento de empresas">⚙️ DRE</button>
         <span id="dre-chip" class="dre-chip">DRE: nenhuma carregada</span>
+        <button class="btn btn-sm btn-outline" onclick="toggleSidebar()" title="Ocultar/mostrar o menu lateral para ganhar espaço na tabela">⛶ Tela cheia</button>
         <button class="btn btn-sm btn-outline" onclick="exportAuditoriaExcel()" title="Exportar Excel">📊 Excel</button>
         <button class="btn btn-sm btn-outline" onclick="exportAuditoriaPDF()" title="Exportar PDF">🖨️ PDF</button>
         <button class="btn btn-icon" onclick="loadAuditoria()" title="Atualizar">🔄</button>
@@ -574,6 +627,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
           <div class="table-header">
             <h3>Comparativo de Faturamento — Fiscal × Everest</h3>
             <span style="font-size:11px;color:var(--text2)">BC = Fat.Fiscal − Gorjeta − iFood − ICMS − Monofásico</span>
+            <button class="btn btn-sm btn-primary" style="margin-left:auto" onclick="document.getElementById('dre-file').click()" title="Suba a planilha da DRE Gerencial do mês (xlsx) — o Fat. Everest é calculado e preenchido automaticamente">📥 Subir DRE Gerencial</button>
+            <button class="btn btn-sm btn-outline" onclick="dreVerAbrir()" title="Ver a DRE carregada como no Excel (filtro por mês e por coluna)">📊 Ver DRE</button>
+            <button class="btn btn-sm btn-outline" onclick="dreAbrirGerenciador()" title="DREs carregadas, exclusão e mapeamento de empresas">⚙️ DRE</button>
           </div>
           <div class="tbl-wrap">
             <table><thead><tr>
@@ -2880,6 +2936,7 @@ function showAuditTab(tab) {
     const b = document.getElementById('atab-'+t);
     if (b) b.classList.toggle('active', t===tab);
   });
+  if (typeof auditFit==='function') auditFit();
 }
 
 function aiInput(emp, per, field) {
@@ -2926,7 +2983,8 @@ const DRE_LS     = 'caj_dre_v1';       // { meses:{'09/2026':{'CAJU 01 - ASN':{r
 const DRE_MAP_LS = 'caj_dre_map_v1';   // overrides do mapeamento empresa do site → Empresa (NA)
 
 // Empresa do site → "Empresa (NA)" (Depara_empresas, coluna B). Ajustável em ⚙️ DRE.
-// '' = sem equivalente na DRE.
+// Conferido com a coluna "Nome EMP(EVEREST)" da planilha de apuração (por CNPJ).
+// '' = sem equivalente na DRE (MULT 04, MULT 13, NAZO SUSHI BAR, MULT EMPRESAS, FERM 04).
 const DRE_EMP_DEFAULT = {
   'CAJU LIMAO ASA NORTE':'CAJU 01 - ASN',
   'CAJU LIMAO SUDOESTE':'CAJU 03 - SIG',
@@ -2944,7 +3002,7 @@ const DRE_EMP_DEFAULT = {
   'NAZO SUSHI BAR':'',
   'NAZO AGUAS CLARAS':'NFE 03 - NZ AC',
   'NAZO SUDOESTE':'NFE 04 - NZ SG',
-  'MULT EMPRESAS':'NFE 05 - CPD',
+  'MULT EMPRESAS':'',
   'RESPONSA':'RESPONSA BAR',
   'FOSTER ASA SUL':'FB01 - ASS',
   'FOSTER BOSQUE':'FB02 - ASN BOSQUE',
@@ -2992,8 +3050,8 @@ function dreValidarCabecalhos(bd, dEmp, dDre) {
 // bd / dEmp / dDre: matrizes (linha 0 = cabeçalho), colunas na mesma ordem da planilha
 function dreCalcular(bd, dEmp, dDre) {
   // Depara_empresas: A = plano gerencial (chave), B = Empresa (NA)
-  const empMap = new Map();
-  for (let i=1;i<dEmp.length;i++) { const r=dEmp[i]||[]; const k=_dreK(r[0]); if (k!==null && !empMap.has(k)) empMap.set(k, r[1]); }
+  const empMap = new Map(), empGrupo = new Map();
+  for (let i=1;i<dEmp.length;i++) { const r=dEmp[i]||[]; const k=_dreK(r[0]); if (k!==null && !empMap.has(k)) { empMap.set(k, r[1]); empGrupo.set(k, r[2]); } }
   // Depara_DRE: índices por C (descrição), A (código) e D (DRE GERENCIAL) — sempre a 1ª ocorrência, como PROCV/XLOOKUP
   const byDesc=new Map(), byCod=new Map(), byDre=new Map();
   for (let i=1;i<dDre.length;i++) {
@@ -3023,13 +3081,40 @@ function dreCalcular(bd, dEmp, dDre) {
     return {eNA, L, M: blank0(rowL[7])};
   }
 
+  // Linha completa (colunas A–P da aba BD_DRE) como a planilha mostraria: erros de PROCV/XLOOKUP aparecem como #N/D
+  const ND = '#N/D', SP24 = ' '.repeat(24);
+  function linhaCompleta(r, mes) {
+    const kE = _dreK(r[1]);
+    const E = empMap.has(kE) ? blank0(empMap.get(kE)) : ND;
+    const F = empGrupo.has(kE) ? blank0(empGrupo.get(kE)) : ND;
+    const desc = r[2]==null ? '' : String(r[2]);
+    const I = desc.slice(0,24)===SP24 ? 'Analítica' : 'Sintética';
+    const rowDesc = byDesc.get(_dreK(r[2]));
+    const K = rowDesc ? blank0(rowDesc[0]) : ND;
+    const rowCod = rowDesc ? byCod.get(_dreK(K)) : null;
+    let J=ND, L=ND, M=ND, N=ND;
+    if (rowCod && E!==ND) {
+      const eN = _dreN(E);
+      J = blank0((eN==='mult 07 - fermult servicos' || eN==='caju holding - cajupar servicos') ? rowCod[4]
+              : (eN==='mult 01 - cpd' || eN==='nfe 05 - cpd') ? rowCod[5] : rowCod[6]);
+      L = (J===0 || (typeof J==='string' && _dreN(J)==='n/a')) ? blank0(rowCod[3]) : 'Rateio';
+      const rowL = byDre.get(_dreK(L));
+      if (rowL) { M = blank0(rowL[7]); N = blank0(rowL[9]); }
+    }
+    const O = rowDesc ? blank0(rowDesc[7])  : ND;
+    const P = rowDesc ? blank0(rowDesc[10]) : ND;
+    return [mes, r[1]==null?'':r[1], desc, r[3]==null?'':r[3], E, F, +mes.slice(3), +mes.slice(0,2), I, J, K, L, M, N, O, P];
+  }
+
   const meses = {};   // 'MM/AAAA' → { 'Empresa NA' → {receita, incentivo, custo} }
+  const rowsPorMes = {};   // 'MM/AAAA' → linhas completas (visão tipo Excel)
   let linhas = 0;
   const empSemDepara = new Set(), semDescricao = new Set();
   for (let i=1;i<bd.length;i++) {
     const r = bd[i]; if (!r) continue;
     const mes = dreMesKey(r[0]); if (!mes) continue;
     linhas++;
+    (rowsPorMes[mes] || (rowsPorMes[mes] = [])).push(linhaCompleta(r, mes));
     const c = classificar(r);
     if (!c) { if (r[1]!=null) empSemDepara.add(String(r[1])); continue; }
     if (c.sem==='desc') { semDescricao.add(String(r[2]).trim()); continue; }
@@ -3063,7 +3148,7 @@ function dreCalcular(bd, dEmp, dDre) {
     conf++;
     if (!(cmp(eC, c.eNA) && cmp(lC, c.L) && cmp(mC, c.M))) { divergentes++; if (exemplos.length<5) exemplos.push({linha:i+1, descricao:r[2], planilha:[eC,lC,mC], site:[c.eNA,c.L,c.M]}); }
   }
-  return {meses, linhas, empSemDepara:[...empSemDepara], semDescricao:[...semDescricao], empresasNA, conferencia:{linhas:conf, divergentes, exemplos}};
+  return {meses, rowsPorMes, linhas, empSemDepara:[...empSemDepara], semDescricao:[...semDescricao], empresasNA, conferencia:{linhas:conf, divergentes, exemplos}};
 }
 // <DRE-CORE-END>
 
@@ -3144,6 +3229,7 @@ async function dreOnFile(inp) {
     meses.forEach(m => { cur.meses[m] = res.meses[m]; cur.arquivos[m] = {nome:f.name, em:new Date().toISOString(), linhas:res.linhas}; });
     cur.empresasNA = res.empresasNA;
     dreSave(cur);
+    try { await dreRowsSalvar(res.rowsPorMes); } catch(e) { console.warn('[DRE] não foi possível guardar as linhas para a visualização', e); toast('A DRE foi lida, mas não consegui guardar as linhas para a visão tipo Excel: '+(e.message||e), 'err', 8000); }
     dreAtualizarChip(); refreshAuditTables();
 
     const nEmpDre = meses.reduce((s,m)=>s+Object.keys(res.meses[m]).length, 0);
@@ -3160,6 +3246,218 @@ async function dreOnFile(inp) {
     console.error(e);
     toast('Erro ao ler a DRE: ' + (e.message||e), 'err', 9000);
   }
+}
+
+// ── Visão da DRE (tipo Excel): linhas guardadas no IndexedDB (cajupar_dre) ──
+function _dreDB() {
+  return new Promise((res, rej) => {
+    const q = indexedDB.open('cajupar_dre', 1);
+    q.onupgradeneeded = () => q.result.createObjectStore('meses', {keyPath:'mes'});
+    q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error);
+  });
+}
+async function _dreTx(mode, fn) {
+  const db = await _dreDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('meses', mode), st = tx.objectStore('meses');
+    let out; try { out = fn(st); } catch(e) { rej(e); return; }
+    tx.oncomplete = () => { db.close(); res(out && out.result !== undefined ? out.result : out); };
+    tx.onerror = tx.onabort = () => { db.close(); rej(tx.error); };
+  });
+}
+async function dreRowsSalvar(rowsPorMes) { for (const [mes, rows] of Object.entries(rowsPorMes)) await _dreTx('readwrite', st => st.put({mes, rows})); }
+async function dreRowsMeses() { try { return await _dreTx('readonly', st => st.getAllKeys()); } catch(e) { return []; } }
+async function dreRowsGet(mes) { try { const r = await _dreTx('readonly', st => st.get(mes)); return (r && r.rows) || []; } catch(e) { return []; } }
+async function dreRowsExcluir(mes) { try { await _dreTx('readwrite', st => mes==='*' ? st.clear() : st.delete(mes)); } catch(e) { console.warn('[DRE] não foi possível apagar as linhas', e); } }
+
+const DRE_COLS = [
+  ['Database',84],['Empresa (PG)',175],['Descrição',270],['DRE GERENCIAL',125],['Empresa (NA)',185],['Grupo',80],['Ano',58],['Mês',54],
+  ['Classificação',105],['Class. Rateio',112],['Cod.',72],['Class. DRE',150],['Class. DRE 2',130],['Class. DRE OUTPUT Faturamento',190],['Class. DRE OUTPUT Rateios',150],['Class. DRE OUTPUT SG&A',150]
+];
+const DV = {rows:[], txt:[], view:[], mes:'', q:'', f:{}, sort:null, meses:[]};
+const _dvLetra = i => String.fromCharCode(65+i);
+const _dvKey = v => (v==null||v==='') ? '(Vazio)' : String(v);
+
+async function dreVerAbrir(mesIni) {
+  const d = dreLoad();
+  const meses = (await dreRowsMeses()).sort((a,b)=>_dreMesOrd(b).localeCompare(_dreMesOrd(a)));
+  DV.meses = meses;
+  let ov = document.getElementById('dre-view');
+  if (ov) ov.remove();
+  ov = document.createElement('div'); ov.id = 'dre-view';
+  ov.addEventListener('mousedown', e => { if (e.target === ov) dreVerFechar(); });
+  const semLinhas = !meses.length;
+  ov.innerHTML = `<div class="dv-box">
+    <div class="dv-top">
+      <strong style="font-size:14px">📊 DRE Gerencial</strong>
+      <select id="dv-mes" onchange="dvSetMes(this.value)">${meses.map(m=>`<option value="${m}">${m}</option>`).join('')}${meses.length>1?'<option value="*">Todos os meses</option>':''}</select>
+      <input id="dv-q" type="text" placeholder="🔎 Buscar em todas as colunas…" oninput="dvBusca(this.value)"/>
+      <button class="btn btn-sm btn-outline" onclick="dvLimpar()">Limpar filtros</button>
+      <button class="btn btn-sm btn-outline" onclick="dvExport()">📊 Excel</button>
+      <button class="btn btn-sm btn-outline" onclick="dreVerFechar();dreAbrirGerenciador()" title="Excluir / subir outra DRE">⚙️ DRE</button>
+      <span class="dv-info" id="dv-info"></span>
+      <button class="btn btn-sm btn-primary" onclick="dreVerFechar()">✕ Fechar</button>
+    </div>
+    <div class="dv-chips" id="dv-chips"></div>
+    <div id="dv-scroll"><div id="dv-msg"></div><table id="dv-tbl"></table></div>
+    <div class="dv-foot" id="dv-foot"></div>
+  </div>`;
+  document.body.appendChild(ov);
+  document.getElementById('dv-scroll').addEventListener('scroll', () => { if (!DV._raf) DV._raf = requestAnimationFrame(() => { DV._raf = 0; dvRender(); }); });
+  document.addEventListener('keydown', _dvEsc);
+  if (semLinhas) {
+    const tem = d && Object.keys(d.meses||{}).length;
+    document.getElementById('dv-msg').innerHTML = `<div style="padding:40px;text-align:center;color:var(--text2);font-size:13px;line-height:1.8">` +
+      (tem ? 'A DRE carregada foi enviada antes desta função existir e não guardou as linhas.<br><strong>Suba a planilha da DRE novamente</strong> (📥 Subir DRE) para habilitar a visualização.'
+           : 'Nenhuma DRE carregada. Use <strong>📥 Subir DRE</strong> com a planilha da DRE Gerencial do mês.') + `</div>`;
+    return;
+  }
+  const f = document.getElementById('audit-mes') && document.getElementById('audit-mes').value;
+  const pref = mesIni || (f ? f.slice(5)+'/'+f.slice(0,4) : '');
+  const ini = meses.includes(pref) ? pref : meses[0];
+  document.getElementById('dv-mes').value = ini;
+  DV.f = {}; DV.sort = null; DV.q = '';
+  await dvSetMes(ini);
+}
+function _dvEsc(e) { if (e.key==='Escape') { if (document.getElementById('dv-pop')) dvFecharPop(); else dreVerFechar(); } }
+function dreVerFechar() { const ov = document.getElementById('dre-view'); if (ov) ov.remove(); dvFecharPop(); document.removeEventListener('keydown', _dvEsc); DV.rows = DV.txt = DV.view = []; }
+
+async function dvSetMes(m) {
+  DV.mes = m; DV.f = {};
+  let rows = [];
+  if (m === '*') { for (const x of DV.meses) rows = rows.concat(await dreRowsGet(x)); } else rows = await dreRowsGet(m);
+  DV.rows = rows;
+  DV.txt = rows.map(r => _dreNorm(r.map(v => v==null?'':String(v)).join('\u0001')));
+  const sc = document.getElementById('dv-scroll'); if (sc) sc.scrollTop = 0;
+  dvAplicar();
+}
+function dvBusca(v) { clearTimeout(DV._qt); DV._qt = setTimeout(() => { DV.q = _dreNorm(v.trim()); dvAplicar(); }, 150); }
+function dvLimpar() { DV.f = {}; DV.q = ''; const q = document.getElementById('dv-q'); if (q) q.value = ''; dvAplicar(); }
+
+function _dvPassa(i, excl) {   // índices das linhas que passam em busca + filtros (exceto a coluna `excl`)
+  const out = [], fs = Object.entries(DV.f).filter(([c]) => +c !== excl);
+  const q = DV.q ? DV.q : '';
+  for (let i2 = 0; i2 < DV.rows.length; i2++) {
+    if (q && DV.txt[i2].indexOf(q) < 0) continue;
+    let ok = true; const r = DV.rows[i2];
+    for (const [c, set] of fs) { if (!set.has(_dvKey(r[c]))) { ok = false; break; } }
+    if (ok) out.push(i2);
+  }
+  return out;
+}
+function dvAplicar() {
+  let idx = _dvPassa();
+  if (DV.sort) {
+    const {c, dir} = DV.sort;
+    idx.sort((a, b) => {
+      const x = DV.rows[a][c], y = DV.rows[b][c];
+      const nx = typeof x==='number', ny = typeof y==='number';
+      let r = (nx && ny) ? x - y : (nx ? -1 : ny ? 1 : String(x==null?'':x).localeCompare(String(y==null?'':y), 'pt-BR', {numeric:true, sensitivity:'base'}));
+      return r * dir || a - b;
+    });
+  }
+  DV.view = idx;
+  dvTabela(); dvChips(); dvRender(); dvRodape();
+}
+function dvTabela() {
+  const tb = document.getElementById('dv-tbl'); if (!tb) return;
+  const W = DRE_COLS.reduce((s,c)=>s+c[1],0);
+  tb.style.width = W+'px';
+  tb.innerHTML = `<colgroup>${DRE_COLS.map(c=>`<col style="width:${c[1]}px">`).join('')}</colgroup><thead><tr>` +
+    DRE_COLS.map((c,i) => {
+      const on = DV.f[i] ? ' dv-on' : '', s = DV.sort && DV.sort.c===i ? (DV.sort.dir>0?' ▲':' ▼') : '';
+      return `<th class="${on.trim()}" title="${_dreEsc(c[0])}" onclick="dvOrdenar(${i})"><span class="dv-l">${_dvLetra(i)}</span><span class="dv-h"><span class="dv-n">${_dreEsc(c[0])}${s}</span><button class="dv-f" onclick="event.stopPropagation();dvAbrirFiltro(${i},this)" title="Filtrar esta coluna">▾</button></span></th>`;
+    }).join('') + `</tr></thead><tbody id="dv-body"></tbody>`;
+}
+function dvOrdenar(c) {
+  if (!DV.sort || DV.sort.c !== c) DV.sort = {c, dir:1}; else if (DV.sort.dir === 1) DV.sort.dir = -1; else DV.sort = null;
+  dvAplicar();
+}
+const DV_RH = 24;
+function dvRender() {
+  const body = document.getElementById('dv-body'), sc = document.getElementById('dv-scroll'); if (!body || !sc) return;
+  const n = DV.view.length, vis = Math.ceil(sc.clientHeight / DV_RH) + 30;
+  const ini = Math.max(0, Math.floor(sc.scrollTop / DV_RH) - 15), fim = Math.min(n, ini + vis);
+  let h = ini ? `<tr class="dv-sp"><td colspan="16" style="height:${ini*DV_RH}px"></td></tr>` : '';
+  for (let k = ini; k < fim; k++) {
+    const r = DV.rows[DV.view[k]];
+    h += '<tr>' + r.map((v, c) => {
+      if (v == null || v === '') return '<td></td>';
+      if (typeof v === 'number' && c === 10) return `<td>${v}</td>`;
+      if (typeof v === 'number') return `<td class="num">${(c===3) ? fmt(v) : (c===6||c===7||c===10) ? v : v.toLocaleString('pt-BR',{maximumFractionDigits:4})}</td>`;
+      if (v === '#N/D') return '<td class="err">#N/D</td>';
+      if (c === 2) { const t = String(v), ind = t.startsWith('    ') ? ' class="ind"' : ''; return `<td${ind} title="${_dreEsc(t.trim())}">${_dreEsc(t.trim())}</td>`; }
+      return `<td title="${_dreEsc(String(v).trim())}">${_dreEsc(v)}</td>`;
+    }).join('') + '</tr>';
+  }
+  if (fim < n) h += `<tr class="dv-sp"><td colspan="16" style="height:${(n-fim)*DV_RH}px"></td></tr>`;
+  if (!n) h = `<tr class="dv-sp"><td colspan="16" style="height:auto;padding:30px;text-align:center;color:var(--text2)">Nenhuma linha para os filtros atuais.</td></tr>`;
+  body.innerHTML = h;
+}
+function dvChips() {
+  const el = document.getElementById('dv-chips'); if (!el) return;
+  el.innerHTML = Object.entries(DV.f).map(([c, set]) => {
+    const vals = [...set], txt = vals.length <= 2 ? vals.join(', ') : `${vals.length} valores`;
+    return `<span class="dv-chip" title="${_dreEsc(vals.join('\n'))}">${_dreEsc(DRE_COLS[c][0])}: ${_dreEsc(txt)}<button onclick="dvTiraFiltro(${c})">×</button></span>`;
+  }).join('');
+}
+function dvTiraFiltro(c) { delete DV.f[c]; dvAplicar(); }
+function dvRodape() {
+  const el = document.getElementById('dv-foot'), info = document.getElementById('dv-info'); if (!el) return;
+  let soma = 0, pos = 0, neg = 0;
+  DV.view.forEach(i => { const v = DV.rows[i][3]; if (typeof v === 'number') { soma += v; if (v>=0) pos += v; else neg += v; } });
+  info.textContent = `${DV.view.length.toLocaleString('pt-BR')} de ${DV.rows.length.toLocaleString('pt-BR')} linhas`;
+  el.innerHTML = `<span>Soma de DRE GERENCIAL (filtro atual): <strong>${fmt(soma)}</strong></span><span>Positivos: <strong>${fmt(pos)}</strong></span><span>Negativos: <strong>${fmt(neg)}</strong></span>` +
+    `<span style="margin-left:auto">Clique no título para ordenar · ▾ para filtrar · Esc fecha</span>`;
+}
+
+// Filtro por coluna (lista de valores com busca, como no Excel)
+function dvFecharPop() { const p = document.getElementById('dv-pop'); if (p) p.remove(); document.removeEventListener('mousedown', _dvPopFora, true); }
+function _dvPopFora(e) { const p = document.getElementById('dv-pop'); if (p && !p.contains(e.target)) dvFecharPop(); }
+function dvAbrirFiltro(c, btn) {
+  dvFecharPop();
+  const cont = {};                                   // valores possíveis da coluna, dado o restante dos filtros
+  _dvPassa(0, c).forEach(i => { const k = _dvKey(DV.rows[i][c]); cont[k] = (cont[k]||0) + 1; });
+  const vals = Object.keys(cont).sort((a,b) => {
+    const na = Number(a), nb = Number(b);
+    return (!isNaN(na) && !isNaN(nb)) ? na - nb : a.localeCompare(b, 'pt-BR', {numeric:true, sensitivity:'base'});
+  });
+  const sel = new Set(DV.f[c] ? [...DV.f[c]].filter(v => v in cont) : vals);
+  const p = document.createElement('div'); p.id = 'dv-pop';
+  const rc = btn.getBoundingClientRect();
+  p.style.left = Math.min(rc.left, innerWidth - 280) + 'px'; p.style.top = (rc.bottom + 4) + 'px';
+  p.innerHTML = `<input type="text" placeholder="Pesquisar…" id="dvp-q" style="font-size:12px;padding:5px 8px"/>
+    <div class="dv-list" id="dvp-list"></div>
+    <div class="dv-btns"><button class="btn btn-sm btn-outline" id="dvp-clr">Limpar</button><button class="btn btn-sm btn-outline" id="dvp-cancel">Cancelar</button><button class="btn btn-sm btn-primary" id="dvp-ok">OK</button></div>`;
+  document.getElementById('dre-view').appendChild(p);
+  const q = p.querySelector('#dvp-q'), list = p.querySelector('#dvp-list');
+  const MAX = 400;
+  const desenhar = () => {
+    const t = _dreNorm(q.value.trim());
+    const fil = vals.filter(v => !t || _dreNorm(v).includes(t));
+    const todos = fil.length && fil.every(v => sel.has(v));
+    let h = `<label><input type="checkbox" id="dvp-all" ${todos?'checked':''}/> <strong>(Selecionar tudo${t?' pesquisado':''})</strong></label>`;
+    h += fil.slice(0, MAX).map(v => `<label><input type="checkbox" data-v="${_dreEsc(v)}" ${sel.has(v)?'checked':''}/> <span>${_dreEsc(v.trim()||v)}</span><span class="c">${cont[v]}</span></label>`).join('');
+    if (fil.length > MAX) h += `<div style="font-size:11px;color:var(--text2);padding:4px">+ ${fil.length-MAX} valores — refine a pesquisa</div>`;
+    list.innerHTML = h;
+    list.querySelector('#dvp-all').onchange = e => { fil.forEach(v => e.target.checked ? sel.add(v) : sel.delete(v)); desenhar(); };
+    list.querySelectorAll('input[data-v]').forEach(cb => cb.onchange = () => { cb.checked ? sel.add(cb.dataset.v) : sel.delete(cb.dataset.v); });
+  };
+  q.oninput = desenhar; desenhar(); q.focus();
+  p.querySelector('#dvp-cancel').onclick = dvFecharPop;
+  p.querySelector('#dvp-clr').onclick = () => { delete DV.f[c]; dvFecharPop(); dvAplicar(); };
+  p.querySelector('#dvp-ok').onclick = () => {
+    if (sel.size === vals.length) delete DV.f[c]; else DV.f[c] = new Set(sel);
+    dvFecharPop(); dvAplicar();
+  };
+  setTimeout(() => document.addEventListener('mousedown', _dvPopFora, true), 0);
+}
+function dvExport() {
+  if (typeof XLSX === 'undefined') { toast('A biblioteca de Excel não carregou.', 'err'); return; }
+  const aoa = [DRE_COLS.map(c => c[0])].concat(DV.view.map(i => DV.rows[i]));
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'DRE');
+  XLSX.writeFile(wb, `DRE_Gerencial_${DV.mes==='*'?'todos':DV.mes.replace('/','-')}.xlsx`);
 }
 
 // ── gerenciador: DREs carregadas, exclusão e mapeamento ──────
@@ -3190,7 +3488,7 @@ function dreAbrirGerenciador() {
       const a = (d.arquivos&&d.arquivos[m])||{};
       const emps = Object.values(d.meses[m]);
       const tot = emps.reduce((s,e)=>s+e.receita-e.incentivo-e.custo,0);
-      return `<tr><td><strong>${m}</strong></td><td>${_dreEsc(a.nome||'—')}</td><td>${a.em?new Date(a.em).toLocaleString('pt-BR'):'—'}</td><td style="text-align:right">${emps.length}</td><td style="text-align:right">${fmt(tot)}</td><td style="text-align:right"><button class="btn btn-sm btn-outline" onclick="dreConfirmarExcluir('${m}')">🗑️ Excluir</button></td></tr>`;
+      return `<tr><td><strong>${m}</strong></td><td>${_dreEsc(a.nome||'—')}</td><td>${a.em?new Date(a.em).toLocaleString('pt-BR'):'—'}</td><td style="text-align:right">${emps.length}</td><td style="text-align:right">${fmt(tot)}</td><td style="text-align:right;white-space:nowrap"><button class="btn btn-sm btn-outline" onclick="closeModal();dreVerAbrir('${m}')">👁️ Ver</button> <button class="btn btn-sm btn-outline" onclick="dreConfirmarExcluir('${m}')">🗑️ Excluir</button></td></tr>`;
     }).join('') + `</tbody></table>`
     : `<p style="color:var(--text2);font-size:12px">Nenhuma DRE carregada. Use <strong>📥 Subir DRE</strong> com a planilha da DRE Gerencial do mês.</p>`;
 
@@ -3218,6 +3516,8 @@ function dreConfirmarExcluir(m) {
      {label:'Excluir', cls:'btn-danger', action:() => {
         const d = dreLoad();
         if (d && !todas) { delete d.meses[m]; if (d.arquivos) delete d.arquivos[m]; dreSave(d); } else dreSave(null);
+        dreRowsExcluir(todas ? '*' : m);
+        if (document.getElementById('dre-view')) dreVerFechar();
         dreAtualizarChip(); refreshAuditTables(); closeModal();
         toast(todas ? 'DREs excluídas.' : `DRE de ${m} excluída.`, 'ok');
      }}]);
@@ -3292,12 +3592,36 @@ async function loadAuditoria() {
   refreshAuditTables();
 }
 
+// Ajusta cada tabela da Auditoria à largura disponível (zoom automático, sem rolagem horizontal)
+function auditFit() {
+  document.querySelectorAll('.audit-section .tbl-wrap').forEach(w => {
+    const t = w.querySelector('table'); if (!t || !w.offsetParent) return;
+    t.style.zoom = ''; t.style.width = '';
+    const have = w.clientWidth, need = t.scrollWidth;
+    if (need > have + 1) {
+      const z = Math.max(0.5, have / need);
+      t.style.zoom = z.toFixed(4);
+      t.style.width = Math.floor(have / z) + 'px';
+    }
+  });
+}
+window.addEventListener('resize', () => { clearTimeout(window._afT); window._afT = setTimeout(auditFit, 120); });
+
+function toggleSidebar(force) {
+  const on = (typeof force==='boolean') ? force : !document.body.classList.contains('side-off');
+  document.body.classList.toggle('side-off', on);
+  try { localStorage.setItem('caj_side_off', on?'1':'0'); } catch(e) {}
+  setTimeout(() => { if (typeof auditFit==='function') auditFit(); }, 60);
+}
+try { if (localStorage.getItem('caj_side_off')==='1') document.body.classList.add('side-off'); } catch(e) {}
+
 function refreshAuditTables() {
   dreAtualizarChip();
   renderAuditFat();
   renderAuditICMS();
   renderAuditPISCOF();
   renderAuditIRPJ();
+  auditFit();
 }
 
 // ── FATURAMENTO ──────────────────────────────────────────────
