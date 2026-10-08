@@ -626,7 +626,7 @@ body.side-off #side-toggle{display:block}
         <div class="table-card">
           <div class="table-header">
             <h3>Comparativo de Faturamento — Fiscal × Everest</h3>
-            <span style="font-size:11px;color:var(--text2)">BC = Fat.Fiscal − Gorjeta − iFood − ICMS − Monofásico</span>
+            <span style="font-size:11px;color:var(--text2)">BC = maior(Fat.Fiscal; Fat.Everest) − Gorjeta − iFood − ICMS − Monofásico</span>
             <button class="btn btn-sm btn-primary" style="margin-left:auto" onclick="document.getElementById('dre-file').click()" title="Suba a planilha da DRE Gerencial do mês (xlsx) — o Fat. Everest é calculado e preenchido automaticamente">📥 Subir DRE Gerencial</button>
             <button class="btn btn-sm btn-outline" onclick="dreVerAbrir()" title="Ver a DRE carregada como no Excel (filtro por mês e por coluna)">📊 Ver DRE</button>
             <button class="btn btn-sm btn-outline" onclick="dreAbrirGerenciador()" title="DREs carregadas, exclusão e mapeamento de empresas">⚙️ DRE</button>
@@ -663,12 +663,12 @@ body.side-off #side-toggle{display:block}
         <div class="table-card">
           <div class="table-header">
             <h3>Apuração ICMS — Regime Especial 2% (Bares/Restaurantes)</h3>
-            <span style="font-size:11px;color:var(--text2)">BC = Receita − Gorjeta − Devoluções &nbsp;|&nbsp; ICMS = BC × 2%</span>
+            <span style="font-size:11px;color:var(--text2)">BC = Fat. considerado − Gorjeta − Devoluções &nbsp;|&nbsp; Fat. considerado = maior entre Fiscal e Everest &nbsp;|&nbsp; ICMS = BC × 2%</span>
           </div>
           <div class="tbl-wrap">
             <table><thead><tr>
               <th>Grupo</th><th>Empresa</th><th>CNPJ</th><th>Mês</th>
-              <th>Receita Bruta (R$)</th>
+              <th title="Maior valor entre o Fat. Fiscal e o Fat. Everest (EV = Everest foi considerado)">Fat. considerado (R$)</th>
               <th class="edit-col" title="Calculada dos itens (Cod Produto 9999999999997, notas aceitas). Sem itens carregados para o mês, digite manualmente.">Gorjeta ✏️</th>
               <th class="edit-col">Devoluções ✏️</th>
               <th>BC ICMS (R$)</th>
@@ -691,12 +691,12 @@ body.side-off #side-toggle{display:block}
         <div class="table-card">
           <div class="table-header">
             <h3>Apuração PIS/COFINS — Regime Cumulativo</h3>
-            <span style="font-size:11px;color:var(--text2)">PIS = BC × 0,65% &nbsp;|&nbsp; COFINS = BC × 3% &nbsp;|&nbsp; BC = Fat − Gorjeta − iFood − ICMS − Monofásico</span>
+            <span style="font-size:11px;color:var(--text2)">PIS = BC × 0,65% &nbsp;|&nbsp; COFINS = BC × 3% &nbsp;|&nbsp; BC = Fat. considerado − Gorjeta − iFood − ICMS − Monofásico &nbsp;|&nbsp; Fat. considerado = maior entre Fiscal e Everest</span>
           </div>
           <div class="tbl-wrap">
             <table><thead><tr>
               <th>Grupo</th><th>Empresa</th><th>CNPJ</th><th>Mês</th>
-              <th>Fat. Fiscal (R$)</th>
+              <th title="Maior valor entre o Fat. Fiscal e o Fat. Everest (EV = Everest foi considerado)">Fat. considerado (R$)</th>
               <th class="edit-col" title="Calculada dos itens (Cod Produto 9999999999997, notas aceitas). Sem itens carregados para o mês, digite manualmente.">Gorjeta ✏️</th>
               <th class="edit-col">iFood ✏️</th>
               <th>ICMS dest. (R$)</th>
@@ -721,12 +721,12 @@ body.side-off #side-toggle{display:block}
         <div class="table-card">
           <div class="table-header">
             <h3>Apuração IRPJ/CSLL — Lucro Presumido (Trimestral)</h3>
-            <span style="font-size:11px;color:var(--text2)">BC IRPJ = Fat × 8% | IRPJ = 15% + adic. 10% &nbsp;|&nbsp; BC CSLL = Fat × 12% | CSLL = 9%</span>
+            <span style="font-size:11px;color:var(--text2)">Fat. considerado = maior entre Fiscal e Everest, mês a mês &nbsp;|&nbsp; BC IRPJ = Fat × 8% | IRPJ = 15% + adic. 10% &nbsp;|&nbsp; BC CSLL = Fat × 12% | CSLL = 9%</span>
           </div>
           <div class="tbl-wrap">
             <table><thead><tr>
               <th>Grupo</th><th>Empresa</th><th>CNPJ</th><th>Trimestre</th>
-              <th>Fat. Trim. (R$)</th>
+              <th title="Soma mensal do maior valor entre Fat. Fiscal e Fat. Everest (EV = Everest foi considerado em algum mês)">Fat. Trim. considerado (R$)</th>
               <th>BC IRPJ 8% (R$)</th>
               <th>IRPJ 15% (R$)</th>
               <th>Adic. 10% (R$)</th>
@@ -2971,6 +2971,18 @@ function gorjAuto(emp, mes) {
   const k = `${emp}||${mes}`;
   return AUD_ITENS.has(k) ? Math.round((AUD_GORJ[k]||0)*100)/100 : null;
 }
+// Faturamento considerado nas apurações de imposto (ICMS, PIS/COFINS, IRPJ/CSLL):
+// o MAIOR entre o Fat. Fiscal e o Fat. Everest (sem Everest informado, vale o fiscal).
+function evValor(emp, mes) { const d = dreEv(emp, mes); return d ? d.v : ai(emp, mes, 'ev'); }
+function fatTrib(r) {
+  const ev = evValor(r.empresa, r.mes_ref);
+  return {v: Math.max(r.fat, ev), ev, usaEv: ev > r.fat};
+}
+function fatTribCell(r, f) {
+  if (!f.usaEv) return fmt(f.v);
+  const tip = `Fat. Everest (${fmt(f.ev)}) maior que o Fat. Fiscal (${fmt(r.fat)}) — considerado o Everest`;
+  return `<span title="${_dreEsc(tip)}"><span style="font-size:9px;font-weight:800;color:var(--green);margin-right:4px">EV</span>${fmt(f.v)}</span>`;
+}
 function gorjVal(emp, mes) { const a = gorjAuto(emp, mes); return a !== null ? a : ai(emp, mes, 'gorj'); }
 function gorjCell(emp, mes) {
   const a = gorjAuto(emp, mes);
@@ -3734,7 +3746,7 @@ function renderAuditFat() {
     const ev=evD?evD.v:ai(r.empresa,r.mes_ref,'ev');
     const dPis=ai(r.empresa,r.mes_ref,'darf_pis'), dCof=ai(r.empresa,r.mes_ref,'darf_cof');
     const dFat=ev-r.fat;
-    const bc=Math.max(0,r.fat-gorj-ifood-r.icms-r.fat_mono);
+    const bc=Math.max(0,Math.max(r.fat,ev)-gorj-ifood-r.icms-r.fat_mono);   // Fat. considerado = maior entre fiscal e Everest
     const pisC=bc*AP.PIS, cofC=bc*AP.COF;
     const difP=dPis-pisC, difC=dCof-cofC;
     tFat+=r.fat;tDesc+=r.desconto||0;tDesc100+=r.desc100||0;tEv+=ev;tGorj+=gorj;tIf+=ifood;tIcms+=r.icms;tMono+=r.fat_mono;
@@ -3812,20 +3824,21 @@ function renderAuditICMS() {
   auditRows.forEach(r => {
     const gorj=gorjVal(r.empresa,r.mes_ref), dev=ai(r.empresa,r.mes_ref,'dev');
     const pago=ai(r.empresa,r.mes_ref,'darf_icms');
-    const bc=Math.max(0,r.fat-gorj-dev);
+    const ft=fatTrib(r);
+    const bc=Math.max(0,ft.v-gorj-dev);
     const icmsC=bc*AP.ICMS, fu=bc*AP.FUND_UNIV, fac=bc*AP.FAC;
     const dif=pago-icmsC;
-    tFat+=r.fat;tGorj+=gorj;tDev+=dev;
+    tFat+=ft.v;tGorj+=gorj;tDev+=dev;
     tBC+=bc;tIcms+=icmsC;tFu+=fu;tFac+=fac;tPago+=pago;tDif+=dif;
     if(r.grupo!==lastG){flushGroup();rows+=grpRow(14,r.grupo);lastG=r.grupo;}
-    gFat+=r.fat;gGorj+=gorj;gDev+=dev;
+    gFat+=ft.v;gGorj+=gorj;gDev+=dev;
     gBC+=bc;gIcms+=icmsC;gFu+=fu;gFac+=fac;
     rows+=`<tr>
       <td style="font-size:11px;opacity:.5">${r.grupo}</td>
       <td style="font-weight:600;white-space:nowrap">${r.empresa}</td>
       <td style="font-size:11px;font-family:monospace;color:var(--text2)">${fmtCNPJ(r.cnpj)}</td>
       <td style="white-space:nowrap">${mesLabel(r.mes_ref)}</td>
-      <td style="text-align:right;font-weight:700">${fmt(r.fat)}</td>
+      <td style="text-align:right;font-weight:700">${fatTribCell(r,ft)}</td>
       <td style="text-align:right">${gorjCell(r.empresa,r.mes_ref)}</td>
       <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'dev')}</td>
       <td style="text-align:right;font-weight:700">${fmt(bc)}</td>
@@ -3879,20 +3892,21 @@ function renderAuditPISCOF() {
   auditRows.forEach(r => {
     const gorj=gorjVal(r.empresa,r.mes_ref), ifood=ai(r.empresa,r.mes_ref,'ifood');
     const dPis=ai(r.empresa,r.mes_ref,'darf_pis'), dCof=ai(r.empresa,r.mes_ref,'darf_cof');
-    const bc=Math.max(0,r.fat-gorj-ifood-r.icms-r.fat_mono);
+    const ft=fatTrib(r);
+    const bc=Math.max(0,ft.v-gorj-ifood-r.icms-r.fat_mono);
     const pisC=bc*AP.PIS, cofC=bc*AP.COF;
     const difP=dPis-pisC, difC=dCof-cofC;
-    tFat+=r.fat;tGorj+=gorj;tIf+=ifood;tIcms+=r.icms;tMono+=r.fat_mono;
+    tFat+=ft.v;tGorj+=gorj;tIf+=ifood;tIcms+=r.icms;tMono+=r.fat_mono;
     tBC+=bc;tPis+=pisC;tCof+=cofC;tDPis+=difP;tDCof+=difC;
     if(r.grupo!==lastG){flushGroup();rows+=grpRow(16,r.grupo);lastG=r.grupo;}
-    gFat+=r.fat;gGorj+=gorj;gIf+=ifood;gIcms+=r.icms;gMono+=r.fat_mono;
+    gFat+=ft.v;gGorj+=gorj;gIf+=ifood;gIcms+=r.icms;gMono+=r.fat_mono;
     gBC+=bc;gPis+=pisC;gCof+=cofC;
     rows+=`<tr>
       <td style="font-size:11px;opacity:.5">${r.grupo}</td>
       <td style="font-weight:600;white-space:nowrap">${r.empresa}</td>
       <td style="font-size:11px;font-family:monospace;color:var(--text2)">${fmtCNPJ(r.cnpj)}</td>
       <td style="white-space:nowrap">${mesLabel(r.mes_ref)}</td>
-      <td style="text-align:right;font-weight:700">${fmt(r.fat)}</td>
+      <td style="text-align:right;font-weight:700">${fatTribCell(r,ft)}</td>
       <td style="text-align:right">${gorjCell(r.empresa,r.mes_ref)}</td>
       <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'ifood')}</td>
       <td style="text-align:right;color:var(--yellow)">${fmt(r.icms)}</td>
@@ -3935,8 +3949,9 @@ function renderAuditIRPJ() {
     const trim = Math.ceil(mes/3);
     const per  = `${ano}-T${trim}`;
     const k    = `${r.empresa}||${per}`;
-    if (!byTrim[k]) byTrim[k]={empresa:r.empresa,grupo:r.grupo,per,trimLabel:`${trim}º Trim/${ano}`,fat:0};
-    byTrim[k].fat += r.fat;
+    if (!byTrim[k]) byTrim[k]={empresa:r.empresa,grupo:r.grupo,per,trimLabel:`${trim}º Trim/${ano}`,fat:0,fatFiscal:0};
+    const ft = fatTrib(r);                       // maior entre Fat. Fiscal e Fat. Everest de cada mês
+    byTrim[k].fat += ft.v; byTrim[k].fatFiscal += r.fat;
   });
 
   const trimRows = Object.values(byTrim).sort((a,b)=>
@@ -3980,7 +3995,7 @@ function renderAuditIRPJ() {
       <td style="font-weight:600;white-space:nowrap">${r.empresa}</td>
       <td style="font-size:11px;font-family:monospace;color:var(--text2)">${fmtCNPJ(r.cnpj||CNPJ_BY_NOME[r.empresa]||'')}</td>
       <td style="white-space:nowrap;font-weight:600">${r.trimLabel}</td>
-      <td style="text-align:right;font-weight:700">${fmt(r.fat)}</td>
+      <td style="text-align:right;font-weight:700" title="${_dreEsc('Fat. Fiscal do trimestre: '+fmt(r.fatFiscal))}">${r.fat>r.fatFiscal+0.005?'<span style="font-size:9px;font-weight:800;color:var(--green);margin-right:4px">EV</span>':''}${fmt(r.fat)}</td>
       <td style="text-align:right;color:var(--text2)">${fmt(bcI)}</td>
       <td style="text-align:right">${fmt(i15)}</td>
       <td style="text-align:right">${fmt(adi)}</td>
