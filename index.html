@@ -637,7 +637,7 @@ body.side-off #side-toggle{display:block}
               <th>Fat. Fiscal (R$)</th>
               <th>Descontos em NF (R$)</th>
               <th>Desconto 100% (Conta Assinada)</th>
-              <th class="edit-col" title="Preenchido automaticamente pela DRE (📥 Subir DRE). Sem DRE para o mês/empresa, digite manualmente.">Fat. Everest ✏️</th>
+              <th class="edit-col" title="Preenchido automaticamente pela DRE (📥 Subir DRE). MULT 01 não vem na DRE: digite manualmente (o valor é descontado do Caminito Asa Norte). Sem DRE para o mês/empresa, digite manualmente.">Fat. Everest ✏️</th>
               <th>Δ Fat. (R$)</th>
               <th class="edit-col" title="Calculada dos itens (Cod Produto 9999999999997, notas aceitas). Sem itens carregados para o mês, digite manualmente.">Gorjeta ✏️</th>
               <th class="edit-col">iFood ✏️</th>
@@ -663,15 +663,13 @@ body.side-off #side-toggle{display:block}
         <div class="table-card">
           <div class="table-header">
             <h3>Apuração ICMS — Regime Especial 2% (Bares/Restaurantes)</h3>
-            <span style="font-size:11px;color:var(--text2)">BC = Receita − Gorjeta − Vendas c/ ST − Monofásico − Devoluções &nbsp;|&nbsp; ICMS = BC × 2%</span>
+            <span style="font-size:11px;color:var(--text2)">BC = Receita − Gorjeta − Devoluções &nbsp;|&nbsp; ICMS = BC × 2%</span>
           </div>
           <div class="tbl-wrap">
             <table><thead><tr>
               <th>Grupo</th><th>Empresa</th><th>CNPJ</th><th>Mês</th>
               <th>Receita Bruta (R$)</th>
               <th class="edit-col" title="Calculada dos itens (Cod Produto 9999999999997, notas aceitas). Sem itens carregados para o mês, digite manualmente.">Gorjeta ✏️</th>
-              <th>Vendas c/ ST (R$)</th>
-              <th>Monofásico (R$)</th>
               <th class="edit-col">Devoluções ✏️</th>
               <th>BC ICMS (R$)</th>
               <th>ICMS 2% (R$)</th>
@@ -3240,17 +3238,26 @@ const _dreEsc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&l
 const _dreMesOrd = m => m.slice(3)+m.slice(0,2);   // 'MM/AAAA' → 'AAAAMM'
 
 // Fat. Everest de uma empresa/mês a partir da DRE (null = sem DRE → entrada manual)
+// Regras especiais do Fat. Everest:
+//  EV_MANUAL — empresas cujo faturamento NÃO vem na DRE: digitado à mão no campo laranja
+//  EV_MENOS  — empresas cujo valor da DRE inclui o faturamento de outra(s): DRE − Fat. Everest (digitado) dessas empresas, no mesmo mês
+const EV_MANUAL = ['MULT 01'];
+const EV_MENOS  = { 'CAMINITO ASA NORTE': ['MULT 01'] };
 function dreEv(emp, mesRef) {
+  if (EV_MANUAL.includes(emp)) return null;
   const d = dreLoad(); if (!d) return null;
   const na = dreMapa()[emp]; if (!na) return null;
   const [a,m] = String(mesRef||'').split('-');
   const dm = d.meses[`${m}/${a}`]; if (!dm) return null;
   const key = Object.keys(dm).find(k => _dreN(k)===_dreN(na)); if (!key) return null;
   const x = dm[key];
-  return {v: Math.round((x.receita - x.incentivo - x.custo)*100)/100, receita:x.receita, incentivo:x.incentivo, custo:x.custo, na:key};
+  const menosEmp = EV_MENOS[emp] || [];
+  const menos = menosEmp.reduce((t, e) => t + ai(e, mesRef, 'ev'), 0);
+  return {v: Math.round((x.receita - x.incentivo - x.custo - menos)*100)/100, receita:x.receita, incentivo:x.incentivo, custo:x.custo, na:key, menos, menosEmp};
 }
 function dreEvCell(x) {
-  const tip = `Fat. Everest calculado da DRE (${x.na})\nReceita Bruta: ${fmt(x.receita)}\n− Incentivo Delivery (Cupom): ${fmt(x.incentivo)}\n− Investimentos em custo de entrega (99 Food): ${fmt(x.custo)}`;
+  const tip = `Fat. Everest calculado da DRE (${x.na})\nReceita Bruta: ${fmt(x.receita)}\n− Incentivo Delivery (Cupom): ${fmt(x.incentivo)}\n− Investimentos em custo de entrega (99 Food): ${fmt(x.custo)}` +
+    (x.menosEmp && x.menosEmp.length ? `\n− Fat. Everest ${x.menosEmp.join(' + ')} (digitado): ${fmt(x.menos)}` : '');
   return `<span class="ev-dre" title="${_dreEsc(tip)}">${fmt(x.v)}</span>`;
 }
 function dreAtualizarChip() {
@@ -3784,16 +3791,14 @@ function renderAuditFat() {
 function renderAuditICMS() {
   const tbody = document.getElementById('body-icms'); if (!tbody) return;
   let rows='', lastG='';
-  let tFat=0,tGorj=0,tST=0,tMono=0,tDev=0,tBC=0,tIcms=0,tFu=0,tFac=0,tPago=0,tDif=0;
-  let gFat=0,gGorj=0,gST=0,gMono=0,gDev=0,gBC=0,gIcms=0,gFu=0,gFac=0;
+  let tFat=0,tGorj=0,tDev=0,tBC=0,tIcms=0,tFu=0,tFac=0,tPago=0,tDif=0;
+  let gFat=0,gGorj=0,gDev=0,gBC=0,gIcms=0,gFu=0,gFac=0;
   const flushGroup = () => {
     if (!lastG) return;
     rows+=`<tr class="audit-subtotal-row">
       <td colspan="4">∑ ${lastG}</td>
       <td style="text-align:right">${fmt(gFat)}</td>
       <td style="text-align:right">${fmt(gGorj)}</td>
-      <td style="text-align:right">${fmt(gST)}</td>
-      <td style="text-align:right">${fmt(gMono)}</td>
       <td style="text-align:right">${fmt(gDev)}</td>
       <td style="text-align:right">${fmt(gBC)}</td>
       <td style="text-align:right">${fmt(gIcms)}</td>
@@ -3802,18 +3807,18 @@ function renderAuditICMS() {
       <td style="text-align:right">${fmt(gFu+gFac)}</td>
       <td colspan="2"></td>
     </tr>`;
-    gFat=gGorj=gST=gMono=gDev=gBC=gIcms=gFu=gFac=0;
+    gFat=gGorj=gDev=gBC=gIcms=gFu=gFac=0;
   };
   auditRows.forEach(r => {
     const gorj=gorjVal(r.empresa,r.mes_ref), dev=ai(r.empresa,r.mes_ref,'dev');
     const pago=ai(r.empresa,r.mes_ref,'darf_icms');
-    const bc=Math.max(0,r.fat-gorj-r.fat_st-r.fat_mono-dev);
+    const bc=Math.max(0,r.fat-gorj-dev);
     const icmsC=bc*AP.ICMS, fu=bc*AP.FUND_UNIV, fac=bc*AP.FAC;
     const dif=pago-icmsC;
-    tFat+=r.fat;tGorj+=gorj;tST+=r.fat_st;tMono+=r.fat_mono;tDev+=dev;
+    tFat+=r.fat;tGorj+=gorj;tDev+=dev;
     tBC+=bc;tIcms+=icmsC;tFu+=fu;tFac+=fac;tPago+=pago;tDif+=dif;
-    if(r.grupo!==lastG){flushGroup();rows+=grpRow(16,r.grupo);lastG=r.grupo;}
-    gFat+=r.fat;gGorj+=gorj;gST+=r.fat_st;gMono+=r.fat_mono;gDev+=dev;
+    if(r.grupo!==lastG){flushGroup();rows+=grpRow(14,r.grupo);lastG=r.grupo;}
+    gFat+=r.fat;gGorj+=gorj;gDev+=dev;
     gBC+=bc;gIcms+=icmsC;gFu+=fu;gFac+=fac;
     rows+=`<tr>
       <td style="font-size:11px;opacity:.5">${r.grupo}</td>
@@ -3822,8 +3827,6 @@ function renderAuditICMS() {
       <td style="white-space:nowrap">${mesLabel(r.mes_ref)}</td>
       <td style="text-align:right;font-weight:700">${fmt(r.fat)}</td>
       <td style="text-align:right">${gorjCell(r.empresa,r.mes_ref)}</td>
-      <td style="text-align:right;color:var(--text2)">${fmt(r.fat_st)}</td>
-      <td style="text-align:right;color:var(--text2)">${fmt(r.fat_mono)}</td>
       <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'dev')}</td>
       <td style="text-align:right;font-weight:700">${fmt(bc)}</td>
       <td style="text-align:right;font-weight:700;color:var(--yellow)">${fmt(icmsC)}</td>
@@ -3835,13 +3838,11 @@ function renderAuditICMS() {
     </tr>`;
   });
   flushGroup();
-  tbody.innerHTML = rows || `<tr><td colspan="16"><div class="empty-state"><div class="icon">📂</div><p>Sem dados</p></div></td></tr>`;
+  tbody.innerHTML = rows || `<tr><td colspan="14"><div class="empty-state"><div class="icon">📂</div><p>Sem dados</p></div></td></tr>`;
   document.getElementById('foot-icms').innerHTML = `<tr class="audit-total-row">
     <td colspan="4">TOTAL GERAL</td>
     <td style="text-align:right">${fmt(tFat)}</td>
     <td style="text-align:right">${fmt(tGorj)}</td>
-    <td style="text-align:right">${fmt(tST)}</td>
-    <td style="text-align:right">${fmt(tMono)}</td>
     <td style="text-align:right">${fmt(tDev)}</td>
     <td style="text-align:right">${fmt(tBC)}</td>
     <td style="text-align:right">${fmt(tIcms)}</td>
