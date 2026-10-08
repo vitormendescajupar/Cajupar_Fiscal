@@ -663,7 +663,7 @@ body.side-off #side-toggle{display:block}
         <div class="table-card">
           <div class="table-header">
             <h3>Apuração ICMS — Regime Especial 2% (Bares/Restaurantes)</h3>
-            <span style="font-size:11px;color:var(--text2)">BC = Fat. considerado − Gorjeta − Devoluções &nbsp;|&nbsp; Fat. considerado = maior entre Fiscal e Everest &nbsp;|&nbsp; ICMS = BC × 2%</span>
+            <span style="font-size:11px;color:var(--text2)">BC = Fat. considerado − Gorjeta (limitada a 10% dos itens de cada nota) − Devoluções &nbsp;|&nbsp; Fat. considerado = maior entre Fiscal e Everest &nbsp;|&nbsp; ICMS = BC × 2%</span>
           </div>
           <div class="tbl-wrap">
             <table><thead><tr>
@@ -2966,6 +2966,11 @@ const _gorjCod = (c, emp) => {
 };
 const _gorjValor = it => (it.total_sem_desconto!=null && it.total_sem_desconto!=='' && !isNaN(Number(it.total_sem_desconto)))
   ? Number(it.total_sem_desconto) : (Number(it.valor_item)||0) - (Number(it.desconto_item)||0);
+// Limite da gorjeta dedutível no ICMS (% sobre os itens da nota, sem o item de gorjeta). Exceções por empresa aqui.
+const GORJ_LIM_ICMS_PADRAO = 0.10;
+const GORJ_LIM_ICMS_EMP = {};
+let AUD_GORJ_ICMS = {};
+const gorjLimIcms = emp => (GORJ_LIM_ICMS_EMP[emp] != null ? GORJ_LIM_ICMS_EMP[emp] : GORJ_LIM_ICMS_PADRAO);
 // null = os itens dessa empresa/mês não estão carregados → continua a digitação manual
 function gorjAuto(emp, mes) {
   const k = `${emp}||${mes}`;
@@ -2982,6 +2987,26 @@ function fatTribCell(r, f) {
   if (!f.usaEv) return fmt(f.v);
   const tip = `Fat. Everest (${fmt(f.ev)}) maior que o Fat. Fiscal (${fmt(r.fat)}) — considerado o Everest`;
   return `<span title="${_dreEsc(tip)}"><span style="font-size:9px;font-weight:800;color:var(--green);margin-right:4px">EV</span>${fmt(f.v)}</span>`;
+}
+// Gorjeta dedutível no ICMS (limitada por nota). Sem itens carregados → mesmo valor digitado manualmente.
+function gorjIcmsVal(emp, mes) {
+  if (gorjAuto(emp, mes) === null) return ai(emp, mes, 'gorj');
+  const o = AUD_GORJ_ICMS[`${emp}||${mes}`];
+  return o ? Math.round(o.ded*100)/100 : 0;
+}
+function gorjIcmsCell(emp, mes) {
+  if (gorjAuto(emp, mes) === null) return aiInput(emp, mes, 'gorj');
+  const o = AUD_GORJ_ICMS[`${emp}||${mes}`];
+  const v = gorjIcmsVal(emp, mes);
+  const lim = Math.round(gorjLimIcms(emp)*1000)/10;
+  let tip = `Gorjeta dedutível no ICMS: por nota aceita com gorjeta, o menor entre o item de gorjeta e ${lim}% dos demais itens da nota.`;
+  let tag = '';
+  if (o) {
+    tip += ` Gorjeta lançada: ${fmt(o.real)} em ${o.notas} nota(s).`;
+    if (o.limitadas) { tip += ` ${o.limitadas} nota(s) acima de ${lim}% — excedente não deduzido: ${fmt(o.real-o.ded)}.`;
+      tag = `<span style="font-size:9px;font-weight:800;color:var(--yellow);margin-right:4px">${lim}%</span>`; }
+  }
+  return `<span class="ev-dre" title="${_dreEsc(tip)}">${tag}${fmt(v)}</span>`;
 }
 function gorjVal(emp, mes) { const a = gorjAuto(emp, mes); return a !== null ? a : ai(emp, mes, 'gorj'); }
 function gorjCell(emp, mes) {
@@ -3637,6 +3662,22 @@ async function loadAuditoria() {
     AUD_ITENS.add(k);
     if (_gorjCod(it.codigo_produto, it.empresa) && (it.manifesto||'Aceita') === 'Aceita') AUD_GORJ[k] = (AUD_GORJ[k]||0) + _gorjValor(it);
   });
+  // Gorjeta dedutível no ICMS: por nota aceita COM gorjeta, limitada a GORJ_LIM_ICMS (10%) dos demais itens da nota
+  AUD_GORJ_ICMS = {};
+  const _nt = {};
+  itens.forEach(it => {
+    if ((it.manifesto||'Aceita') !== 'Aceita' || !it.chave_acesso) return;
+    const n = _nt[it.chave_acesso] || (_nt[it.chave_acesso] = {k:`${it.empresa}||${it.mes_ref}`, emp:it.empresa, g:0, b:0, tem:false});
+    if (_gorjCod(it.codigo_produto, it.empresa)) { n.g += _gorjValor(it); n.tem = true; } else n.b += _gorjValor(it);
+  });
+  Object.values(_nt).forEach(n => {
+    if (!n.tem) return;
+    const lim = gorjLimIcms(n.emp);
+    const ded = Math.min(n.g, Math.max(0, n.b) * lim);
+    const o = AUD_GORJ_ICMS[n.k] || (AUD_GORJ_ICMS[n.k] = {ded:0, real:0, notas:0, limitadas:0});
+    o.ded += ded; o.real += n.g; o.notas++;
+    if (n.g - ded > 0.005) o.limitadas++;
+  });
 
   const monoMap = {}, stMap = {};
   itens.forEach(it => {
@@ -3822,7 +3863,7 @@ function renderAuditICMS() {
     gFat=gGorj=gDev=gBC=gIcms=gFu=gFac=0;
   };
   auditRows.forEach(r => {
-    const gorj=gorjVal(r.empresa,r.mes_ref), dev=ai(r.empresa,r.mes_ref,'dev');
+    const gorj=gorjIcmsVal(r.empresa,r.mes_ref), dev=ai(r.empresa,r.mes_ref,'dev');
     const pago=ai(r.empresa,r.mes_ref,'darf_icms');
     const ft=fatTrib(r);
     const bc=Math.max(0,ft.v-gorj-dev);
@@ -3839,7 +3880,7 @@ function renderAuditICMS() {
       <td style="font-size:11px;font-family:monospace;color:var(--text2)">${fmtCNPJ(r.cnpj)}</td>
       <td style="white-space:nowrap">${mesLabel(r.mes_ref)}</td>
       <td style="text-align:right;font-weight:700">${fatTribCell(r,ft)}</td>
-      <td style="text-align:right">${gorjCell(r.empresa,r.mes_ref)}</td>
+      <td style="text-align:right">${gorjIcmsCell(r.empresa,r.mes_ref)}</td>
       <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'dev')}</td>
       <td style="text-align:right;font-weight:700">${fmt(bc)}</td>
       <td style="text-align:right;font-weight:700;color:var(--yellow)">${fmt(icmsC)}</td>
