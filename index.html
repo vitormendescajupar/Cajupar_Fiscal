@@ -663,7 +663,7 @@ body.side-off #side-toggle{display:block}
         <div class="table-card">
           <div class="table-header">
             <h3>Apuração ICMS — Regime Especial 2% (Bares/Restaurantes)</h3>
-            <span style="font-size:11px;color:var(--text2)">BC = Fat. considerado − Gorjeta (10% × itens das notas com gorjeta; lojas com 10% como regra: gorjeta integral) − Devoluções &nbsp;|&nbsp; Fat. considerado = maior entre Fiscal e Everest &nbsp;|&nbsp; ICMS = BC × 2%</span>
+            <span style="font-size:11px;color:var(--text2)">BC = Fat. considerado − Gorjeta (10% × itens das notas com gorjeta; lojas com 10% como regra: gorjeta integral) − Devoluções &nbsp;|&nbsp; Fat. considerado = maior entre Fiscal e Everest &nbsp;|&nbsp; ICMS = BC × 2% &nbsp;|&nbsp; Fundos (F.Univ e FAC) = Fat. considerado × alíquota, só empresas do DF</span>
           </div>
           <div class="tbl-wrap">
             <table><thead><tr>
@@ -673,8 +673,8 @@ body.side-off #side-toggle{display:block}
               <th class="edit-col">Devoluções ✏️</th>
               <th>BC ICMS (R$)</th>
               <th>ICMS 2% (R$)</th>
-              <th>F.Univ 0,02% (R$)</th>
-              <th>FAC 0,03% (R$)</th>
+              <th title="Fat. considerado × 0,02% (somente empresas do DF)">F.Univ 0,02% (R$)</th>
+              <th title="Fat. considerado × 0,03% (somente empresas do DF)">FAC 0,03% (R$)</th>
               <th>Fundos (R$)</th>
               <th class="edit-col">ICMS pago ✏️</th>
               <th>Δ ICMS (R$)</th>
@@ -3071,6 +3071,9 @@ const _gorjCod = (c, emp) => {
 const _gorjValor = it => (it.total_sem_desconto!=null && it.total_sem_desconto!=='' && !isNaN(Number(it.total_sem_desconto)))
   ? Number(it.total_sem_desconto) : (Number(it.valor_item)||0) - (Number(it.desconto_item)||0);
 // Limite da gorjeta dedutível no ICMS (% sobre os itens da nota, sem o item de gorjeta). Exceções por empresa aqui.
+// Fundos (Universitário e FAC) são do DF: incidem sobre o FATURAMENTO considerado (não sobre a BC) e não se aplicam a empresas de GO/SP
+const SEM_FUNDOS_DF = ['NAZO GOIANIA','CAJU ITAIM SP'];
+const fundosDF = emp => !SEM_FUNDOS_DF.includes(String(emp||'').toUpperCase());
 const GORJ_LIM_ICMS_PADRAO = 0.10;
 const GORJ_LIM_ICMS_EMP = {};
 let AUD_GORJ_ICMS = {}; let AUD_GDIAG = {};
@@ -3992,7 +3995,7 @@ function renderAuditICMS() {
     const pago=ai(r.empresa,r.mes_ref,'darf_icms');
     const ft=fatTrib(r);
     const bc=Math.max(0,ft.v-gorj-dev);
-    const icmsC=bc*AP.ICMS, fu=bc*AP.FUND_UNIV, fac=bc*AP.FAC;
+    const icmsC=bc*AP.ICMS, fDF=fundosDF(r.empresa), fu=fDF?ft.v*AP.FUND_UNIV:0, fac=fDF?ft.v*AP.FAC:0;
     const dif=pago-icmsC;
     tFat+=ft.v;tGorj+=gorj;tDev+=dev;
     tBC+=bc;tIcms+=icmsC;tFu+=fu;tFac+=fac;tPago+=pago;tDif+=dif;
