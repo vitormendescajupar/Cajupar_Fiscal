@@ -860,7 +860,8 @@ body.side-off #side-toggle{display:block}
 
       <!-- Arquivos já carregados -->
       <div id="loaded-section" style="display:none;margin-bottom:28px">
-        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text2)">✅ PLANILHAS CARREGADAS (<span id="loaded-count">0</span>)</h3>
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text2);display:flex;align-items:center;gap:12px;flex-wrap:wrap">✅ PLANILHAS CARREGADAS (<span id="loaded-count">0</span>)
+          <button class="btn btn-sm btn-outline" style="margin-left:auto;font-weight:600" onclick="verificarIntegridade()" title="Compara a quantidade de itens salvos no site com a de cada planilha carregada">🔍 Verificar integridade</button></h3>
         <div id="loaded-list" class="file-list"></div>
       </div>
 
@@ -1370,6 +1371,32 @@ function idbDelete(store, key) {
   });
 }
 
+// ID único e crescente para os itens. (Antes: Date.now() + índice por arquivo → dois arquivos carregados em sequência
+// geravam IDs repetidos e um sobrescrevia os itens do outro.)
+let _ITEM_SEQ = Date.now() * 1000;
+const nextItemId = () => ++_ITEM_SEQ;
+
+// Apaga os registros do índice que passam no filtro (sem filtro = todos)
+function idbDeleteWhere(store, indexName, indexValue, pred) {
+  return new Promise((res, rej) => {
+    const tx = idbTx(store, 'readwrite');
+    const req = tx.objectStore(store).index(indexName).openCursor(IDBKeyRange.only(indexValue));
+    req.onsuccess = e => {
+      const c = e.target.result;
+      if (c) { if (!pred || pred(c.value)) c.delete(); c.continue(); }
+    };
+    tx.oncomplete = () => res();
+    tx.onerror    = () => rej(tx.error);
+  });
+}
+function idbCountByIndex(store, indexName, indexValue) {
+  return new Promise((res, rej) => {
+    const req = idbTx(store).objectStore(store).index(indexName).count(IDBKeyRange.only(indexValue));
+    req.onsuccess = () => res(req.result);
+    req.onerror   = () => rej(req.error);
+  });
+}
+
 function idbDeleteByIndex(store, indexName, indexValue) {
   return new Promise((res, rej) => {
     const tx = idbTx(store, 'readwrite');
@@ -1658,6 +1685,20 @@ async function loadDriveFile(fileId, fileName) {
     const result = parseExcelFile(buf, fileName, 'drive');
     pBar.style.width = '50%'; pLabel.textContent = `Salvando ${result.notas.length} notas...`;
 
+    // Recarregar a mesma planilha SUBSTITUI os dados anteriores dessa empresa/mês (antes os itens ficavam duplicados
+    // e notas que saíram da planilha continuavam no site). Notas/itens importados manualmente por XML são preservados.
+    pLabel.textContent = 'Substituindo dados anteriores...';
+    for (const mr of (result.mes_refs && result.mes_refs.length ? result.mes_refs : [result.mes_ref])) {
+      await idbDeleteWhere('notas', 'idx_empresa_mes', [result.empresa, mr], n => n.origem !== 'manual');
+      await idbDeleteWhere('itens', 'idx_empresa_mes', [result.empresa, mr], i => i.origem !== 'manual');
+    }
+    {
+      const mrs = new Set(result.mes_refs || [result.mes_ref]);
+      for (const m of (await idbAll('metricas')).filter(x => x.empresa === result.empresa && mrs.has(x.mes_ref))) await idbDelete('metricas', m.key);
+      for (const a of (await idbAll('arquivos')).filter(x => x.empresa === result.empresa && x.origem !== 'manual' && x.drive_id !== fileId
+            && (x.mes_refs||[x.mes_ref]).some(mr => mrs.has(mr)))) await idbDelete('arquivos', a.drive_id);
+    }
+
     // Save to IndexedDB
     await idbPut('notas', result.notas);
     pBar.style.width = '70%'; pLabel.textContent = `Salvando ${result.itens.length} itens...`;
@@ -1912,8 +1953,7 @@ async function importManualXML(file) {
     }
 
     // Assign _id to itens
-    let _itemId = Date.now();
-    const itensComId = result.itens.map(it => ({...it, _id: _itemId++}));
+    const itensComId = result.itens.map(it => ({...it, _id: nextItemId()}));
 
     // Save nota + itens
     await idbPut('notas', [result.nota]);
@@ -1965,6 +2005,28 @@ async function importManualXML(file) {
     if (statusEl) statusEl.textContent = msg;
     console.error(e);
   }
+}
+
+// Compara itens/notas guardados no site com o que cada planilha tinha ao ser carregada
+async function verificarIntegridade() {
+  const arqs = (await idbAll('arquivos')).filter(a => a.origem !== 'manual');
+  const bad = [];
+  for (const a of arqs) {
+    const mrs = a.mes_refs && a.mes_refs.length ? a.mes_refs : [a.mes_ref];
+    let it = 0, nt = 0;
+    for (const mr of mrs) { it += await idbCountByIndex('itens','idx_empresa_mes',[a.empresa, mr]); nt += await idbCountByIndex('notas','idx_empresa_mes',[a.empresa, mr]); }
+    if (it !== a.qtd_itens || nt !== a.qtd_notas) bad.push({a, it, nt});
+  }
+  if (!bad.length) { showModal('Integridade dos dados', `✅ Tudo certo: as ${arqs.length} planilhas carregadas têm exatamente os itens e notas que vieram nelas.`, [{label:'Fechar', action:closeModal}]); return; }
+  const f = n => Number(n).toLocaleString('pt-BR');
+  const lista = bad.map(({a,it,nt}) => `<li><b>${a.empresa}</b> ${a.mes_ref}: itens ${f(a.qtd_itens)} → ${f(it)} no site (${it>a.qtd_itens?'+':''}${f(it-a.qtd_itens)})${nt!==a.qtd_notas?`; notas ${f(a.qtd_notas)} → ${f(nt)}`:''}</li>`).join('');
+  showModal('Integridade dos dados', `⚠️ ${bad.length} planilha(s) com dados diferentes da planilha original (itens duplicados ou sobrescritos).<ul style="margin:10px 0 0 18px;text-align:left;max-height:260px;overflow:auto">${lista}</ul><p style="margin-top:10px">Recarregue essas planilhas do Drive para corrigir.</p>`, [
+    {label:'Fechar', cls:'btn-outline', action:closeModal},
+    {label:'Recarregar do Drive', cls:'btn-primary', action: async () => {
+      closeModal();
+      for (const {a} of bad) { if (a.drive_id && !String(a.drive_id).startsWith('manual_')) await loadDriveFile(a.drive_id, a.nome); }
+      toast('Planilhas recarregadas. Verifique a integridade novamente.', 'ok');
+    }}]);
 }
 
 async function removeArquivo(driveId, nome) {
@@ -2130,14 +2192,13 @@ function parseExcelFile(buf, fileName, origem = 'drive') {
   }
 
   // Map itens
-  let _itemId = Date.now();
   const itens = rawItens.map(row => {
     const it = mapRow(row, COL_ITENS);
     it.empresa  = empresa;
     it.grupo    = grupo;
     it.mes_ref  = mes_ref;
     it.origem   = origem;
-    it._id      = _itemId++;
+    it._id      = nextItemId();
     for (const f of ['quantidade','valor_unitario','valor_item','desconto_item','base_icms','valor_icms','base_icms_st','valor_icms_st','valor_fcp_st','valor_pis','valor_cofins']) {
       it[f] = parseBRNum(it[f]);
     }
