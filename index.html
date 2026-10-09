@@ -616,8 +616,8 @@ body.side-off #side-toggle{display:block}
         <span class="param-item">FAC: <strong>0,03%</strong></span>
         <span class="param-item">PIS: <strong>0,65%</strong></span>
         <span class="param-item">COFINS: <strong>3,0%</strong></span>
-        <span class="param-item">IRPJ presunção: <strong>8%</strong> | alíquota: <strong>15% + adic. 10%</strong></span>
-        <span class="param-item">CSLL presunção: <strong>12%</strong> | alíquota: <strong>9%</strong></span>
+        <span class="param-item">IRPJ presunção: <strong>8%</strong> (8,8% acima de R$ 1,25 mi/trim) | alíquota: <strong>15% + adic. 10% &gt; R$ 60 mil/trim</strong></span>
+        <span class="param-item">CSLL presunção: <strong>12%</strong> (13,2% acima de R$ 1,25 mi/trim) | alíquota: <strong>9%</strong></span>
         <span style="margin-left:auto;font-size:11px;color:var(--primary)">✏️ Campos laranja são editáveis — salvo automaticamente</span>
       </div>
 
@@ -720,23 +720,65 @@ body.side-off #side-toggle{display:block}
       <div id="audit-sec-irpj" class="audit-section" style="display:none">
         <div class="table-card">
           <div class="table-header">
-            <h3>Apuração IRPJ/CSLL — Lucro Presumido (Trimestral)</h3>
-            <span style="font-size:11px;color:var(--text2)">Fat. considerado = maior entre Fiscal e Everest, mês a mês &nbsp;|&nbsp; BC IRPJ = Fat × 8% | IRPJ = 15% + adic. 10% &nbsp;|&nbsp; BC CSLL = Fat × 12% | CSLL = 9%</span>
+            <h3>Provisão mensal IRPJ/CSLL — Lucro Presumido (LC 224/2025)</h3>
+            <span style="font-size:11px;color:var(--text2)">Base = Fat. considerado − Gorjeta − iFood &nbsp;|&nbsp; limite de receita do grupo (CNPJ raiz) = R$ 1,25 mi ÷ 3 por mês, rateado pela base de cada empresa: até o limite 8% (IRPJ) / 12% (CSLL), excedente 8,8% / 13,2% &nbsp;|&nbsp; IRPJ = 15% + adicional 10% sobre o que passar de R$ 20 mil/mês (rateado) &nbsp;|&nbsp; CSLL = 9%</span>
           </div>
           <div class="tbl-wrap">
-            <table><thead><tr>
-              <th>Grupo</th><th>Empresa</th><th>CNPJ</th><th>Trimestre</th>
-              <th title="Soma mensal do maior valor entre Fat. Fiscal e Fat. Everest (EV = Everest foi considerado em algum mês)">Fat. Trim. considerado (R$)</th>
-              <th>BC IRPJ 8% (R$)</th>
+            <table id="tbl-irpj-m"><thead><tr>
+              <th>Empresa</th><th>Mês</th>
+              <th title="Maior entre Fat. Fiscal e Fat. Everest">Fat. considerado (R$)</th>
+              <th>Gorjeta (R$)</th>
+              <th class="edit-col">iFood ✏️</th>
+              <th>Base de cálculo (R$)</th>
+              <th title="Parte da base dentro do limite mensal do grupo (R$ 1,25 mi ÷ 3)">Receita até o limite (R$)</th>
+              <th title="Parte da base acima do limite mensal do grupo">Receita excedente (R$)</th>
+              <th>BC IRPJ 8,8% (excedente)</th>
+              <th>BC IRPJ 8% (até o limite)</th>
+              <th>BC IRPJ (R$)</th>
+              <th>IRPJ 15% (R$)</th>
+              <th title="R$ 20 mil/mês do grupo, rateado pela BC IRPJ de cada empresa">Limite adic. (R$)</th>
+              <th>Adic. 10% (R$)</th>
+              <th>IRPJ provisão (R$)</th>
+              <th>BC CSLL 13,2% (excedente)</th>
+              <th>BC CSLL 12% (até o limite)</th>
+              <th>BC CSLL (R$)</th>
+              <th>CSLL provisão (R$)</th>
+              <th title="Participação da empresa no IRPJ do grupo (rateio)">% IRPJ</th>
+              <th title="Participação da empresa na CSLL do grupo (rateio)">% CSLL</th>
+            </tr></thead>
+            <tbody id="body-irpj-m"></tbody>
+            <tfoot id="foot-irpj-m"></tfoot>
+            </table>
+          </div>
+        </div>
+
+        <div class="table-card" style="margin-top:14px">
+          <div class="table-header">
+            <h3>Consolidação trimestral IRPJ/CSLL — validação do trimestre</h3>
+            <span style="font-size:11px;color:var(--text2)">Apuração centralizada por CNPJ raiz com o limite cheio de R$ 1,25 mi/trimestre e adicional sobre R$ 60 mil/trimestre &nbsp;|&nbsp; "Δ prov." = apurado − soma das provisões mensais (positivo = falta provisionar) &nbsp;|&nbsp; "Δ pago" = DARF pago − apurado &nbsp;|&nbsp; Mostra o trimestre do mês filtrado (sem filtro de mês, todos)</span>
+          </div>
+          <div class="tbl-wrap">
+            <table id="tbl-irpj-t"><thead><tr>
+              <th>Grupo</th><th>Trimestre</th>
+              <th title="Soma mensal do maior valor entre Fat. Fiscal e Fat. Everest">Fat. considerado (R$)</th>
+              <th>Gorjeta + iFood (R$)</th>
+              <th>Base de cálculo (R$)</th>
+              <th>Receita até R$ 1,25 mi (R$)</th>
+              <th>Receita excedente (R$)</th>
+              <th title="8,8% × excedente + 8% × até o limite">BC IRPJ (R$)</th>
               <th>IRPJ 15% (R$)</th>
               <th>Adic. 10% (R$)</th>
-              <th>IRPJ total (R$)</th>
+              <th>IRPJ apurado (R$)</th>
+              <th>IRPJ provisionado (Σ meses)</th>
+              <th>Δ prov. IRPJ</th>
               <th class="edit-col">IRPJ pago ✏️</th>
-              <th>Δ IRPJ (R$)</th>
-              <th>BC CSLL 12% (R$)</th>
-              <th>CSLL 9% (R$)</th>
-              <th class="edit-col">CSLL pago ✏️</th>
-              <th>Δ CSLL (R$)</th>
+              <th>Δ pago IRPJ</th>
+              <th title="13,2% × excedente + 12% × até o limite">BC CSLL (R$)</th>
+              <th>CSLL apurada (R$)</th>
+              <th>CSLL provisionada (Σ meses)</th>
+              <th>Δ prov. CSLL</th>
+              <th class="edit-col">CSLL paga ✏️</th>
+              <th>Δ pago CSLL</th>
             </tr></thead>
             <tbody id="body-irpj"></tbody>
             <tfoot id="foot-irpj"></tfoot>
@@ -2922,13 +2964,14 @@ async function loadItens(page = 1) {
 // ══════════════════════════════════════════════════════════════
 //  AUDITORIA
 // ══════════════════════════════════════════════════════════════
-let auditRows = [];
+let auditRows = [], auditRowsAll = [];   // auditRowsAll = todos os meses (consolidação trimestral)
 
 const AP = { // Parâmetros de apuração
   ICMS:0.02, FUND_UNIV:0.0002, FAC:0.0003,
   PIS:0.0065, COF:0.03,
   IRPJ_PRES:0.08, IRPJ_RATE:0.15, IRPJ_ADIC:0.10, IRPJ_LIM:60000,
   CSLL_PRES:0.12, CSLL_RATE:0.09,
+  IRPJ_PRES_LC:0.088, CSLL_PRES_LC:0.132, LIM_RECEITA_TRI:1250000,   // LC 224/2025
 };
 
 // localStorage helpers para inputs editáveis
@@ -3636,7 +3679,6 @@ async function loadAuditoria() {
 
   let mets = await idbAll('metricas');
   if (gr)  mets = mets.filter(m => m.grupo   === gr);
-  if (mes) mets = mets.filter(m => m.mes_ref === mes);
 
   // Agregar NFC-e + NF-e por empresa+mes
   const byKey = {};
@@ -3653,7 +3695,6 @@ async function loadAuditoria() {
   // Calcular monofásico, vendas c/ ST e desconto 100% a partir das notas/itens
   let itens = await idbAll('itens');
   if (gr) itens = itens.filter(i => i.grupo === gr);
-  if (mes) itens = itens.filter(i => i.mes_ref === mes);
 
   // Gorjeta = soma dos itens com código 9999999999997 em notas aceitas (SOMASES da apuração: Cod Produto + Manifesto "Aceita")
   AUD_GORJ = {}; AUD_ITENS = new Set();
@@ -3697,7 +3738,6 @@ async function loadAuditoria() {
   {
     let notasAll = await idbAll('notas');
     if (gr)  notasAll = notasAll.filter(n => n.grupo   === gr);
-    if (mes) notasAll = notasAll.filter(n => n.mes_ref === mes);
     notasAll.forEach(n => {
       if ((n.manifesto||'Aceita') === 'Cancelada') return;
       if ((n.desconto||0) <= 0) return;
@@ -3707,18 +3747,19 @@ async function loadAuditoria() {
     });
   }
 
-  auditRows = Object.values(byKey).map(r => {
+  auditRowsAll = Object.values(byKey).map(r => {
     const k = `${r.empresa}||${r.mes_ref}`;
     return {...r, fat_mono: monoMap[k]||0, fat_st: stMap[k]||0, desc100: desc100Map[k]||0};
   });
 
-  auditRows.sort((a,b) => {
+  auditRowsAll.sort((a,b) => {
     const cg = a.grupo.localeCompare(b.grupo);
     if (cg) return cg;
     const cc = (a.cnpj||'').localeCompare(b.cnpj||'');
     if (cc) return cc;
     return b.mes_ref.localeCompare(a.mes_ref);
   });
+  auditRows = mes ? auditRowsAll.filter(r => r.mes_ref === mes) : auditRowsAll.slice();
 
   refreshAuditTables();
 }
@@ -3980,91 +4021,184 @@ function renderAuditPISCOF() {
 }
 
 // ── IRPJ/CSLL ────────────────────────────────────────────────
+// Lucro Presumido com a majoração da LC 224/2025, centralizado por CNPJ raiz (matriz):
+//  • receita até o limite (R$ 1,25 mi/trimestre) → presunção normal (IRPJ 8% / CSLL 12%); o que passa → 8,8% / 13,2%;
+//  • IRPJ 15% + adicional de 10% sobre o que passar de R$ 60 mil/trimestre da base presumida.
+// Mensal = provisão (limite de receita e de adicional divididos por 3, rateados pela base de cada empresa);
+// Trimestre = apuração consolidada que valida as provisões (limite cheio).
+const xr = x => { const s = x<0?-1:1; return s*Math.round((Math.abs(x)+1e-9)*100)/100; };   // ROUND do Excel
+const cnpjRaiz = c => String(c||'').replace(/\D/g,'').slice(0,8);
+const fmtRaiz  = r => r.length===8 ? r.replace(/^(\d{2})(\d{3})(\d{3})$/,'$1.$2.$3') : 'sem CNPJ';
+const raizDe   = r => cnpjRaiz(r.cnpj || CNPJ_BY_NOME[r.empresa]);
+function matrizDaRaiz(raiz, fallback) {          // empresa-matriz (1º CNPJ da raiz) → chave dos DARFs pagos
+  if (raiz) for (const [c,v] of Object.entries(MAPA_CNPJ)) if (c.startsWith(raiz)) return v.nome;
+  return fallback;
+}
+const triDe = mes => { const [a,m] = mes.split('-').map(Number); return `${a}-T${Math.ceil(m/3)}`; };
+const triLabel = per => { const [a,t] = per.split('-T'); return `${t}º Trim/${a}`; };
+
+function irpjBase(r) {
+  const ft = fatTrib(r), gorj = gorjVal(r.empresa, r.mes_ref), ifood = ai(r.empresa, r.mes_ref, 'ifood');
+  return {r, ft, fat: ft.v, gorj, ifood, k: Math.max(0, ft.v - gorj - ifood)};
+}
+// lista = bases das empresas da MESMA raiz no MESMO mês (preenche L…X em cada item)
+function irpjProvisao(lista, limRec, limAdic) {
+  const ksub = lista.reduce((s,x)=>s+x.k, 0), lg = Math.min(ksub, limRec);
+  lista.forEach(x => {
+    x.L = ksub>0 ? x.k/ksub*lg : 0;  x.M = x.k - x.L;
+    x.N = xr(x.M*AP.IRPJ_PRES_LC);   x.O = xr(x.L*AP.IRPJ_PRES);   x.P = x.N + x.O;   x.Q = xr(x.P*AP.IRPJ_RATE);
+    x.U = xr(x.M*AP.CSLL_PRES_LC);   x.V = xr(x.L*AP.CSLL_PRES);   x.W = x.U + x.V;
+  });
+  const psub = lista.reduce((s,x)=>s+x.P, 0);
+  lista.forEach(x => {
+    x.R = psub>0 ? x.P/psub*limAdic : 0;
+    x.S = xr(Math.max(x.P - x.R, 0)*AP.IRPJ_ADIC);  x.T = x.Q + x.S;  x.X = x.W*AP.CSLL_RATE;
+  });
+  const tT = lista.reduce((s,x)=>s+x.T,0), tX = lista.reduce((s,x)=>s+x.X,0);
+  lista.forEach(x => { x.pI = tT>0 ? x.T/tT : 0; x.pC = tX>0 ? x.X/tX : 0; });
+}
+// Apuração trimestral consolidada (ksub = base de cálculo do trimestre da raiz)
+function irpjTrimestre(ksub) {
+  const E = Math.max(0, ksub - AP.LIM_RECEITA_TRI), F = ksub - E;
+  const n88 = xr(E*AP.IRPJ_PRES_LC), n8 = xr(F*AP.IRPJ_PRES), bcI = n88 + n8;
+  const i15 = xr(bcI*AP.IRPJ_RATE), adi = xr(Math.max(bcI - AP.IRPJ_LIM, 0)*AP.IRPJ_ADIC);
+  const c132 = xr(E*AP.CSLL_PRES_LC), c12 = xr(F*AP.CSLL_PRES), bcC = c132 + c12;
+  return {E, F, n88, n8, bcI, i15, adi, irpj: i15 + adi, c132, c12, bcC, csll: xr(bcC*AP.CSLL_RATE)};
+}
+
 function renderAuditIRPJ() {
-  const tbody = document.getElementById('body-irpj'); if (!tbody) return;
+  const tbodyM = document.getElementById('body-irpj-m'); if (!tbodyM) return;
+  const tbodyT = document.getElementById('body-irpj');
+  const KEYS = ['fat','gorj','ifood','k','L','M','N','O','P','Q','R','S','T','U','V','W','X'];
+  const sum0 = () => Object.fromEntries(KEYS.map(k=>[k,0]));
+  const add  = (a,b) => KEYS.forEach(k => a[k] += b[k]);
 
-  // Agregar por empresa + trimestre
-  const byTrim = {};
+  // ── 1) PROVISÃO MENSAL (meses do filtro) ──
+  const blocos = {};            // `${grupo}|${raiz}` → {grupo, raiz, meses:{mes:[bases]}}
   auditRows.forEach(r => {
-    const [ano,mes] = r.mes_ref.split('-').map(Number);
-    const trim = Math.ceil(mes/3);
-    const per  = `${ano}-T${trim}`;
-    const k    = `${r.empresa}||${per}`;
-    if (!byTrim[k]) byTrim[k]={empresa:r.empresa,grupo:r.grupo,per,trimLabel:`${trim}º Trim/${ano}`,fat:0,fatFiscal:0};
-    const ft = fatTrib(r);                       // maior entre Fat. Fiscal e Fat. Everest de cada mês
-    byTrim[k].fat += ft.v; byTrim[k].fatFiscal += r.fat;
+    const raiz = raizDe(r), key = `${r.grupo}|${raiz}`;
+    const b = blocos[key] || (blocos[key] = {grupo:r.grupo, raiz, meses:{}});
+    (b.meses[r.mes_ref] = b.meses[r.mes_ref] || []).push(irpjBase(r));
   });
-
-  const trimRows = Object.values(byTrim).sort((a,b)=>
-    a.grupo.localeCompare(b.grupo)||a.empresa.localeCompare(b.empresa)||a.per.localeCompare(b.per));
-
-  let rows='', lastG='';
-  let tFat=0,tBCi=0,tI15=0,tAd=0,tIt=0,tPIrpj=0,tDIrpj=0,tBCc=0,tCsll=0,tPCsll=0,tDCsll=0;
-  let gFat=0,gBCi=0,gI15=0,gAd=0,gIt=0,gBCc=0,gCsll=0;
-  const flushGroup = () => {
-    if (!lastG) return;
-    rows+=`<tr class="audit-subtotal-row">
-      <td colspan="4">∑ ${lastG}</td>
-      <td style="text-align:right">${fmt(gFat)}</td>
-      <td style="text-align:right">${fmt(gBCi)}</td>
-      <td style="text-align:right">${fmt(gI15)}</td>
-      <td style="text-align:right">${fmt(gAd)}</td>
-      <td style="text-align:right">${fmt(gIt)}</td>
-      <td></td><td></td>
-      <td style="text-align:right">${fmt(gBCc)}</td>
-      <td style="text-align:right">${fmt(gCsll)}</td>
-      <td colspan="2"></td>
-    </tr>`;
-    gFat=gBCi=gI15=gAd=gIt=gBCc=gCsll=0;
-  };
-
-  trimRows.forEach(r => {
-    const pIrpj=ai(r.empresa,r.per,'darf_irpj'), pCsll=ai(r.empresa,r.per,'darf_csll');
-    const bcI=r.fat*AP.IRPJ_PRES;
-    const i15=bcI*AP.IRPJ_RATE;
-    const adi=Math.max(0,bcI-AP.IRPJ_LIM)*AP.IRPJ_ADIC;
-    const itot=i15+adi;
-    const bcC=r.fat*AP.CSLL_PRES;
-    const csll=bcC*AP.CSLL_RATE;
-    const dI=pIrpj-itot, dC=pCsll-csll;
-    tFat+=r.fat;tBCi+=bcI;tI15+=i15;tAd+=adi;tIt+=itot;tPIrpj+=pIrpj;tDIrpj+=dI;
-    tBCc+=bcC;tCsll+=csll;tPCsll+=pCsll;tDCsll+=dC;
-    if(r.grupo!==lastG){flushGroup();rows+=grpRow(15,r.grupo);lastG=r.grupo;}
-    gFat+=r.fat;gBCi+=bcI;gI15+=i15;gAd+=adi;gIt+=itot;gBCc+=bcC;gCsll+=csll;
-    rows+=`<tr>
-      <td style="font-size:11px;opacity:.5">${r.grupo}</td>
-      <td style="font-weight:600;white-space:nowrap">${r.empresa}</td>
-      <td style="font-size:11px;font-family:monospace;color:var(--text2)">${fmtCNPJ(r.cnpj||CNPJ_BY_NOME[r.empresa]||'')}</td>
-      <td style="white-space:nowrap;font-weight:600">${r.trimLabel}</td>
-      <td style="text-align:right;font-weight:700" title="${_dreEsc('Fat. Fiscal do trimestre: '+fmt(r.fatFiscal))}">${r.fat>r.fatFiscal+0.005?'<span style="font-size:9px;font-weight:800;color:var(--green);margin-right:4px">EV</span>':''}${fmt(r.fat)}</td>
-      <td style="text-align:right;color:var(--text2)">${fmt(bcI)}</td>
-      <td style="text-align:right">${fmt(i15)}</td>
-      <td style="text-align:right">${fmt(adi)}</td>
-      <td style="text-align:right;font-weight:700;color:var(--yellow)">${fmt(itot)}</td>
-      <td style="text-align:right">${aiInput(r.empresa,r.per,'darf_irpj')}</td>
-      <td style="text-align:right">${pIrpj?fmtD(dI):'—'}</td>
-      <td style="text-align:right;color:var(--text2)">${fmt(bcC)}</td>
-      <td style="text-align:right;font-weight:700;color:var(--blue)">${fmt(csll)}</td>
-      <td style="text-align:right">${aiInput(r.empresa,r.per,'darf_csll')}</td>
-      <td style="text-align:right">${pCsll?fmtD(dC):'—'}</td>
-    </tr>`;
+  const ordM = Object.values(blocos).sort((a,b)=>a.grupo.localeCompare(b.grupo)||a.raiz.localeCompare(b.raiz));
+  let rowsM = '';
+  const tot = sum0();
+  ordM.forEach(b => {
+    rowsM += grpRow(21, `${b.grupo} (${fmtRaiz(b.raiz)})`);
+    Object.keys(b.meses).sort().forEach(mes => {
+      const lista = b.meses[mes].filter(x => x.fat>0 || x.k>0)
+        .sort((a,c)=>(a.r.cnpj||'').localeCompare(c.r.cnpj||'') || a.r.empresa.localeCompare(c.r.empresa));
+      if (!lista.length) return;
+      irpjProvisao(lista, AP.LIM_RECEITA_TRI/3, AP.IRPJ_LIM/3);
+      const sub = sum0();
+      lista.forEach(x => {
+        add(sub, x);
+        const r = x.r;
+        rowsM += `<tr>
+          <td style="font-weight:600;white-space:nowrap" title="${_dreEsc(fmtCNPJ(r.cnpj||CNPJ_BY_NOME[r.empresa]||'')+' — '+r.grupo)}">${r.empresa}</td>
+          <td style="white-space:nowrap">${mesLabel(r.mes_ref)}</td>
+          <td style="text-align:right;font-weight:700">${fatTribCell(r,x.ft)}</td>
+          <td style="text-align:right">${gorjCell(r.empresa,r.mes_ref)}</td>
+          <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'ifood')}</td>
+          <td style="text-align:right;font-weight:700">${fmt(x.k)}</td>
+          <td style="text-align:right;color:var(--text2)">${fmt(x.L)}</td>
+          <td style="text-align:right;color:var(--text2)">${fmt(x.M)}</td>
+          <td style="text-align:right;color:var(--text2);font-size:11px">${fmt(x.N)}</td>
+          <td style="text-align:right;color:var(--text2);font-size:11px">${fmt(x.O)}</td>
+          <td style="text-align:right">${fmt(x.P)}</td>
+          <td style="text-align:right">${fmt(x.Q)}</td>
+          <td style="text-align:right;color:var(--text2);font-size:11px">${fmt(x.R)}</td>
+          <td style="text-align:right">${fmt(x.S)}</td>
+          <td style="text-align:right;font-weight:700;color:var(--yellow)">${fmt(x.T)}</td>
+          <td style="text-align:right;color:var(--text2);font-size:11px">${fmt(x.U)}</td>
+          <td style="text-align:right;color:var(--text2);font-size:11px">${fmt(x.V)}</td>
+          <td style="text-align:right">${fmt(x.W)}</td>
+          <td style="text-align:right;font-weight:700;color:var(--blue)">${fmt(x.X)}</td>
+          <td style="text-align:right;color:var(--text2)">${(x.pI*100).toFixed(2).replace('.',',')}%</td>
+          <td style="text-align:right;color:var(--text2)">${(x.pC*100).toFixed(2).replace('.',',')}%</td>
+        </tr>`;
+      });
+      add(tot, sub);
+      rowsM += `<tr class="audit-subtotal-row">
+        <td colspan="2">∑ ${b.grupo} · ${mesLabel(mes)}</td>
+        ${['fat','gorj','ifood','k','L','M','N','O','P','Q','R','S','T','U','V','W','X'].map(k=>`<td style="text-align:right">${fmt(sub[k])}</td>`).join('')}
+        <td colspan="2" style="text-align:right;color:var(--text2)">100%</td>
+      </tr>`;
+    });
   });
-  flushGroup();
+  tbodyM.innerHTML = rowsM || `<tr><td colspan="21"><div class="empty-state"><div class="icon">📂</div><p>Sem dados</p></div></td></tr>`;
+  document.getElementById('foot-irpj-m').innerHTML = `<tr class="audit-total-row">
+    <td colspan="2">TOTAL GERAL</td>
+    ${KEYS.map(k=>`<td style="text-align:right">${fmt(tot[k])}</td>`).join('')}
+    <td colspan="2"></td></tr>`;
 
-  tbody.innerHTML = rows || `<tr><td colspan="15"><div class="empty-state"><div class="icon">📂</div><p>Sem dados</p></div></td></tr>`;
+  // ── 2) CONSOLIDAÇÃO TRIMESTRAL (por CNPJ raiz — trimestre do mês filtrado, ou todos) ──
+  if (!tbodyT) return;
+  const selMes = (document.getElementById('audit-mes')||{}).value || '';
+  const triSel = selMes ? triDe(selMes) : '';
+  const blT = {};               // `${grupo}|${raiz}|${per}` → {grupo,raiz,per,meses:{mes:[bases]}}
+  auditRowsAll.forEach(r => {
+    const per = triDe(r.mes_ref); if (triSel && per !== triSel) return;
+    const raiz = raizDe(r), key = `${r.grupo}|${raiz}|${per}`;
+    const b = blT[key] || (blT[key] = {grupo:r.grupo, raiz, per, meses:{}, empresas:new Set()});
+    (b.meses[r.mes_ref] = b.meses[r.mes_ref] || []).push(irpjBase(r));
+    b.empresas.add(r.empresa);
+  });
+  const ordT = Object.values(blT).sort((a,b)=>a.grupo.localeCompare(b.grupo)||a.raiz.localeCompare(b.raiz)||a.per.localeCompare(b.per));
+  let rowsT = '', lastG = '';
+  const T = Object.fromEntries(['fat','go','k','E','F','bcI','i15','adi','irpj','prI','pgI','bcC','csll','prC','pgC'].map(k=>[k,0]));
+  ordT.forEach(b => {
+    let fat=0, go=0, k=0, prI=0, prC=0, nMes=0;
+    Object.keys(b.meses).sort().forEach(mes => {
+      const lista = b.meses[mes].filter(x => x.fat>0 || x.k>0); if (!lista.length) return;
+      nMes++;
+      irpjProvisao(lista, AP.LIM_RECEITA_TRI/3, AP.IRPJ_LIM/3);
+      lista.forEach(x => { fat+=x.fat; go+=x.gorj+x.ifood; k+=x.k; prI+=x.T; prC+=x.X; });
+    });
+    if (!nMes) return;
+    const ap = irpjTrimestre(k);
+    const matriz = matrizDaRaiz(b.raiz, [...b.empresas][0]);
+    const pgI = ai(matriz, b.per, 'darf_irpj'), pgC = ai(matriz, b.per, 'darf_csll');
+    const gl = `${b.grupo} (${fmtRaiz(b.raiz)})`;
+    if (gl !== lastG) { rowsT += grpRow(21, gl); lastG = gl; }
+    const parcial = nMes < 3;
+    const tipB = `BC 8,8% s/ excedente: ${fmt(ap.n88)} + BC 8% s/ até o limite: ${fmt(ap.n8)}`;
+    const tipC = `BC 13,2% s/ excedente: ${fmt(ap.c132)} + BC 12% s/ até o limite: ${fmt(ap.c12)}`;
+    rowsT += `<tr>
+      <td style="font-weight:600;white-space:nowrap" title="${_dreEsc([...b.empresas].join(', '))}">${b.grupo} <span style="font-size:9px;font-weight:400;color:var(--text3)">${fmtRaiz(b.raiz)}</span></td>
+      <td style="white-space:nowrap;font-weight:600" title="${parcial?_dreEsc('Trimestre incompleto: apenas '+nMes+' de 3 meses carregados — o limite de R$ 1,25 mi é o do trimestre inteiro'):''}">${triLabel(b.per)} <span style="font-size:9px;color:${parcial?'var(--yellow)':'var(--text3)'}">(${nMes}/3)</span></td>
+      <td style="text-align:right">${fmt(fat)}</td>
+      <td style="text-align:right">${fmt(go)}</td>
+      <td style="text-align:right;font-weight:700">${fmt(k)}</td>
+      <td style="text-align:right;color:var(--text2)">${fmt(ap.F)}</td>
+      <td style="text-align:right;color:var(--text2)">${fmt(ap.E)}</td>
+      <td style="text-align:right" title="${_dreEsc(tipB)}">${fmt(ap.bcI)}</td>
+      <td style="text-align:right">${fmt(ap.i15)}</td>
+      <td style="text-align:right">${fmt(ap.adi)}</td>
+      <td style="text-align:right;font-weight:700;color:var(--yellow)">${fmt(ap.irpj)}</td>
+      <td style="text-align:right;color:var(--text2)">${fmt(prI)}</td>
+      <td style="text-align:right">${fmtD(ap.irpj-prI)}</td>
+      <td style="text-align:right">${aiInput(matriz,b.per,'darf_irpj')}</td>
+      <td style="text-align:right">${pgI?fmtD(pgI-ap.irpj):'—'}</td>
+      <td style="text-align:right" title="${_dreEsc(tipC)}">${fmt(ap.bcC)}</td>
+      <td style="text-align:right;font-weight:700;color:var(--blue)">${fmt(ap.csll)}</td>
+      <td style="text-align:right;color:var(--text2)">${fmt(prC)}</td>
+      <td style="text-align:right">${fmtD(ap.csll-prC)}</td>
+      <td style="text-align:right">${aiInput(matriz,b.per,'darf_csll')}</td>
+      <td style="text-align:right">${pgC?fmtD(pgC-ap.csll):'—'}</td>
+    </tr>`;
+    T.fat+=fat;T.go+=go;T.k+=k;T.E+=ap.E;T.F+=ap.F;T.bcI+=ap.bcI;T.i15+=ap.i15;T.adi+=ap.adi;T.irpj+=ap.irpj;T.prI+=prI;
+    T.pgI+=pgI?pgI-ap.irpj:0;T.bcC+=ap.bcC;T.csll+=ap.csll;T.prC+=prC;T.pgC+=pgC?pgC-ap.csll:0;
+  });
+  tbodyT.innerHTML = rowsT || `<tr><td colspan="20"><div class="empty-state"><div class="icon">📂</div><p>Sem dados</p></div></td></tr>`;
   document.getElementById('foot-irpj').innerHTML = `<tr class="audit-total-row">
-    <td colspan="4">TOTAL GERAL</td>
-    <td style="text-align:right">${fmt(tFat)}</td>
-    <td style="text-align:right">${fmt(tBCi)}</td>
-    <td style="text-align:right">${fmt(tI15)}</td>
-    <td style="text-align:right">${fmt(tAd)}</td>
-    <td style="text-align:right">${fmt(tIt)}</td>
-    <td></td>
-    <td style="text-align:right">${fmtD(tDIrpj)}</td>
-    <td style="text-align:right">${fmt(tBCc)}</td>
-    <td style="text-align:right">${fmt(tCsll)}</td>
-    <td></td>
-    <td style="text-align:right">${fmtD(tDCsll)}</td>
+    <td colspan="2">TOTAL GERAL</td>
+    <td style="text-align:right">${fmt(T.fat)}</td><td style="text-align:right">${fmt(T.go)}</td><td style="text-align:right">${fmt(T.k)}</td>
+    <td style="text-align:right">${fmt(T.F)}</td><td style="text-align:right">${fmt(T.E)}</td><td style="text-align:right">${fmt(T.bcI)}</td>
+    <td style="text-align:right">${fmt(T.i15)}</td><td style="text-align:right">${fmt(T.adi)}</td><td style="text-align:right">${fmt(T.irpj)}</td>
+    <td style="text-align:right">${fmt(T.prI)}</td><td style="text-align:right">${fmtD(T.irpj-T.prI)}</td><td></td><td style="text-align:right">${fmtD(T.pgI)}</td>
+    <td style="text-align:right">${fmt(T.bcC)}</td><td style="text-align:right">${fmt(T.csll)}</td>
+    <td style="text-align:right">${fmt(T.prC)}</td><td style="text-align:right">${fmtD(T.csll-T.prC)}</td><td></td><td style="text-align:right">${fmtD(T.pgC)}</td>
   </tr>`;
 }
 
@@ -4155,6 +4289,16 @@ function _activeAuditSection() {
 }
 function exportAuditoriaExcel() {
   const tab = _activeAuditSection();
+  if (tab === 'irpj') {                                   // duas tabelas → duas planilhas no mesmo arquivo
+    const wb = XLSX.utils.book_new();
+    [['tbl-irpj-m','Provisão mensal'],['tbl-irpj-t','Trimestre']].forEach(([id,nome]) => {
+      const t = document.getElementById(id); if (!t) return;
+      const aoa = _tableToAOA(t), ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = aoa[0]?.map((_,ci) => ({wch: Math.max(...aoa.map(r => (r[ci]||'').length), 8)}));
+      XLSX.utils.book_append_sheet(wb, ws, nome);
+    });
+    XLSX.writeFile(wb, 'cajupar_auditoria_irpj.xlsx'); toast('Excel exportado', 'ok'); return;
+  }
   const tableEl = document.querySelector(`#audit-sec-${tab} table`);
   if (!tableEl) { toast('Tabela não encontrada', 'err'); return; }
   tableEl.id = '_tmp_audit_tbl';
@@ -4164,6 +4308,15 @@ function exportAuditoriaExcel() {
 function exportAuditoriaPDF() {
   const tab = _activeAuditSection();
   const labels = {fat:'Faturamento',icms:'ICMS',piscof:'PIS/COFINS',irpj:'IRPJ/CSLL'};
+  if (tab === 'irpj') {
+    const m = document.getElementById('tbl-irpj-m'), t = document.getElementById('tbl-irpj-t');
+    if (!m || !t) { toast('Tabela não encontrada', 'err'); return; }
+    const tmp = document.createElement('div'); tmp.id = '_tmp_audit_tbl';
+    tmp.innerHTML = '<h3>Provisão mensal</h3>' + m.outerHTML + '<h3 style="margin-top:18px">Consolidação trimestral</h3>' + t.outerHTML;
+    document.body.appendChild(tmp);
+    _exportTablePDF('_tmp_audit_tbl', 'Auditoria — IRPJ/CSLL');
+    tmp.remove(); return;
+  }
   const tableEl = document.querySelector(`#audit-sec-${tab} table`);
   if (!tableEl) { toast('Tabela não encontrada', 'err'); return; }
   tableEl.id = '_tmp_audit_tbl';
@@ -4355,7 +4508,7 @@ function doLogout() {
   localStorage.removeItem('caju_user_email');
   localStorage.removeItem('caju_root_folder');
   localStorage.removeItem('caju_last_page');
-  notasCache = []; itensCache = []; auditRows = [];
+  notasCache = []; itensCache = []; auditRows = []; auditRowsAll = [];
   showLoginScreen();
 }
 // ══════════════════════════════════════════════════════════════
