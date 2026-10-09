@@ -3073,14 +3073,14 @@ const _gorjValor = it => (it.total_sem_desconto!=null && it.total_sem_desconto!=
 // Limite da gorjeta dedutível no ICMS (% sobre os itens da nota, sem o item de gorjeta). Exceções por empresa aqui.
 const GORJ_LIM_ICMS_PADRAO = 0.10;
 const GORJ_LIM_ICMS_EMP = {};
-let AUD_GORJ_ICMS = {};
+let AUD_GORJ_ICMS = {}; let AUD_GDIAG = {};
 const gorjLimIcms = emp => (GORJ_LIM_ICMS_EMP[emp] != null ? GORJ_LIM_ICMS_EMP[emp] : GORJ_LIM_ICMS_PADRAO);
 // Metodologia da aba "Prop. Gorjeta" da planilha de apuração do ICMS:
 //  • considera só as NOTAS ACEITAS que têm item de gorjeta ("Tem Gorjeta? = SIM");
 //  • separa o que é Gorjeta (item de gorjeta) e o que é Item (demais itens dessas notas);
 //  • lojas que já aplicam os 10% como regra (GORJ_ICMS_INTEGRAL) deduzem a gorjeta INTEGRAL;
 //  • as demais deduzem 10% × Itens (nunca mais que a gorjeta cobrada).
-const GORJ_ICMS_INTEGRAL = ['FOSTER AGUAS CLARAS','FOSTER ASA NORTE','FOSTER ASA SUL','FOSTER BOSQUE','FOSTER SUDOESTE','NAZO GOIANIA'];
+const GORJ_ICMS_INTEGRAL = ['FOSTER AGUAS CLARAS','FOSTER ASA NORTE','FOSTER ASA SUL','FOSTER BOSQUE','FOSTER SUDOESTE'];
 const gorjIcmsIntegral = emp => GORJ_ICMS_INTEGRAL.includes(String(emp||'').toUpperCase());
 function calcGorjIcms(itens) {
   AUD_GORJ_ICMS = {};
@@ -3144,7 +3144,12 @@ function gorjVal(emp, mes) { const a = gorjAuto(emp, mes); return a !== null ? a
 function gorjCell(emp, mes) {
   const a = gorjAuto(emp, mes);
   if (a === null) return aiInput(emp, mes, 'gorj');
-  return `<span class="ev-dre" title="${_dreEsc('Gorjeta calculada dos itens: soma dos itens com Cod Produto '+(GORJ_COD_EMP[emp]||[GORJ_COD]).join(' / ')+' em notas aceitas (Manifesto = Aceita)')}">${fmt(a)}</span>`;
+  const dg = AUD_GDIAG[`${emp}||${mes}`];
+  const nCh = dg ? Object.keys(dg.chaves).length : 0;
+  const dup = dg ? Object.values(dg.chaves).filter(n => n > 1).length : 0;
+  const diag = dg ? ` | ${dg.itens.toLocaleString('pt-BR')} itens salvos no site; ${dg.g.toLocaleString('pt-BR')} itens de gorjeta em ${nCh.toLocaleString('pt-BR')} notas` + (dup ? ` — ATENÇÃO: ${dup} nota(s) com mais de um item de gorjeta (provável duplicidade: use "Verificar integridade")` : '') : '';
+  const warn = dup ? `<span style="font-size:9px;font-weight:800;color:var(--red);margin-right:4px">DUP</span>` : '';
+  return `<span class="ev-dre" title="${_dreEsc('Gorjeta calculada dos itens: soma dos itens com Cod Produto '+(GORJ_COD_EMP[emp]||[GORJ_COD]).join(' / ')+' em notas aceitas (Manifesto = Aceita)'+diag)}">${warn}${fmt(a)}</span>`;
 }
 
 function aiInput(emp, per, field) {
@@ -3786,11 +3791,16 @@ async function loadAuditoria() {
   if (gr) itens = itens.filter(i => i.grupo === gr);
 
   // Gorjeta = soma dos itens com código 9999999999997 em notas aceitas (SOMASES da apuração: Cod Produto + Manifesto "Aceita")
-  AUD_GORJ = {}; AUD_ITENS = new Set();
+  AUD_GORJ = {}; AUD_ITENS = new Set(); AUD_GDIAG = {};
   itens.forEach(it => {
     const k = `${it.empresa}||${it.mes_ref}`;
     AUD_ITENS.add(k);
-    if (_gorjCod(it.codigo_produto, it.empresa) && (it.manifesto||'Aceita') === 'Aceita') AUD_GORJ[k] = (AUD_GORJ[k]||0) + _gorjValor(it);
+    const dg = AUD_GDIAG[k] || (AUD_GDIAG[k] = {itens:0, g:0, chaves:{}});
+    dg.itens++;
+    if (_gorjCod(it.codigo_produto, it.empresa) && (it.manifesto||'Aceita') === 'Aceita') {
+      AUD_GORJ[k] = (AUD_GORJ[k]||0) + _gorjValor(it);
+      dg.g++; dg.chaves[it.chave_acesso] = (dg.chaves[it.chave_acesso]||0) + 1;
+    }
   });
   calcGorjIcms(itens);
 
