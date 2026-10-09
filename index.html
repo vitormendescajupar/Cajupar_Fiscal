@@ -663,7 +663,7 @@ body.side-off #side-toggle{display:block}
         <div class="table-card">
           <div class="table-header">
             <h3>Apuração ICMS — Regime Especial 2% (Bares/Restaurantes)</h3>
-            <span style="font-size:11px;color:var(--text2)">BC = Fat. considerado − Gorjeta (limitada a 10% dos itens de cada nota) − Devoluções &nbsp;|&nbsp; Fat. considerado = maior entre Fiscal e Everest &nbsp;|&nbsp; ICMS = BC × 2%</span>
+            <span style="font-size:11px;color:var(--text2)">BC = Fat. considerado − Gorjeta (10% × itens das notas com gorjeta; lojas com 10% como regra: gorjeta integral) − Devoluções &nbsp;|&nbsp; Fat. considerado = maior entre Fiscal e Everest &nbsp;|&nbsp; ICMS = BC × 2%</span>
           </div>
           <div class="tbl-wrap">
             <table><thead><tr>
@@ -3075,6 +3075,31 @@ const GORJ_LIM_ICMS_PADRAO = 0.10;
 const GORJ_LIM_ICMS_EMP = {};
 let AUD_GORJ_ICMS = {};
 const gorjLimIcms = emp => (GORJ_LIM_ICMS_EMP[emp] != null ? GORJ_LIM_ICMS_EMP[emp] : GORJ_LIM_ICMS_PADRAO);
+// Metodologia da aba "Prop. Gorjeta" da planilha de apuração do ICMS:
+//  • considera só as NOTAS ACEITAS que têm item de gorjeta ("Tem Gorjeta? = SIM");
+//  • separa o que é Gorjeta (item de gorjeta) e o que é Item (demais itens dessas notas);
+//  • lojas que já aplicam os 10% como regra (GORJ_ICMS_INTEGRAL) deduzem a gorjeta INTEGRAL;
+//  • as demais deduzem 10% × Itens (nunca mais que a gorjeta cobrada).
+const GORJ_ICMS_INTEGRAL = ['FOSTER AGUAS CLARAS','FOSTER ASA NORTE','FOSTER ASA SUL','FOSTER BOSQUE','FOSTER SUDOESTE','NAZO GOIANIA'];
+const gorjIcmsIntegral = emp => GORJ_ICMS_INTEGRAL.includes(String(emp||'').toUpperCase());
+function calcGorjIcms(itens) {
+  AUD_GORJ_ICMS = {};
+  const nt = {};
+  itens.forEach(it => {
+    if ((it.manifesto||'Aceita') !== 'Aceita' || !it.chave_acesso) return;
+    const n = nt[it.chave_acesso] || (nt[it.chave_acesso] = {k:`${it.empresa}||${it.mes_ref}`, emp:it.empresa, g:0, b:0, tem:false});
+    if (_gorjCod(it.codigo_produto, it.empresa)) { n.g += _gorjValor(it); n.tem = true; } else n.b += _gorjValor(it);
+  });
+  Object.values(nt).forEach(n => {
+    if (!n.tem) return;
+    const o = AUD_GORJ_ICMS[n.k] || (AUD_GORJ_ICMS[n.k] = {ded:0, real:0, base:0, notas:0, emp:n.emp});
+    o.real += n.g; o.base += n.b; o.notas++;
+  });
+  Object.values(AUD_GORJ_ICMS).forEach(o => {
+    o.integral = gorjIcmsIntegral(o.emp);
+    o.ded = o.integral ? o.real : Math.min(o.real, o.base * gorjLimIcms(o.emp));
+  });
+}
 // null = os itens dessa empresa/mês não estão carregados → continua a digitação manual
 function gorjAuto(emp, mes) {
   const k = `${emp}||${mes}`;
@@ -3103,12 +3128,15 @@ function gorjIcmsCell(emp, mes) {
   const o = AUD_GORJ_ICMS[`${emp}||${mes}`];
   const v = gorjIcmsVal(emp, mes);
   const lim = Math.round(gorjLimIcms(emp)*1000)/10;
-  let tip = `Gorjeta dedutível no ICMS: por nota aceita com gorjeta, o menor entre o item de gorjeta e ${lim}% dos demais itens da nota.`;
-  let tag = '';
-  if (o) {
-    tip += ` Gorjeta lançada: ${fmt(o.real)} em ${o.notas} nota(s).`;
-    if (o.limitadas) { tip += ` ${o.limitadas} nota(s) acima de ${lim}% — excedente não deduzido: ${fmt(o.real-o.ded)}.`;
-      tag = `<span style="font-size:9px;font-weight:800;color:var(--yellow);margin-right:4px">${lim}%</span>`; }
+  let tip, tag = '';
+  if (!o) tip = 'Nenhuma nota aceita com gorjeta neste mês.';
+  else if (o.integral) {
+    tip = `Gorjeta INTEGRAL (loja que já aplica ${lim}% como regra): ${fmt(o.real)} em ${o.notas} nota(s) com gorjeta. Itens dessas notas: ${fmt(o.base)} (gorjeta = ${o.base?(o.real/o.base*100).toFixed(2).replace('.',','):'0'}% dos itens).`;
+    tag = `<span style="font-size:9px;font-weight:800;color:var(--blue);margin-right:4px">INT</span>`;
+  } else {
+    const cortada = o.real - o.ded > 0.005;
+    tip = `${lim}% × itens das notas com gorjeta (${fmt(o.base)}) = ${fmt(o.base*gorjLimIcms(emp))}; gorjeta cobrada: ${fmt(o.real)} em ${o.notas} nota(s)` + (cortada ? ` — excedente não deduzido: ${fmt(o.real-o.ded)}.` : ' — abaixo do limite, deduzida integral.');
+    if (cortada) tag = `<span style="font-size:9px;font-weight:800;color:var(--yellow);margin-right:4px">${lim}%</span>`;
   }
   return `<span class="ev-dre" title="${_dreEsc(tip)}">${tag}${fmt(v)}</span>`;
 }
@@ -3764,22 +3792,7 @@ async function loadAuditoria() {
     AUD_ITENS.add(k);
     if (_gorjCod(it.codigo_produto, it.empresa) && (it.manifesto||'Aceita') === 'Aceita') AUD_GORJ[k] = (AUD_GORJ[k]||0) + _gorjValor(it);
   });
-  // Gorjeta dedutível no ICMS: por nota aceita COM gorjeta, limitada a GORJ_LIM_ICMS (10%) dos demais itens da nota
-  AUD_GORJ_ICMS = {};
-  const _nt = {};
-  itens.forEach(it => {
-    if ((it.manifesto||'Aceita') !== 'Aceita' || !it.chave_acesso) return;
-    const n = _nt[it.chave_acesso] || (_nt[it.chave_acesso] = {k:`${it.empresa}||${it.mes_ref}`, emp:it.empresa, g:0, b:0, tem:false});
-    if (_gorjCod(it.codigo_produto, it.empresa)) { n.g += _gorjValor(it); n.tem = true; } else n.b += _gorjValor(it);
-  });
-  Object.values(_nt).forEach(n => {
-    if (!n.tem) return;
-    const lim = gorjLimIcms(n.emp);
-    const ded = Math.min(n.g, Math.max(0, n.b) * lim);
-    const o = AUD_GORJ_ICMS[n.k] || (AUD_GORJ_ICMS[n.k] = {ded:0, real:0, notas:0, limitadas:0});
-    o.ded += ded; o.real += n.g; o.notas++;
-    if (n.g - ded > 0.005) o.limitadas++;
-  });
+  calcGorjIcms(itens);
 
   const monoMap = {}, stMap = {};
   itens.forEach(it => {
