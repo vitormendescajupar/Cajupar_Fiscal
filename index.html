@@ -85,6 +85,17 @@ nav{flex:1;padding:10px 0;overflow-y:auto}
 
 /* TOP FILTERS */
 .top-bar{display:flex;align-items:center;gap:10px;margin-bottom:24px;flex-wrap:wrap}
+.emp-ms{position:relative;display:inline-block}
+.emp-panel{position:absolute;top:calc(100% + 6px);left:0;z-index:60;width:340px;max-height:460px;display:flex;flex-direction:column;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:10px}
+.emp-panel .emp-tools{display:flex;gap:6px;margin:8px 0}
+.emp-panel .emp-list{overflow:auto;flex:1;min-height:80px}
+.emp-panel .emp-grp{display:flex;align-items:center;gap:8px;padding:6px 4px;margin-top:4px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--primary);border-bottom:1px solid var(--border);cursor:pointer}
+.emp-panel label.emp-it{display:flex;align-items:center;gap:8px;padding:5px 4px 5px 14px;font-size:13px;cursor:pointer;border-radius:4px}
+.emp-panel label.emp-it:hover{background:var(--bg3)}
+.emp-panel input[type=checkbox]{width:auto;padding:0;accent-color:var(--primary)}
+.emp-panel .emp-foot{font-size:11px;color:var(--text2);margin-top:8px}
+.emp-badge{display:inline-block;min-width:18px;padding:0 6px;border-radius:9px;background:var(--primary);color:#fff;font-size:11px;font-weight:800;margin-left:4px}
+
 .top-bar select{width:auto;min-width:140px}
 .page-title{font-size:20px;font-weight:800;margin-right:auto}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 20px;border-radius:8px;border:none;font-weight:600;transition:all .2s;white-space:nowrap;cursor:pointer}
@@ -589,6 +600,18 @@ body.side-off #side-toggle{display:block}
         <span class="page-title">Auditoria Fiscal</span>
         <select id="audit-grupo" onchange="loadAuditoria()"><option value="">Todos os grupos</option></select>
         <select id="audit-mes" onchange="loadAuditoria()"><option value="">Todos os meses</option></select>
+        <div class="emp-ms" id="audit-emp-ms">
+          <button class="btn btn-sm btn-outline" id="audit-emp-btn" onclick="empToggle(event)" title="Escolha as empresas que quer ver, mesmo de grupos diferentes (como o filtro do Excel)">🏢 Empresas: todas ▾</button>
+          <div class="emp-panel" id="audit-emp-panel" style="display:none" onclick="event.stopPropagation()">
+            <input type="text" id="audit-emp-q" placeholder="Buscar empresa…" oninput="empRender()"/>
+            <div class="emp-tools">
+              <button class="btn btn-sm btn-outline" onclick="empMarcarVisiveis(true)">Marcar visíveis</button>
+              <button class="btn btn-sm btn-outline" onclick="empLimpar()">Limpar (todas)</button>
+            </div>
+            <div class="emp-list" id="audit-emp-list"></div>
+            <div class="emp-foot" id="audit-emp-foot"></div>
+          </div>
+        </div>
         <button class="btn btn-sm btn-outline" onclick="document.getElementById('dre-file').click()" title="Subir a DRE Gerencial do mês (xlsx) — preenche o Fat. Everest automaticamente">📥 Subir DRE</button>
         <input type="file" id="dre-file" accept=".xlsx,.xlsm,.xlsb,.xls" style="display:none" onchange="dreOnFile(this)"/>
         <button class="btn btn-sm btn-outline" onclick="dreVerAbrir()" title="Ver a DRE carregada como no Excel (filtro por mês e por coluna)">📊 Ver DRE</button>
@@ -721,7 +744,7 @@ body.side-off #side-toggle{display:block}
         <div class="table-card">
           <div class="table-header">
             <h3>Provisão mensal IRPJ/CSLL — Lucro Presumido (LC 224/2025)</h3>
-            <span style="font-size:11px;color:var(--text2)">Base = Fat. considerado − Gorjeta − iFood &nbsp;|&nbsp; limite de receita do grupo (CNPJ raiz) = R$ 1,25 mi ÷ 3 por mês, rateado pela base de cada empresa: até o limite 8% (IRPJ) / 12% (CSLL), excedente 8,8% / 13,2% &nbsp;|&nbsp; IRPJ = 15% + adicional 10% sobre o que passar de R$ 20 mil/mês (rateado) &nbsp;|&nbsp; CSLL = 9%</span>
+            <span style="font-size:11px;color:var(--text2)">Base = Fat. considerado − Gorjeta − iFood &nbsp;|&nbsp; limite de receita do grupo (CNPJ raiz) = R$ 1,25 mi ÷ 3 por mês, rateado pela base de cada empresa: até o limite 8% (IRPJ) / 12% (CSLL), excedente 8,8% / 13,2% &nbsp;|&nbsp; IRPJ = 15% + adicional 10% sobre o que passar de R$ 20 mil/mês (rateado) &nbsp;|&nbsp; CSLL = 9% &nbsp;|&nbsp; Filtro de empresas: como o IRPJ/CSLL é por CNPJ raiz, aparece a raiz inteira das empresas marcadas</span>
           </div>
           <div class="tbl-wrap">
             <table id="tbl-irpj-m"><thead><tr>
@@ -3770,11 +3793,79 @@ function dreConfirmarExcluir(m) {
      }}]);
 }
 
-async function loadAuditoria() {
-  const gr  = document.getElementById('audit-grupo').value;
-  const mes = document.getElementById('audit-mes').value;
+// ── Filtro de empresas (multi-seleção, vale entre grupos) ─────────────────
+let AUD_EMP_LIST = [];                       // [{empresa, grupo}]
+let AUD_EMP_SEL = new Set(); try { AUD_EMP_SEL = new Set(JSON.parse(localStorage.getItem('caj_aud_emp')||'[]')); } catch(e) {}
+function empSalvar() { try { localStorage.setItem('caj_aud_emp', JSON.stringify([...AUD_EMP_SEL])); } catch(e) {} }
+function empToggle(ev) {
+  ev && ev.stopPropagation();
+  const p = document.getElementById('audit-emp-panel'); if (!p) return;
+  const abrir = p.style.display === 'none';
+  p.style.display = abrir ? 'flex' : 'none';
+  if (abrir) { empRender(); const q = document.getElementById('audit-emp-q'); if (q) q.focus(); }
+}
+document.addEventListener('click', e => {
+  const p = document.getElementById('audit-emp-panel');
+  if (p && p.style.display !== 'none' && !e.target.closest('#audit-emp-ms')) p.style.display = 'none';
+});
+function empBotao() {
+  const b = document.getElementById('audit-emp-btn'); if (!b) return;
+  const n = AUD_EMP_SEL.size;
+  b.innerHTML = n ? `🏢 Empresas<span class="emp-badge">${n}</span> ▾` : '🏢 Empresas: todas ▾';
+  const g = document.getElementById('audit-grupo');
+  if (g) { g.disabled = n > 0; g.title = n ? 'Desativado enquanto há empresas selecionadas no filtro de empresas' : ''; }
+}
+function empRender() {
+  const box = document.getElementById('audit-emp-list'); if (!box) return;
+  const q = _normTxt((document.getElementById('audit-emp-q')||{}).value || '');
+  const porG = {};
+  AUD_EMP_LIST.forEach(e => { if (q && !_normTxt(e.empresa+' '+e.grupo).includes(q)) return; (porG[e.grupo||'—'] = porG[e.grupo||'—'] || []).push(e.empresa); });
+  const esc = t => String(t).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  let h = '';
+  Object.keys(porG).sort().forEach(g => {
+    const lista = porG[g].sort();
+    const todas = lista.every(e => AUD_EMP_SEL.has(e));
+    h += `<div class="emp-grp" onclick="empGrupo('${esc(g).replace(/'/g,"\\'")}')"><input type="checkbox" ${todas?'checked':''} tabindex="-1" style="pointer-events:none"/> ${esc(g)} <span style="color:var(--text2);font-weight:400">(${lista.length})</span></div>`;
+    lista.forEach(e => { h += `<label class="emp-it"><input type="checkbox" ${AUD_EMP_SEL.has(e)?'checked':''} onchange="empSet('${esc(e).replace(/'/g,"\\'")}',this.checked)"/> ${esc(e)}</label>`; });
+  });
+  box.innerHTML = h || '<div style="padding:12px;color:var(--text2);font-size:12px">Nenhuma empresa encontrada.</div>';
+  const n = AUD_EMP_SEL.size;
+  const ft = document.getElementById('audit-emp-foot');
+  if (ft) ft.textContent = n ? `${n} empresa(s) selecionada(s) — as tabelas mostram só elas.` : 'Nenhuma marcada = todas as empresas.';
+  empBotao();
+}
+function _normTxt(t) { return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
+function empAplicar() { empSalvar(); empRender(); loadAuditoria(); }
+function empSet(e, on) { on ? AUD_EMP_SEL.add(e) : AUD_EMP_SEL.delete(e); empAplicar(); }
+function empGrupo(g) {
+  const q = _normTxt((document.getElementById('audit-emp-q')||{}).value || '');
+  const lista = AUD_EMP_LIST.filter(e => (e.grupo||'—') === g && (!q || _normTxt(e.empresa+' '+e.grupo).includes(q))).map(e => e.empresa);
+  const todas = lista.every(e => AUD_EMP_SEL.has(e));
+  lista.forEach(e => todas ? AUD_EMP_SEL.delete(e) : AUD_EMP_SEL.add(e));
+  empAplicar();
+}
+function empMarcarVisiveis(on) {
+  const q = _normTxt((document.getElementById('audit-emp-q')||{}).value || '');
+  AUD_EMP_LIST.filter(e => !q || _normTxt(e.empresa+' '+e.grupo).includes(q)).forEach(e => on ? AUD_EMP_SEL.add(e.empresa) : AUD_EMP_SEL.delete(e.empresa));
+  empAplicar();
+}
+function empLimpar() { AUD_EMP_SEL.clear(); empAplicar(); }
+// IRPJ/CSLL é apurada por CNPJ raiz (rateio entre as empresas da raiz): com filtro, mostra a raiz inteira das empresas marcadas
+function audRowsIRPJ(rows) {
+  if (!AUD_EMP_SEL.size) return rows;
+  const raizes = new Set(auditRowsAll.filter(r => AUD_EMP_SEL.has(r.empresa)).map(r => raizDe(r)));
+  return rows.filter(r => raizes.has(raizDe(r)));
+}
 
+async function loadAuditoria() {
+  const mes = document.getElementById('audit-mes').value;
   let mets = await idbAll('metricas');
+  // lista para o filtro de empresas (todas as empresas carregadas, de qualquer grupo)
+  { const mp = new Map(); mets.forEach(m => { if (m.empresa && !mp.has(m.empresa)) mp.set(m.empresa, m.grupo); });
+    AUD_EMP_LIST = [...mp].map(([empresa, grupo]) => ({empresa, grupo}));
+    [...AUD_EMP_SEL].forEach(e => { if (!mp.has(e)) AUD_EMP_SEL.delete(e); });   // empresa que não existe mais
+    empBotao(); if ((document.getElementById('audit-emp-panel')||{}).style?.display === 'flex') empRender(); }
+  const gr  = AUD_EMP_SEL.size ? '' : document.getElementById('audit-grupo').value;   // com empresas marcadas, vale a seleção de empresas (entre grupos)
   if (gr)  mets = mets.filter(m => m.grupo   === gr);
 
   // Agregar NFC-e + NF-e por empresa+mes
@@ -3847,6 +3938,7 @@ async function loadAuditoria() {
     return b.mes_ref.localeCompare(a.mes_ref);
   });
   auditRows = mes ? auditRowsAll.filter(r => r.mes_ref === mes) : auditRowsAll.slice();
+  if (AUD_EMP_SEL.size) auditRows = auditRows.filter(r => AUD_EMP_SEL.has(r.empresa));
 
   refreshAuditTables();
 }
@@ -4162,7 +4254,8 @@ function renderAuditIRPJ() {
 
   // ── 1) PROVISÃO MENSAL (meses do filtro) ──
   const blocos = {};            // `${grupo}|${raiz}` → {grupo, raiz, meses:{mes:[bases]}}
-  auditRows.forEach(r => {
+  const _mesF = (document.getElementById('audit-mes')||{}).value || '';
+  audRowsIRPJ(_mesF ? auditRowsAll.filter(r => r.mes_ref === _mesF) : auditRowsAll).forEach(r => {
     const raiz = raizDe(r), key = `${r.grupo}|${raiz}`;
     const b = blocos[key] || (blocos[key] = {grupo:r.grupo, raiz, meses:{}});
     (b.meses[r.mes_ref] = b.meses[r.mes_ref] || []).push(irpjBase(r));
@@ -4224,7 +4317,7 @@ function renderAuditIRPJ() {
   const selMes = (document.getElementById('audit-mes')||{}).value || '';
   const triSel = selMes ? triDe(selMes) : '';
   const blT = {};               // `${grupo}|${raiz}|${per}` → {grupo,raiz,per,meses:{mes:[bases]}}
-  auditRowsAll.forEach(r => {
+  audRowsIRPJ(auditRowsAll).forEach(r => {
     const per = triDe(r.mes_ref); if (triSel && per !== triSel) return;
     const raiz = raizDe(r), key = `${r.grupo}|${raiz}|${per}`;
     const b = blT[key] || (blT[key] = {grupo:r.grupo, raiz, per, meses:{}, empresas:new Set()});
