@@ -699,8 +699,11 @@ body.side-off #side-toggle{display:block}
               <th title="Fat. considerado × 0,02% (somente empresas do DF)">F.Univ 0,02% (R$)</th>
               <th title="Fat. considerado × 0,03% (somente empresas do DF)">FAC 0,03% (R$)</th>
               <th>Fundos (R$)</th>
+              <th class="edit-col" title="Contribuição ao Fundo PROTEGE GOIÁS — só empresas de Goiás (Nazo Goiânia). Digite o valor apurado.">ICMS PROTEGE GO ✏️</th>
               <th class="edit-col">ICMS pago ✏️</th>
               <th>Δ ICMS (R$)</th>
+              <th class="edit-col" title="Valor pago de Fundo Universitário + FAC (guia/DARF dos fundos). Digite o total pago para validar com o calculado.">Fundos pagos ✏️</th>
+              <th title="Fundos pagos − Fundos calculados">Δ Fundos (R$)</th>
             </tr></thead>
             <tbody id="body-icms"></tbody>
             <tfoot id="foot-icms"></tfoot>
@@ -3095,6 +3098,9 @@ const _gorjValor = it => (it.total_sem_desconto!=null && it.total_sem_desconto!=
   ? Number(it.total_sem_desconto) : (Number(it.valor_item)||0) - (Number(it.desconto_item)||0);
 // Limite da gorjeta dedutível no ICMS (% sobre os itens da nota, sem o item de gorjeta). Exceções por empresa aqui.
 // Fundos (Universitário e FAC) são do DF: incidem sobre o FATURAMENTO considerado (não sobre a BC) e não se aplicam a empresas de GO/SP
+// ICMS PROTEGE GOIÁS: contribuição exclusiva de empresas de GO (valor digitado — vem da apuração de GO)
+const COM_PROTEGE_GO = ['NAZO GOIANIA'];
+const temProtegeGO = emp => COM_PROTEGE_GO.includes(String(emp||'').toUpperCase());
 const SEM_FUNDOS_DF = ['NAZO GOIANIA','CAJU ITAIM SP'];
 const fundosDF = emp => !SEM_FUNDOS_DF.includes(String(emp||'').toUpperCase());
 const GORJ_LIM_ICMS_PADRAO = 0.10;
@@ -4064,8 +4070,8 @@ function renderAuditFat() {
 function renderAuditICMS() {
   const tbody = document.getElementById('body-icms'); if (!tbody) return;
   let rows='', lastG='';
-  let tFat=0,tGorj=0,tDev=0,tBC=0,tIcms=0,tFu=0,tFac=0,tPago=0,tDif=0;
-  let gFat=0,gGorj=0,gDev=0,gBC=0,gIcms=0,gFu=0,gFac=0;
+  let tFat=0,tGorj=0,tDev=0,tBC=0,tIcms=0,tFu=0,tFac=0,tPago=0,tDif=0,tPagoF=0,tDifF=0,tProt=0;
+  let gFat=0,gGorj=0,gDev=0,gBC=0,gIcms=0,gFu=0,gFac=0,gPagoF=0,gDifF=0,gProt=0;
   const flushGroup = () => {
     if (!lastG) return;
     rows+=`<tr class="audit-subtotal-row">
@@ -4078,22 +4084,28 @@ function renderAuditICMS() {
       <td style="text-align:right">${fmt(gFu)}</td>
       <td style="text-align:right">${fmt(gFac)}</td>
       <td style="text-align:right">${fmt(gFu+gFac)}</td>
+      <td style="text-align:right">${gProt?fmt(gProt):'—'}</td>
       <td colspan="2"></td>
+      <td style="text-align:right">${gPagoF?fmt(gPagoF):'—'}</td>
+      <td style="text-align:right">${gPagoF?fmtD(gDifF):'—'}</td>
     </tr>`;
-    gFat=gGorj=gDev=gBC=gIcms=gFu=gFac=0;
+    gFat=gGorj=gDev=gBC=gIcms=gFu=gFac=gPagoF=gDifF=gProt=0;
   };
   auditRows.forEach(r => {
     const gorj=gorjIcmsVal(r.empresa,r.mes_ref), dev=ai(r.empresa,r.mes_ref,'dev');
     const pago=ai(r.empresa,r.mes_ref,'darf_icms');
+    const pagoF=ai(r.empresa,r.mes_ref,'darf_fundos');
+    const prot=temProtegeGO(r.empresa)?ai(r.empresa,r.mes_ref,'protege'):0;
     const ft=fatTrib(r);
     const bc=Math.max(0,ft.v-gorj-dev);
     const icmsC=bc*AP.ICMS, fDF=fundosDF(r.empresa), fu=fDF?ft.v*AP.FUND_UNIV:0, fac=fDF?ft.v*AP.FAC:0;
     const dif=pago-icmsC;
+    const difF=pagoF-(fu+fac);
     tFat+=ft.v;tGorj+=gorj;tDev+=dev;
-    tBC+=bc;tIcms+=icmsC;tFu+=fu;tFac+=fac;tPago+=pago;tDif+=dif;
-    if(r.grupo!==lastG){flushGroup();rows+=grpRow(14,r.grupo);lastG=r.grupo;}
+    tBC+=bc;tIcms+=icmsC;tFu+=fu;tFac+=fac;tPago+=pago;tDif+=dif;tPagoF+=pagoF;tDifF+=difF;tProt+=prot;
+    if(r.grupo!==lastG){flushGroup();rows+=grpRow(17,r.grupo);lastG=r.grupo;}
     gFat+=ft.v;gGorj+=gorj;gDev+=dev;
-    gBC+=bc;gIcms+=icmsC;gFu+=fu;gFac+=fac;
+    gBC+=bc;gIcms+=icmsC;gFu+=fu;gFac+=fac;gPagoF+=pagoF;gDifF+=difF;gProt+=prot;
     rows+=`<tr>
       <td style="font-size:11px;opacity:.5">${r.grupo}</td>
       <td style="font-weight:600;white-space:nowrap">${r.empresa}</td>
@@ -4107,12 +4119,15 @@ function renderAuditICMS() {
       <td style="text-align:right;color:var(--text2);font-size:11px">${fmt(fu)}</td>
       <td style="text-align:right;color:var(--text2);font-size:11px">${fmt(fac)}</td>
       <td style="text-align:right;color:var(--text2)">${fmt(fu+fac)}</td>
+      <td style="text-align:right">${temProtegeGO(r.empresa)?aiInput(r.empresa,r.mes_ref,'protege'):'<span style="color:var(--text3)">—</span>'}</td>
       <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'darf_icms')}</td>
       <td style="text-align:right">${pago?fmtD(dif):'—'}</td>
+      <td style="text-align:right">${aiInput(r.empresa,r.mes_ref,'darf_fundos')}</td>
+      <td style="text-align:right">${pagoF?fmtD(difF):'—'}</td>
     </tr>`;
   });
   flushGroup();
-  tbody.innerHTML = rows || `<tr><td colspan="14"><div class="empty-state"><div class="icon">📂</div><p>Sem dados</p></div></td></tr>`;
+  tbody.innerHTML = rows || `<tr><td colspan="17"><div class="empty-state"><div class="icon">📂</div><p>Sem dados</p></div></td></tr>`;
   document.getElementById('foot-icms').innerHTML = `<tr class="audit-total-row">
     <td colspan="4">TOTAL GERAL</td>
     <td style="text-align:right">${fmt(tFat)}</td>
@@ -4123,8 +4138,11 @@ function renderAuditICMS() {
     <td style="text-align:right">${fmt(tFu)}</td>
     <td style="text-align:right">${fmt(tFac)}</td>
     <td style="text-align:right">${fmt(tFu+tFac)}</td>
+    <td style="text-align:right">${tProt?fmt(tProt):'—'}</td>
     <td style="text-align:right">${fmt(tPago)}</td>
     <td style="text-align:right">${fmtD(tDif)}</td>
+    <td style="text-align:right">${fmt(tPagoF)}</td>
+    <td style="text-align:right">${tPagoF?fmtD(tDifF):'—'}</td>
   </tr>`;
 }
 
