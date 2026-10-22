@@ -1073,6 +1073,21 @@ function isMonofasico(descricao) {
   return MONO_KEYWORDS.some(k => d.includes(normStr(k)));
 }
 
+// Exclusões por (empresa, código de produto) — ÁGUA DE COCO não é monofásica (Cod Produto é por empresa).
+// Mesmo critério nos scripts Python (MONO_EXCL_COD).
+const MONO_EXCL_COD = {
+  'CAJU ITAIM SP':        ['637'],
+  'CAJU LIMAO ASA NORTE': ['333'],
+  'CAJU LIMAO SUDOESTE':  ['333'],
+  'RESPONSA':             ['5'],
+};
+// Versão por item (descrição + exclusão por empresa/código). Use esta no lugar de isMonofasico(descricao).
+function isMonofasicoItem(it) {
+  const cods = MONO_EXCL_COD[String(it.empresa||'').trim().toUpperCase()];
+  if (cods && cods.includes(String(it.codigo_produto||'').trim())) return false;
+  return isMonofasico(it.descricao);
+}
+
 // ── CFOP descriptions & sale classifier ─────────────────────────────────────
 const CFOP_DESC = {
   // ── 5000 Saídas intraestadual ─────────────────────────────
@@ -2253,7 +2268,7 @@ function parseExcelFile(buf, fileName, origem = 'drive') {
     const csosn   = String(it.csosn||'').trim();
     it.tem_st = (it.valor_icms_st > 0) || (it.base_icms_st > 0) || cstIcms === '60' || csosn === '500';
     // monofasico detectado por descrição (ver MONO_KEYWORDS)
-    it.monofasico = isMonofasico(it.descricao);
+    it.monofasico = isMonofasicoItem(it);
     return it;
   });
 
@@ -2983,8 +2998,8 @@ async function loadItens(page = 1) {
   if (cfNcm)   all = all.filter(i => (i.ncm||'').includes(cfNcm));
   if (cfCfop)  all = all.filter(i => (i.cfop||'').includes(cfCfop));
   if (cfCst)   all = all.filter(i => ((i.cst_icms||'')+(i.csosn||'')).toLowerCase().includes(cfCst));
-  if (cfTrib === 'mono')    all = all.filter(i => isMonofasico(i.descricao));
-  if (cfTrib === 'naomono') all = all.filter(i => !isMonofasico(i.descricao));
+  if (cfTrib === 'mono')    all = all.filter(i => isMonofasicoItem(i));
+  if (cfTrib === 'naomono') all = all.filter(i => !isMonofasicoItem(i));
   if (cfManifI) all = all.filter(i => (i.manifesto||'Aceita') === cfManifI);
   if (cfChave)  all = all.filter(i => (i.chave_acesso||'').toLowerCase().includes(cfChave));
   // Build date tree from pre-date-filtered set
@@ -3005,14 +3020,14 @@ async function loadItens(page = 1) {
       const sumSt   = all.reduce((s,i) => s + Number(i.valor_icms_st||0), 0);
       const sumPis  = all.reduce((s,i) => s + Number(i.valor_pis||0), 0);
       const sumCof  = all.reduce((s,i) => s + Number(i.valor_cofins||0), 0);
-      const qtdMono = all.filter(i => isMonofasico(i.descricao)).length;
+      const qtdMono = all.filter(i => isMonofasicoItem(i)).length;
       document.getElementById('sub-qtd-itens').textContent  = all.length.toLocaleString('pt-BR');
       document.getElementById('sub-valor-itens').textContent = 'R$ ' + fmt(sumVal);
       document.getElementById('sub-icms-itens').textContent  = 'R$ ' + fmt(sumIcms);
       document.getElementById('sub-st-itens').textContent    = 'R$ ' + fmt(sumSt);
       document.getElementById('sub-pis-itens').textContent   = 'R$ ' + fmt(sumPis);
       document.getElementById('sub-cof-itens').textContent   = 'R$ ' + fmt(sumCof);
-      document.getElementById('sub-mono-itens').textContent  = qtdMono + ' itens monofásicos (R$ ' + fmt(all.filter(i=>isMonofasico(i.descricao)).reduce((s,i)=>s+Number(i.valor_item||0),0)) + ')';
+      document.getElementById('sub-mono-itens').textContent  = qtdMono + ' itens monofásicos (R$ ' + fmt(all.filter(i=>isMonofasicoItem(i)).reduce((s,i)=>s+Number(i.valor_item||0),0)) + ')';
       subDiv.style.display = 'flex';
     } else if (subDiv) {
       subDiv.style.display = 'none';
@@ -3038,7 +3053,7 @@ async function loadItens(page = 1) {
     <td style="text-align:right">${fmt(i.valor_unitario)}</td>
     <td style="text-align:right;font-weight:700">${fmt(i.valor_item)}</td>
     <td style="text-align:right;color:var(--text2)">${i.desconto>0?fmt(i.desconto):'—'}</td>
-    <td>${isMonofasico(i.descricao)?'<span class="badge badge-warn" style="background:rgba(234,179,8,.15);color:#eab308;border-color:#eab308">Monofásico</span>':'<span class="badge '+(i.tem_st?'badge-warn':'')+'">'+(i.tipo_trib||'—')+'</span>'}</td>
+    <td>${isMonofasicoItem(i)?'<span class="badge badge-warn" style="background:rgba(234,179,8,.15);color:#eab308;border-color:#eab308">Monofásico</span>':'<span class="badge '+(i.tem_st?'badge-warn':'')+'">'+(i.tipo_trib||'—')+'</span>'}</td>
     <td style="text-align:right;color:var(--yellow)">${fmt(i.valor_icms)}</td>
     <td style="text-align:right;color:var(--red)">${fmt(i.valor_icms_st)}</td>
     <td style="text-align:right">${fmt(i.valor_pis)}</td>
@@ -3910,7 +3925,7 @@ async function loadAuditoria() {
     // Apenas itens de CFOPs de venda entram no cálculo de monofásico e ST
     if (!isCFOPVenda(it.cfop)) return;
     const k = `${it.empresa}||${it.mes_ref}`;
-    if (isMonofasico(it.descricao)) {
+    if (isMonofasicoItem(it)) {
       monoMap[k] = (monoMap[k]||0) + (it.valor_item||0);
     }
     if (it.tem_st) {
