@@ -94,6 +94,14 @@ nav{flex:1;padding:10px 0;overflow-y:auto}
 .emp-panel label.emp-it:hover{background:var(--bg3)}
 .emp-panel input[type=checkbox]{width:auto;padding:0;accent-color:var(--primary)}
 .emp-panel .emp-foot{font-size:11px;color:var(--text2);margin-top:8px}
+.modo-leitor .so-editor{display:none!important}
+.so-leitor{display:none}.modo-leitor .so-leitor{display:block}
+.pub-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:900px;margin-bottom:24px}
+.pub-card h3{font-size:14px;font-weight:700;margin-bottom:8px}
+.pub-card p{font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6}
+.pub-row{display:grid;grid-template-columns:24px 90px 150px 1fr auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--border);font-size:13px}
+.pub-row input[type=text]{font-size:12px;padding:6px 10px}
+.pub-row input[type=checkbox]{width:auto;padding:0;accent-color:var(--primary)}
 .emp-badge{display:inline-block;min-width:18px;padding:0 6px;border-radius:9px;background:var(--primary);color:#fff;font-size:11px;font-weight:800;margin-left:4px}
 
 .top-bar select{width:auto;min-width:140px}
@@ -612,11 +620,11 @@ body.side-off #side-toggle{display:block}
             <div class="emp-foot" id="audit-emp-foot"></div>
           </div>
         </div>
-        <button class="btn btn-sm btn-outline" onclick="document.getElementById('dre-file').click()" title="Subir a DRE Gerencial do mês (xlsx) — preenche o Fat. Everest automaticamente">📥 Subir DRE</button>
+        <button class="btn btn-sm btn-outline so-editor" onclick="document.getElementById('dre-file').click()" title="Subir a DRE Gerencial do mês (xlsx) — preenche o Fat. Everest automaticamente">📥 Subir DRE</button>
         <input type="file" id="dre-file" accept=".xlsx,.xlsm,.xlsb,.xls" style="display:none" onchange="dreOnFile(this)"/>
-        <button class="btn btn-sm btn-outline" onclick="dreVerAbrir()" title="Ver a DRE carregada como no Excel (filtro por mês e por coluna)">📊 Ver DRE</button>
-        <button class="btn btn-sm btn-outline" onclick="dreAbrirGerenciador()" title="DREs carregadas, exclusão e mapeamento de empresas">⚙️ DRE</button>
-        <span id="dre-chip" class="dre-chip">DRE: nenhuma carregada</span>
+        <button class="btn btn-sm btn-outline so-editor" onclick="dreVerAbrir()" title="Ver a DRE carregada como no Excel (filtro por mês e por coluna)">📊 Ver DRE</button>
+        <button class="btn btn-sm btn-outline so-editor" onclick="dreAbrirGerenciador()" title="DREs carregadas, exclusão e mapeamento de empresas">⚙️ DRE</button>
+        <span id="dre-chip" class="dre-chip so-editor">DRE: nenhuma carregada</span>
         <button class="btn btn-sm btn-outline" onclick="toggleSidebar()" title="Ocultar/mostrar o menu lateral para ganhar espaço na tabela">⛶ Tela cheia</button>
         <button class="btn btn-sm btn-outline" onclick="exportAuditoriaExcel()" title="Exportar Excel">📊 Excel</button>
         <button class="btn btn-sm btn-outline" onclick="exportAuditoriaPDF()" title="Exportar PDF">🖨️ PDF</button>
@@ -650,9 +658,9 @@ body.side-off #side-toggle{display:block}
           <div class="table-header">
             <h3>Comparativo de Faturamento — Fiscal × Everest</h3>
             <span style="font-size:11px;color:var(--text2)">BC = maior(Fat.Fiscal; Fat.Everest) − Gorjeta − iFood − ICMS − Monofásico</span>
-            <button class="btn btn-sm btn-primary" style="margin-left:auto" onclick="document.getElementById('dre-file').click()" title="Suba a planilha da DRE Gerencial do mês (xlsx) — o Fat. Everest é calculado e preenchido automaticamente">📥 Subir DRE Gerencial</button>
-            <button class="btn btn-sm btn-outline" onclick="dreVerAbrir()" title="Ver a DRE carregada como no Excel (filtro por mês e por coluna)">📊 Ver DRE</button>
-            <button class="btn btn-sm btn-outline" onclick="dreAbrirGerenciador()" title="DREs carregadas, exclusão e mapeamento de empresas">⚙️ DRE</button>
+            <button class="btn btn-sm btn-primary so-editor" style="margin-left:auto" onclick="document.getElementById('dre-file').click()" title="Suba a planilha da DRE Gerencial do mês (xlsx) — o Fat. Everest é calculado e preenchido automaticamente">📥 Subir DRE Gerencial</button>
+            <button class="btn btn-sm btn-outline so-editor" onclick="dreVerAbrir()" title="Ver a DRE carregada como no Excel (filtro por mês e por coluna)">📊 Ver DRE</button>
+            <button class="btn btn-sm btn-outline so-editor" onclick="dreAbrirGerenciador()" title="DREs carregadas, exclusão e mapeamento de empresas">⚙️ DRE</button>
           </div>
           <div class="tbl-wrap">
             <table><thead><tr>
@@ -819,15 +827,37 @@ body.side-off #side-toggle{display:block}
       <div class="top-bar">
         <span class="page-title">Google Drive</span>
         <button class="btn btn-primary" id="btn-connect-drive" onclick="connectDrive()">Conectar Google Drive</button>
-        <button class="btn btn-sm btn-outline" onclick="clearAllData()">🗑️ Limpar dados locais</button>
+        <button class="btn btn-sm btn-outline so-editor" onclick="clearAllData()">🗑️ Limpar dados locais</button>
       </div>
 
       <div id="drive-status-bar" class="drive-status disconnected" style="display:inline-flex;margin-bottom:20px">
         <span>⚠️</span> Drive não conectado — clique em "Conectar"
       </div>
 
+      <!-- Leitor: dados publicados -->
+      <div class="pub-card so-leitor" id="pub-card-leitor">
+        <h3>📡 Dados publicados pela equipe fiscal</h3>
+        <p>Os números são carregados automaticamente ao entrar. Você só visualiza — os valores digitados (Everest, ICMS pago, DARFs etc.) já vêm preenchidos.</p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="syncPublicado(true)">🔄 Atualizar agora</button>
+          <span id="pub-status-leitor" style="font-size:12px;color:var(--text2)">Aguardando login…</span>
+        </div>
+      </div>
+
+      <!-- Publicador: enviar para a equipe -->
+      <div class="pub-card so-editor" id="pub-card-editor">
+        <h3>📤 Publicar para a equipe</h3>
+        <p>Envia ao Google Drive um pacote com os dados já carregados no site (notas, itens e os valores digitados) para cada grupo. Quem receber o <b>link de convite</b> vê tudo ao entrar, sem importar nada, e só do grupo da pasta que você compartilhar.<br>
+        Para cada grupo: crie uma pasta no Drive, <b>compartilhe com as pessoas</b> (leitor) e cole o link dela abaixo.</p>
+        <div id="pub-grupos"></div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" id="btn-publicar" onclick="publicarSelecionados()">📤 Publicar selecionados</button>
+          <span id="pub-status" style="font-size:12px;color:var(--text2)"></span>
+        </div>
+      </div>
+
       <!-- Configurar pasta raiz -->
-      <div id="folder-config-section" style="display:none;margin-bottom:24px">
+      <div id="folder-config-section" class="so-editor" style="display:none;margin-bottom:24px">
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:600px">
           <h3 style="font-size:14px;font-weight:700;margin-bottom:8px">📁 Pasta raiz das planilhas</h3>
           <p style="font-size:12px;color:var(--text2);margin-bottom:14px">
@@ -843,7 +873,7 @@ body.side-off #side-toggle{display:block}
       </div>
 
       <!-- Seletor hierárquico: Grupo > Empresa > Mês -->
-      <div id="folder-nav-section" style="display:none;margin-bottom:24px">
+      <div id="folder-nav-section" class="so-editor" style="display:none;margin-bottom:24px">
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:700px">
           <h3 style="font-size:14px;font-weight:700;margin-bottom:16px">📊 Selecionar planilha para carregar</h3>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end">
@@ -866,7 +896,7 @@ body.side-off #side-toggle{display:block}
       </div>
 
       <!-- Importar Manualmente -->
-      <div style="margin-bottom:24px">
+      <div class="so-editor" style="margin-bottom:24px">
         <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text2)">📋 IMPORTAR PLANILHA MANUALMENTE</h3>
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:600px">
           <p style="font-size:12px;color:var(--text2);margin-bottom:14px">
@@ -887,7 +917,7 @@ body.side-off #side-toggle{display:block}
       <!-- Arquivos já carregados -->
       <div id="loaded-section" style="display:none;margin-bottom:28px">
         <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text2);display:flex;align-items:center;gap:12px;flex-wrap:wrap">✅ PLANILHAS CARREGADAS (<span id="loaded-count">0</span>)
-          <button class="btn btn-sm btn-outline" style="margin-left:auto;font-weight:600" onclick="verificarIntegridade()" title="Compara a quantidade de itens salvos no site com a de cada planilha carregada">🔍 Verificar integridade</button></h3>
+          <button class="btn btn-sm btn-outline so-editor" style="margin-left:auto;font-weight:600" onclick="verificarIntegridade()" title="Compara a quantidade de itens salvos no site com a de cada planilha carregada">🔍 Verificar integridade</button></h3>
         <div id="loaded-list" class="file-list"></div>
       </div>
 
@@ -1471,6 +1501,213 @@ function idbCount(store) {
   });
 }
 
+
+// ══════════════════════════════════════════════════════════════
+//  PUBLICAÇÃO PARA A EQUIPE (via Google Drive) + MODO LEITOR
+// ══════════════════════════════════════════════════════════════
+// Link de convite:  <site>#cid=<ClientID>&pub=<ID da pasta do Drive>
+(function applyInvite() {
+  try {
+    const p = new URLSearchParams(location.hash.replace(/^#/, ''));
+    const cid = p.get('cid'), pub = p.get('pub');
+    if (cid) localStorage.setItem('caju_client_id', cid);
+    if (pub) { localStorage.setItem('caju_pub_folder', pub); localStorage.setItem('caju_modo_leitor', '1'); }
+    if (cid || pub) history.replaceState(null, '', location.pathname + location.search);
+  } catch(e) {}
+})();
+const MODO_LEITOR = (() => { try { return localStorage.getItem('caju_modo_leitor') === '1'; } catch(e) { return false; } })();
+if (MODO_LEITOR) document.documentElement.classList.add('modo-leitor');
+
+async function _gzipBlob(text) {
+  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'));
+  return await new Response(stream).blob();
+}
+async function _gunzipText(buf) {
+  const stream = new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return await new Response(stream).text();
+}
+const _pubNome = (grupo, parte) => `pub__${grupo}__${parte}`;   // parte: AAAA-MM.json.gz | lancamentos.json
+
+// ── LEITOR: baixa e aplica o que foi publicado ───────────────
+async function syncPublicado(manual) {
+  const folder = localStorage.getItem('caju_pub_folder');
+  const st = document.getElementById('pub-status-leitor');
+  const say = t => { if (st) st.textContent = t; };
+  if (!folder) { say('Sem pasta de publicação configurada.'); return; }
+  if (!gAccessToken) { toast('Entre com o Google primeiro', 'err'); return; }
+  if (syncPublicado._busy) return; syncPublicado._busy = true;
+  try {
+    say('Procurando dados publicados…');
+    const hdr = { Authorization: 'Bearer ' + gAccessToken };
+    let files = [], pageToken = '';
+    do {
+      const q = encodeURIComponent(`'${folder}' in parents and trashed=false and name contains 'pub__'`);
+      const r = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=nextPageToken,files(id,name,modifiedTime,size)&pageSize=200&supportsAllDrives=true&includeItemsFromAllDrives=true` + (pageToken ? `&pageToken=${pageToken}` : ''), { headers: hdr });
+      if (!r.ok) throw new Error('Drive respondeu ' + r.status + ' ao listar a pasta (a pasta foi compartilhada com este e-mail?)');
+      const j = await r.json(); files = files.concat(j.files || []); pageToken = j.nextPageToken || '';
+    } while (pageToken);
+    const itens = files.map(f => { const m = f.name.match(/^pub__(.+?)__(lancamentos|\d{4}-\d{2})\.json(\.gz)?$/); return m ? { f, grupo: m[1], parte: m[2] } : null; }).filter(Boolean);
+    if (!itens.length) { say('Nada publicado nesta pasta ainda.'); toast('Nada publicado nesta pasta ainda', 'info'); return; }
+
+    let estado = {}; try { estado = JSON.parse(localStorage.getItem('caju_pub_state') || '{}'); } catch(e) {}
+    // meses primeiro, lançamentos por último (dependem das empresas já carregadas)
+    itens.sort((a, b) => (a.parte === 'lancamentos') - (b.parte === 'lancamentos') || a.parte.localeCompare(b.parte));
+    const mudou = itens.filter(x => estado[x.f.name] !== x.f.modifiedTime);
+    if (!mudou.length) { say('Tudo já está atualizado.'); if (manual) toast('Tudo já está atualizado', 'ok'); return; }
+
+    let n = 0, info = '';
+    for (const x of mudou) {
+      n++; say(`Baixando ${n}/${mudou.length}: ${x.grupo} ${x.parte === 'lancamentos' ? '(valores digitados)' : x.parte}…`);
+      const r = await fetch(`https://www.googleapis.com/drive/v3/files/${x.f.id}?alt=media&supportsAllDrives=true`, { headers: hdr });
+      if (!r.ok) throw new Error('Falha ao baixar ' + x.f.name + ' (' + r.status + ')');
+      const buf = await r.arrayBuffer();
+      const txt = x.f.name.endsWith('.gz') ? await _gunzipText(buf) : new TextDecoder().decode(buf);
+      const data = JSON.parse(txt);
+      say(`Aplicando ${n}/${mudou.length}: ${x.grupo} ${x.parte === 'lancamentos' ? '' : x.parte}…`);
+      if (x.parte === 'lancamentos') info = await _aplicarLancamentos(data); else await _aplicarMes(data);
+      estado[x.f.name] = x.f.modifiedTime; localStorage.setItem('caju_pub_state', JSON.stringify(estado));
+    }
+    await populateFilterOptions(); await renderLoadedFiles();
+    const ativa = document.querySelector('.page.active'); if (ativa) { const nome = ativa.id.replace('page-', ''); if (PAGE_LOADERS[nome]) PAGE_LOADERS[nome](); }
+    say('Atualizado ✔ ' + (info || ''));
+    toast('Dados publicados carregados', 'ok');
+  } catch(e) {
+    console.error(e); say('Erro: ' + e.message); toast('Erro ao carregar dados publicados: ' + e.message, 'err', 8000);
+  } finally { syncPublicado._busy = false; }
+}
+
+async function _aplicarMes(d) {
+  const { grupo, mes } = d;
+  await idbDeleteWhere('notas',    'idx_grupo', grupo, r => r.mes_ref === mes);
+  await idbDeleteWhere('itens',    'idx_grupo', grupo, r => r.mes_ref === mes);
+  await idbDeleteWhere('metricas', 'idx_grupo', grupo, r => r.mes_ref === mes);
+  const B = 20000;
+  for (let i = 0; i < d.itens.length; i += B) {
+    const part = d.itens.slice(i, i + B); part.forEach(it => { it._id = nextItemId(); });
+    await idbPut('itens', part);
+  }
+  await idbPut('notas', d.notas); await idbPut('metricas', d.metricas);
+  const arqs = (d.arquivos || []).map(a => ({ ...a, origem: 'publicado', loaded_at: a.loaded_at || Date.now() }));
+  if (arqs.length) await idbPut('arquivos', arqs);
+}
+
+async function _aplicarLancamentos(d) {
+  const emps = new Set(d.empresas || []);
+  for (let i = localStorage.length - 1; i >= 0; i--) {   // limpa o que for das empresas deste grupo
+    const k = localStorage.key(i);
+    if (k && k.startsWith('caj_ai_') && emps.has(k.slice(7).split('__')[0])) localStorage.removeItem(k);
+  }
+  Object.entries(d.ai || {}).forEach(([k, v]) => localStorage.setItem(k, v));
+  const quando = d.publicado_em ? new Date(d.publicado_em).toLocaleString('pt-BR') : '';
+  return `Grupo ${d.grupo} — publicado em ${quando}` + (d.publicador ? ` por ${d.publicador}` : '');
+}
+
+// ── PUBLICADOR (você) ────────────────────────────────────────
+let gWriteToken = null, gWriteExp = 0;
+function getWriteToken() {        // precisa ser chamado direto do clique (abre o popup do Google)
+  return new Promise((res, rej) => {
+    if (gWriteToken && Date.now() < gWriteExp) return res(gWriteToken);
+    const tc = google.accounts.oauth2.initTokenClient({
+      client_id: getConfig().clientId,
+      scope: 'https://www.googleapis.com/auth/drive',
+      callback: r => { if (r.error) return rej(new Error(r.error)); gWriteToken = r.access_token; gWriteExp = Date.now() + ((r.expires_in || 3000) - 120) * 1000; res(gWriteToken); },
+      error_callback: e => rej(new Error('Autorização cancelada (' + (e.type || 'erro') + ')'))
+    });
+    tc.requestAccessToken({ prompt: '' });
+  });
+}
+
+async function driveUpsert(token, folderId, name, blob, mime) {
+  const H = { Authorization: 'Bearer ' + token };
+  const q = encodeURIComponent(`'${folderId}' in parents and name='${name.replace(/'/g, "\\'")}' and trashed=false`);
+  const rl = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)&supportsAllDrives=true&includeItemsFromAllDrives=true`, { headers: H });
+  if (!rl.ok) throw new Error('Não consegui acessar a pasta (' + rl.status + '). Confira o link e se você é editor dela.');
+  const ex = ((await rl.json()).files || [])[0];
+  const url = ex ? `https://www.googleapis.com/upload/drive/v3/files/${ex.id}?uploadType=resumable&supportsAllDrives=true`
+                 : `https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true`;
+  const ri = await fetch(url, { method: ex ? 'PATCH' : 'POST', headers: { ...H, 'Content-Type': 'application/json; charset=UTF-8', 'X-Upload-Content-Type': mime },
+    body: JSON.stringify(ex ? {} : { name, parents: [folderId] }) });
+  if (!ri.ok) throw new Error('Falha ao iniciar envio de ' + name + ' (' + ri.status + ')');
+  const loc = ri.headers.get('Location');
+  const ru = await fetch(loc, { method: 'PUT', headers: { 'Content-Type': mime }, body: blob });
+  if (!ru.ok) throw new Error('Falha ao enviar ' + name + ' (' + ru.status + ')');
+}
+
+const _pubDestKey = g => 'caju_pub_dest_' + g;
+async function renderPubCard() {
+  const box = document.getElementById('pub-grupos'); if (!box || MODO_LEITOR) return;
+  const mets = await idbAll('metricas');
+  const por = {}; mets.forEach(m => { if (!m.grupo) return; (por[m.grupo] = por[m.grupo] || new Set()).add(m.mes_ref); });
+  const grupos = Object.keys(por).sort();
+  if (!grupos.length) { box.innerHTML = '<div style="font-size:12px;color:var(--text2)">Carregue planilhas primeiro (nenhum grupo no site ainda).</div>'; return; }
+  box.innerHTML = grupos.map(g => {
+    const ge = g.replace(/"/g, '&quot;'), dest = localStorage.getItem(_pubDestKey(g)) || '';
+    return `<div class="pub-row">
+      <input type="checkbox" class="pub-chk" data-g="${ge}" ${dest ? 'checked' : ''}/>
+      <b>${g}</b>
+      <span style="font-size:12px;color:var(--text2)">${por[g].size} mês(es)</span>
+      <input type="text" placeholder="Link da pasta do Drive deste grupo" value="${dest.replace(/"/g, '&quot;')}" onchange="pubSetDest('${ge}', this.value)"/>
+      <button class="btn btn-sm btn-outline" onclick="pubCopiarConvite('${ge}')" title="Copia o link para enviar às pessoas">📋 Link de convite</button>
+    </div>`;
+  }).join('');
+}
+function pubSetDest(g, v) {
+  const id = extractFolderId(String(v || '').trim());
+  if (!v.trim()) { localStorage.removeItem(_pubDestKey(g)); return; }
+  if (!id || id.length < 10 || /^[A-Za-z]:[\\\/]/.test(v)) { toast('Link inválido — cole o link da pasta aberta no Drive (drive.google.com)', 'err'); return; }
+  localStorage.setItem(_pubDestKey(g), id); toast('Pasta de ' + g + ' salva', 'ok');
+}
+function pubCopiarConvite(g) {
+  const id = localStorage.getItem(_pubDestKey(g));
+  if (!id) { toast('Cole primeiro o link da pasta do grupo ' + g, 'err'); return; }
+  const url = `${location.origin}${location.pathname}#cid=${encodeURIComponent(getConfig().clientId)}&pub=${id}`;
+  (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => toast('Link de convite copiado (grupo ' + g + ')', 'ok'), () => { prompt('Copie o link:', url); });
+}
+
+async function publicarSelecionados() {
+  const marcados = [...document.querySelectorAll('.pub-chk:checked')].map(c => c.dataset.g);
+  if (!marcados.length) { toast('Marque ao menos um grupo', 'err'); return; }
+  for (const g of marcados) if (!localStorage.getItem(_pubDestKey(g))) { toast('Falta o link da pasta do grupo ' + g, 'err'); return; }
+  const st = document.getElementById('pub-status'), btn = document.getElementById('btn-publicar');
+  const say = t => { st.textContent = t; };
+  const tokP = getWriteToken();                      // sem await antes: mantém o popup ligado ao clique
+  btn.disabled = true;
+  try {
+    say('Autorizando no Google…'); const token = await tokP;
+    const email = localStorage.getItem('caju_user_email') || '';
+    for (const g of marcados) {
+      const folder = localStorage.getItem(_pubDestKey(g));
+      say(`Lendo dados de ${g}…`);
+      const [notas, itens, mets, arqs] = await Promise.all([idbAll('notas', 'idx_grupo', g), idbAll('itens', 'idx_grupo', g), idbAll('metricas', 'idx_grupo', g), idbAll('arquivos')]);
+      const meses = [...new Set(mets.map(m => m.mes_ref))].sort();
+      const empresas = [...new Set(mets.map(m => m.empresa))];
+      const bucket = (arr) => { const o = {}; arr.forEach(r => { (o[r.mes_ref] = o[r.mes_ref] || []).push(r); }); return o; };
+      const bN = bucket(notas), bI = bucket(itens), bM = bucket(mets);
+      for (const mes of meses) {
+        say(`${g}: compactando ${mes}…`);
+        const payload = { v: 1, grupo: g, mes, notas: bN[mes] || [], itens: bI[mes] || [], metricas: bM[mes] || [],
+          arquivos: arqs.filter(a => a.grupo === g && (a.mes_refs || [a.mes_ref]).includes(mes)) };
+        const blob = await _gzipBlob(JSON.stringify(payload));
+        say(`${g}: enviando ${mes} (${(blob.size / 1048576).toFixed(1)} MB)…`);
+        await driveUpsert(token, folder, _pubNome(g, mes + '.json.gz'), blob, 'application/gzip');
+      }
+      // valores digitados + Fat. Everest já resolvido (DRE ou manual) para as empresas/meses do grupo
+      const ai = {}; const eset = new Set(empresas);
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('caj_ai_') && eset.has(k.slice(7).split('__')[0])) ai[k] = localStorage.getItem(k);
+      }
+      empresas.forEach(e => meses.forEach(m => { const v = evValor(e, m); if (v > 0) ai[`caj_ai_${e}__${m}__ev`] = v; }));
+      const lanc = { v: 1, grupo: g, publicador: email, publicado_em: new Date().toISOString(), empresas, meses, ai };
+      say(`${g}: enviando valores digitados…`);
+      await driveUpsert(token, folder, _pubNome(g, 'lancamentos.json'), new Blob([JSON.stringify(lanc)], { type: 'application/json' }), 'application/json');
+    }
+    say('Publicado ✔ ' + new Date().toLocaleString('pt-BR')); toast('Publicado para a equipe', 'ok');
+  } catch(e) {
+    console.error(e); say('Erro: ' + e.message); toast('Erro ao publicar: ' + e.message, 'err', 9000);
+  } finally { btn.disabled = false; }
+}
+
 // ══════════════════════════════════════════════════════════════
 //  GOOGLE IDENTITY / DRIVE
 // ══════════════════════════════════════════════════════════════
@@ -1505,6 +1742,12 @@ function handleTokenResponse(resp) {
     const alreadyInApp = document.getElementById('app').style.display === 'flex';
     if (!alreadyInApp) showApp();
 
+    if (MODO_LEITOR) {                 // leitor: carrega o publicado e vai direto para os números
+      updateDriveStatus(true);
+      showPage('drive');
+      syncPublicado().then(() => showPage(localStorage.getItem('caju_last_page') && localStorage.getItem('caju_last_page') !== 'drive' ? localStorage.getItem('caju_last_page') : 'dashboard'));
+      return;
+    }
     // Mostrar seções do Drive
     updateDriveStatus(true);
     document.getElementById('folder-config-section').style.display = 'block';
@@ -1701,7 +1944,7 @@ async function renderLoadedFiles() {
         <div class="file-meta">${a.empresa} &nbsp;|&nbsp; ${a.mes_ref} &nbsp;|&nbsp; ${a.qtd_notas} notas &nbsp;|&nbsp; ${a.qtd_itens} itens</div>
         <div class="file-loaded">Carregado em ${new Date(a.loaded_at).toLocaleString('pt-BR')}</div>
       </div>
-      <button class="btn btn-sm btn-danger" onclick="removeArquivo('${a.drive_id}','${a.nome.replace(/'/g,'')}')">Remover</button>
+      <button class="btn btn-sm btn-danger so-editor" onclick="removeArquivo('${a.drive_id}','${a.nome.replace(/'/g,'')}')">Remover</button>
     </div>`).join('');
 }
 
@@ -2554,7 +2797,7 @@ const PAGE_LOADERS = {
   notas:     () => loadNotas(1),
   itens:     () => loadItens(1),
   auditoria: () => loadAuditoria(),
-  drive:     () => {},
+  drive:     () => { renderPubCard(); },
 };
 
 function showPage(name) {
@@ -3202,6 +3445,7 @@ function gorjCell(emp, mes) {
 
 function aiInput(emp, per, field) {
   const v = ai(emp, per, field);
+  if (MODO_LEITOR) return `<span class="ev-dre">${v > 0 ? fmt(v) : '—'}</span>`;
   const eid = `_ai_${btoa(emp+per+field).replace(/[^a-z0-9]/gi,'')}`;
   const empE = emp.replace(/'/g,"\\'"), perE = per.replace(/'/g,"\\'");
   // type="text" aceita colar no formato BR (1.000,00) ou US (1,000.00)
