@@ -1523,6 +1523,8 @@ async function _gzipBlob(text) {
   return await new Response(stream).blob();
 }
 async function _gunzipText(buf) {
+  const u8 = new Uint8Array(buf);
+  if (!(u8[0] === 0x1f && u8[1] === 0x8b)) return new TextDecoder().decode(u8);   // já é texto puro
   const stream = new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
   return await new Response(stream).text();
 }
@@ -1533,27 +1535,41 @@ async function syncPublicado(manual) {
   const folder = localStorage.getItem('caju_pub_folder');
   const st = document.getElementById('pub-status-leitor');
   const say = t => { if (st) st.textContent = t; };
-  if (!folder) { say('Sem pasta de publicação configurada.'); return; }
-  if (!gAccessToken) { toast('Entre com o Google primeiro', 'err'); return; }
-  if (syncPublicado._busy) return; syncPublicado._busy = true;
+  if (!gAccessToken) { toast('Entre com o Google primeiro', 'err'); return false; }
+  if (syncPublicado._busy) return false; syncPublicado._busy = true;
+  const hdr = { Authorization: 'Bearer ' + gAccessToken };
+  const listar = async (q) => {
+    let out = [], pageToken = '';
+    do {
+      const r = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=nextPageToken,files(id,name,mimeType,modifiedTime,size)&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true` + (pageToken ? `&pageToken=${pageToken}` : ''), { headers: hdr });
+      if (!r.ok) throw new Error('Drive respondeu ' + r.status + ' ao listar arquivos (a pasta foi compartilhada com este e-mail?)');
+      const j = await r.json(); out = out.concat(j.files || []); pageToken = j.nextPageToken || '';
+    } while (pageToken);
+    return out;
+  };
+  const RX = /^pub__(.+?)__(lancamentos|\d{4}-\d{2})\.json(\.gz)?$/;
+  let ok = false;
   try {
     say('Procurando dados publicados…');
-    const hdr = { Authorization: 'Bearer ' + gAccessToken };
-    let files = [], pageToken = '';
-    do {
-      const q = encodeURIComponent(`'${folder}' in parents and trashed=false and name contains 'pub__'`);
-      const r = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=nextPageToken,files(id,name,modifiedTime,size)&pageSize=200&supportsAllDrives=true&includeItemsFromAllDrives=true` + (pageToken ? `&pageToken=${pageToken}` : ''), { headers: hdr });
-      if (!r.ok) throw new Error('Drive respondeu ' + r.status + ' ao listar a pasta (a pasta foi compartilhada com este e-mail?)');
-      const j = await r.json(); files = files.concat(j.files || []); pageToken = j.nextPageToken || '';
-    } while (pageToken);
-    const itens = files.map(f => { const m = f.name.match(/^pub__(.+?)__(lancamentos|\d{4}-\d{2})\.json(\.gz)?$/); return m ? { f, grupo: m[1], parte: m[2] } : null; }).filter(Boolean);
-    if (!itens.length) { say('Nada publicado nesta pasta ainda.'); toast('Nada publicado nesta pasta ainda', 'info'); return; }
+    let files = [];
+    if (folder) files = await listar(`'${folder}' in parents and trashed=false`);
+    files = files.filter(f => RX.test(f.name));
+    if (!files.length) {                    // plano B: procura pastas compartilhadas com este usuário que tenham arquivos pub__
+      say('Procurando pastas compartilhadas com você…');
+      const pastas = await listar(`sharedWithMe=true and trashed=false and mimeType='application/vnd.google-apps.folder'`);
+      for (const pa of pastas) {
+        const fs = (await listar(`'${pa.id}' in parents and trashed=false`)).filter(f => RX.test(f.name));
+        if (fs.length) { files = fs; try { localStorage.setItem('caju_pub_folder', pa.id); } catch(e) {} break; }
+      }
+    }
+    const itens = files.map(f => { const m = f.name.match(RX); return m ? { f, grupo: m[1], parte: m[2] } : null; }).filter(Boolean);
+    if (!itens.length) { say('Nada publicado encontrado para o seu e-mail. Peça ao responsável para compartilhar a pasta publicada com ' + (localStorage.getItem('caju_user_email') || 'o seu e-mail') + ' e para publicar novamente.'); toast('Nada publicado encontrado', 'err', 8000); return false; }
 
     let estado = {}; try { estado = JSON.parse(localStorage.getItem('caju_pub_state') || '{}'); } catch(e) {}
     // meses primeiro, lançamentos por último (dependem das empresas já carregadas)
     itens.sort((a, b) => (a.parte === 'lancamentos') - (b.parte === 'lancamentos') || a.parte.localeCompare(b.parte));
     const mudou = itens.filter(x => estado[x.f.name] !== x.f.modifiedTime);
-    if (!mudou.length) { say('Tudo já está atualizado.'); if (manual) toast('Tudo já está atualizado', 'ok'); return; }
+    if (!mudou.length) { say('Tudo já está atualizado.'); if (manual) toast('Tudo já está atualizado', 'ok'); ok = true; return true; }
 
     let n = 0, info = '';
     for (const x of mudou) {
@@ -1571,9 +1587,11 @@ async function syncPublicado(manual) {
     const ativa = document.querySelector('.page.active'); if (ativa) { const nome = ativa.id.replace('page-', ''); if (PAGE_LOADERS[nome]) PAGE_LOADERS[nome](); }
     say('Atualizado ✔ ' + (info || ''));
     toast('Dados publicados carregados', 'ok');
+    ok = true;
   } catch(e) {
     console.error(e); say('Erro: ' + e.message); toast('Erro ao carregar dados publicados: ' + e.message, 'err', 8000);
   } finally { syncPublicado._busy = false; }
+  return ok;
 }
 
 async function _aplicarMes(d) {
@@ -1745,7 +1763,7 @@ function handleTokenResponse(resp) {
     if (MODO_LEITOR) {                 // leitor: carrega o publicado e vai direto para os números
       updateDriveStatus(true);
       showPage('drive');
-      syncPublicado().then(() => showPage(localStorage.getItem('caju_last_page') && localStorage.getItem('caju_last_page') !== 'drive' ? localStorage.getItem('caju_last_page') : 'dashboard'));
+      syncPublicado().then(ok => { if (ok) showPage(localStorage.getItem('caju_last_page') && localStorage.getItem('caju_last_page') !== 'drive' ? localStorage.getItem('caju_last_page') : 'dashboard'); });   // se falhar, fica na aba com a mensagem de erro
       return;
     }
     // Mostrar seções do Drive
