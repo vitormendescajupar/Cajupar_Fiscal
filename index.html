@@ -971,7 +971,39 @@ const MAPA_CNPJ = {
   '37492271000545':{grupo:'FERM',nome:'FOSTER AGUAS CLARAS'},
   '37492271000626':{grupo:'FERM',nome:'FOSTER SUDOESTE'},
   '37492271000707':{grupo:'FERM',nome:'FOSTER ASA NORTE'},
+  '37492271000979':{grupo:'FERM',nome:'FOSTER NOROESTE'},
+  '37492271000898':{grupo:'FERM',nome:'FOSTER GUARA'},
 };
+
+// CNPJ não cadastrado acima? Se a raiz (8 primeiros dígitos) pertence a um grupo conhecido, assume o mesmo grupo.
+function grupoPorCnpj(cnpj) {
+  const c = String(cnpj||'').replace(/\D/g,'');
+  if (MAPA_CNPJ[c]) return MAPA_CNPJ[c].grupo;
+  if (c.length >= 8) for (const k in MAPA_CNPJ) if (k.startsWith(c.slice(0,8))) return MAPA_CNPJ[k].grupo;
+  return '';
+}
+const GRUPO_POR_NOME = {}; for (const v of Object.values(MAPA_CNPJ)) GRUPO_POR_NOME[v.nome] = v.grupo;
+// Corrige registros já importados que ficaram sem grupo (ex.: empresa nova que ainda não estava no mapa)
+async function repararGrupos() {
+  let n = 0;
+  for (const store of ['notas','itens','metricas','arquivos']) {
+    await new Promise(res => {
+      const tx = idbTx(store, 'readwrite');
+      const req = tx.objectStore(store).openCursor();
+      req.onsuccess = e => {
+        const c = e.target.result; if (!c) return;
+        const r = c.value;
+        if (!r.grupo || r.grupo === 'OUTROS') {
+          const g = GRUPO_POR_NOME[r.empresa || r.estabelecimento] || grupoPorCnpj(r.cnpj_emit || r.cnpj);
+          if (g) { r.grupo = g; c.update(r); n++; }
+        }
+        c.continue();
+      };
+      tx.oncomplete = () => res(); tx.onerror = () => res(); tx.onabort = () => res();
+    });
+  }
+  return n;
+}
 
 // Reverse: nome → CNPJ (for Auditoria)
 const CNPJ_BY_NOME = {};
@@ -2091,7 +2123,7 @@ function parseXMLNFe(xmlText) {
   // CNPJ emitente → empresa/grupo
   const emitEl = infNFe.getElementsByTagNameNS(NS,'emit')[0] || infNFe.getElementsByTagName('emit')[0];
   const cnpj_emit = txt(emitEl, 'CNPJ');
-  const empInfo = MAPA_CNPJ[cnpj_emit] || {grupo:'OUTROS', nome: cnpj_emit || 'DESCONHECIDO'};
+  const empInfo = MAPA_CNPJ[cnpj_emit] || {grupo: grupoPorCnpj(cnpj_emit) || 'OUTROS', nome: cnpj_emit || 'DESCONHECIDO'};
   const empresa = empInfo.nome;
   const grupo   = empInfo.grupo;
   const mes_ref = data_emissao ? data_emissao.slice(0, 7) : '';
@@ -2449,6 +2481,7 @@ function parseExcelFile(buf, fileName, origem = 'drive') {
       empresa = empresa || MAPA_CNPJ[cnpj].nome;
     }
   }
+  if (!grupo) grupo = GRUPO_POR_NOME[empresa] || (rawNotas.length ? grupoPorCnpj(rawNotas[0]['CNPJ Emitente']) : '');
 
   // Map notas
   const notas = rawNotas.map(row => {
@@ -3533,6 +3566,8 @@ const DRE_EMP_DEFAULT = {
   'FERM 04':'',
   'FOSTER SUDOESTE':'FB04 - SIG',
   'FOSTER ASA NORTE':'FB05 - ASN',
+  'FOSTER NOROESTE':'',
+  'FOSTER GUARA':'',
 };
 
 // <DRE-CORE-START> (funções puras — também testadas fora do navegador)
@@ -4973,7 +5008,7 @@ function showApp() {
   document.getElementById('sb-email').textContent  = email;
 
   const lastPage = localStorage.getItem('caju_last_page') || 'dashboard';
-  populateFilterOptions().then(() => showPage(lastPage));
+  repararGrupos().catch(() => 0).then(n => { if (n) console.log('Grupos corrigidos:', n); return populateFilterOptions(); }).then(() => showPage(lastPage));
   renderLoadedFiles();
 }
 
