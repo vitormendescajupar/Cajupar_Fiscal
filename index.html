@@ -834,6 +834,14 @@ body.side-off #side-toggle{display:block}
         <span>⚠️</span> Drive não conectado — clique em "Conectar"
       </div>
 
+      <!-- Progresso do carregamento (fixo no topo, sempre visível enquanto rola a página) -->
+      <div id="load-progress" style="display:none;position:sticky;top:0;z-index:50;margin-bottom:20px">
+        <div id="load-progress-box" style="background:var(--bg2);border:1px solid var(--accent,#f97316);border-radius:12px;padding:16px 20px;max-width:600px;box-shadow:0 6px 24px rgba(0,0,0,.45)">
+          <div style="font-size:13px;font-weight:600;margin-bottom:10px" id="load-progress-label">Carregando...</div>
+          <div class="progress-bar-wrap"><div class="progress-bar-fill" id="load-progress-bar" style="width:0%"></div></div>
+        </div>
+      </div>
+
       <!-- Leitor: dados publicados -->
       <div class="pub-card so-leitor" id="pub-card-leitor">
         <h3>📡 Dados publicados pela equipe fiscal</h3>
@@ -921,13 +929,6 @@ body.side-off #side-toggle{display:block}
         <div id="loaded-list" class="file-list"></div>
       </div>
 
-      <!-- Progress -->
-      <div id="load-progress" style="display:none;margin-top:20px">
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:600px">
-          <div style="font-size:13px;font-weight:600;margin-bottom:10px" id="load-progress-label">Carregando...</div>
-          <div class="progress-bar-wrap"><div class="progress-bar-fill" id="load-progress-bar" style="width:0%"></div></div>
-        </div>
-      </div>
     </div>
 
   </div><!-- /content -->
@@ -987,9 +988,10 @@ const GRUPO_POR_NOME = {}; for (const v of Object.values(MAPA_CNPJ)) GRUPO_POR_N
 async function repararGrupos() {
   let n = 0;
   for (const store of ['notas','itens','metricas','arquivos']) {
-    await new Promise(res => {
-      const tx = idbTx(store, 'readwrite');
-      const req = tx.objectStore(store).openCursor();
+    for (const gv of ['', 'OUTROS']) await new Promise(res => {      // só lê os registros sem grupo (via índice), não a base inteira
+      const tx = idbTx(store, 'readwrite'); const os = tx.objectStore(store);
+      const src = os.indexNames.contains('idx_grupo') ? os.index('idx_grupo') : os;
+      const req = src.openCursor(os.indexNames.contains('idx_grupo') ? IDBKeyRange.only(gv) : null);
       req.onsuccess = e => {
         const c = e.target.result; if (!c) return;
         const r = c.value;
@@ -1129,10 +1131,16 @@ function normStr(s) {
 
 // Retorna true se a descrição do item bate com qualquer keyword monofásica
 // e NÃO bate com nenhuma exclusão (ANTI_KEYWORDS)
+let _MONO_N = null, _ANTI_N = null; const _monoMemo = new Map();
 function isMonofasico(descricao) {
+  let r = _monoMemo.get(descricao);            // as mesmas descrições se repetem milhares de vezes
+  if (r !== undefined) return r;
+  if (!_MONO_N) { _MONO_N = MONO_KEYWORDS.map(normStr); _ANTI_N = ANTI_KEYWORDS.map(normStr); }
   const d = normStr(descricao);
-  if (ANTI_KEYWORDS.some(k => d.includes(normStr(k)))) return false;
-  return MONO_KEYWORDS.some(k => d.includes(normStr(k)));
+  r = !_ANTI_N.some(k => d.includes(k)) && _MONO_N.some(k => d.includes(k));
+  if (_monoMemo.size > 200000) _monoMemo.clear();
+  _monoMemo.set(descricao, r);
+  return r;
 }
 
 // Exclusões por (empresa, código de produto) — ÁGUA DE COCO não é monofásica (Cod Produto é por empresa).
@@ -1455,6 +1463,23 @@ function idbAll(store, indexName, indexValue) {
   });
 }
 
+// Lê só o necessário usando o melhor índice (em vez de carregar a base inteira e filtrar na memória)
+function idbRows(store, {mes, emp, grupo} = {}) {
+  if (emp && mes) return idbAll(store, 'idx_empresa_mes', [emp, mes]);
+  if (mes)        return idbAll(store, 'idx_mes', mes);
+  if (emp)        return idbAll(store, 'idx_empresa', emp);
+  if (grupo)      return idbAll(store, 'idx_grupo', grupo);
+  return idbAll(store);
+}
+function idbEach(store, indexName, key, fn) {     // percorre sem montar um array gigante na memória
+  return new Promise((res, rej) => {
+    const tx = idbTx(store);
+    const req = tx.objectStore(store).index(indexName).openCursor(IDBKeyRange.only(key));
+    req.onsuccess = e => { const c = e.target.result; if (c) { fn(c.value); c.continue(); } };
+    tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error);
+  });
+}
+
 function idbPut(store, data) {
   return new Promise((res, rej) => {
     const tx  = idbTx(store, 'readwrite');
@@ -1637,6 +1662,7 @@ async function _aplicarMes(d) {
     await idbPut('itens', part);
   }
   await idbPut('notas', d.notas); await idbPut('metricas', d.metricas);
+  { const c = audCacheLer(); (d.metricas || []).forEach(m => delete c.d[`${m.empresa}||${m.mes_ref}`]); audCacheGravar(c); }   // força recalcular a Auditoria desse mês
   const arqs = (d.arquivos || []).map(a => ({ ...a, origem: 'publicado', loaded_at: a.loaded_at || Date.now() }));
   if (arqs.length) await idbPut('arquivos', arqs);
 }
@@ -2002,6 +2028,9 @@ async function loadDriveFile(fileId, fileName) {
   const prog = document.getElementById('load-progress');
   const pLabel = document.getElementById('load-progress-label');
   const pBar   = document.getElementById('load-progress-bar');
+  clearTimeout(loadDriveFile._t);
+  const box = document.getElementById('load-progress-box');
+  box.style.borderColor = 'var(--accent,#f97316)'; pLabel.style.color = '';
   prog.style.display = 'block';
   pLabel.textContent = `Baixando ${fileName}...`;
   pBar.style.width = '10%';
@@ -2039,7 +2068,7 @@ async function loadDriveFile(fileId, fileName) {
     pBar.style.width = '70%'; pLabel.textContent = `Salvando ${result.itens.length} itens...`;
 
     // Save itens in batches
-    const BATCH = 500;
+    const BATCH = 4000;
     for (let i = 0; i < result.itens.length; i += BATCH) {
       await idbPut('itens', result.itens.slice(i, i + BATCH));
       pBar.style.width = String(70 + (i / Math.max(result.itens.length,1)) * 20) + '%';
@@ -2061,8 +2090,9 @@ async function loadDriveFile(fileId, fileName) {
     });
 
     pBar.style.width = '100%';
-    await new Promise(r => setTimeout(r, 400));
-    prog.style.display = 'none';
+    pLabel.style.color = 'var(--green)'; box.style.borderColor = 'var(--green)';
+    pLabel.textContent = `✅ ${fileName} carregado — ${result.notas.length} notas | ${result.itens.length} itens`;
+    loadDriveFile._t = setTimeout(() => { prog.style.display = 'none'; }, 12000);
     toast(`✅ ${fileName} carregado — ${result.notas.length} notas`, 'ok');
 
     // Refresh UI
@@ -2070,7 +2100,10 @@ async function loadDriveFile(fileId, fileName) {
     await renderDriveFiles(driveFiles);
     populateFilterOptions();
   } catch(e) {
-    prog.style.display = 'none';
+    pLabel.style.color = 'var(--red,#ef4444)'; box.style.borderColor = 'var(--red,#ef4444)';
+    pLabel.textContent = `❌ Erro ao carregar ${fileName}: ${e.message}`;
+    pBar.style.width = '0%';
+    loadDriveFile._t = setTimeout(() => { prog.style.display = 'none'; }, 15000);
     toast('Erro ao carregar arquivo: ' + e.message, 'err');
     console.error(e);
   }
@@ -3050,7 +3083,7 @@ async function loadCFOP() {
   const soVenda = document.getElementById('f-venda-cfop')?.checked  || false;
   const descFilt= document.getElementById('f-desconto-cfop')?.value || '';
 
-  let all = await idbAll('itens');
+  let all = await idbRows('itens', {mes: mesRef, emp, grupo});
   // Exclude cancelled
   all = all.filter(i => (i.manifesto||'Aceita') !== 'Cancelada');
   if (mesRef) all = all.filter(i => i.mes_ref === mesRef);
@@ -3183,7 +3216,7 @@ async function loadNotas(page = 1) {
   const cfCanal  = (document.getElementById('cf-canal-notas')?.value||'');
   const cfOrigem = (document.getElementById('cf-origem-notas')?.value||'');
 
-  let all = await idbAll('notas');
+  let all = await idbRows('notas', {mes, emp, grupo});
   if (mes)    all = all.filter(n => n.mes_ref  === mes);
   if (grupo)  all = all.filter(n => n.grupo    === grupo);
   if (emp)    all = all.filter(n => n.empresa  === emp);
@@ -3275,7 +3308,7 @@ async function loadItens(page = 1) {
   const cfManifI= (document.getElementById('cf-manif-itens')?.value||'');
   const cfChave = (document.getElementById('cf-chave-itens')?.value||'').trim().toLowerCase();
 
-  let all = await idbAll('itens');
+  let all = await idbRows('itens', {mes, emp, grupo});
   if (mes)    all = all.filter(i => i.mes_ref === mes);
   if (grupo)  all = all.filter(i => i.grupo   === grupo);
   if (emp)    all = all.filter(i => i.empresa === emp);
@@ -3487,7 +3520,7 @@ function gorjCell(emp, mes) {
   const a = gorjAuto(emp, mes);
   if (a === null) return aiInput(emp, mes, 'gorj');
   const dg = AUD_GDIAG[`${emp}||${mes}`];
-  const nCh = dg ? Object.keys(dg.chaves).length : 0;
+  const nCh = dg ? (dg.nCh != null ? dg.nCh : Object.keys(dg.chaves).length) : 0;
   const dup = dg ? Object.values(dg.chaves).filter(n => n > 1).length : 0;
   const diag = dg ? ` | ${dg.itens.toLocaleString('pt-BR')} itens salvos no site; ${dg.g.toLocaleString('pt-BR')} itens de gorjeta em ${nCh.toLocaleString('pt-BR')} notas` + (dup ? ` — ATENÇÃO: ${dup} nota(s) com mais de um item de gorjeta (provável duplicidade: use "Verificar integridade")` : '') : '';
   const warn = dup ? `<span style="font-size:9px;font-weight:800;color:var(--red);margin-right:4px">DUP</span>` : '';
@@ -4176,6 +4209,54 @@ function audRowsIRPJ(rows) {
   return rows.filter(r => raizes.has(raizDe(r)));
 }
 
+// ── Cache dos cálculos da Auditoria (por empresa/mês) ──
+const AUD_CACHE_KEY = 'caj_aud_cache_v1';
+function audRegrasVer() {                       // muda sozinho se alguém alterar as listas/regras → recalcula tudo
+  const t = JSON.stringify([MONO_KEYWORDS, ANTI_KEYWORDS, MONO_EXCL_COD, GORJ_COD, GORJ_COD_EMP, 'v1']);
+  let h = 5381; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return String(h);
+}
+function audCacheLer() {
+  try { const c = JSON.parse(localStorage.getItem(AUD_CACHE_KEY) || 'null'); if (c && c.ver === audRegrasVer() && c.d) return c; } catch(e) {}
+  return {ver: audRegrasVer(), d: {}};
+}
+function audCacheGravar(c) { try { localStorage.setItem(AUD_CACHE_KEY, JSON.stringify(c)); } catch(e) { /* sem espaço: segue sem cache */ } }
+function audCalcStatus(t) {
+  let el = document.getElementById('aud-calc-status');
+  if (!t) { if (el) el.remove(); return; }
+  if (!el) { el = document.createElement('div'); el.id = 'aud-calc-status';
+    el.style.cssText = 'position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:9999;background:var(--bg2);border:1px solid var(--accent,#f97316);border-radius:10px;padding:10px 18px;font-size:13px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.5)';
+    document.body.appendChild(el); }
+  el.textContent = t;
+}
+async function audCalcEmpMes(emp, mes) {
+  const g = {n:0, gorj:0, gg:0, chaves:{}, mono:0, st:0, real:0, base:0, notasG:0, d100:0};
+  const nt = {};
+  await idbEach('itens', 'idx_empresa_mes', [emp, mes], it => {
+    g.n++;
+    const aceita = (it.manifesto||'Aceita') === 'Aceita';
+    const ehG = _gorjCod(it.codigo_produto, it.empresa);
+    if (ehG && aceita) { g.gorj += _gorjValor(it); g.gg++; g.chaves[it.chave_acesso] = (g.chaves[it.chave_acesso]||0) + 1; }
+    if (aceita && it.chave_acesso) {
+      const n = nt[it.chave_acesso] || (nt[it.chave_acesso] = {g:0, b:0, tem:false});
+      if (ehG) { n.g += _gorjValor(it); n.tem = true; } else n.b += _gorjValor(it);
+    }
+    if (isCFOPVenda(it.cfop)) {
+      if (isMonofasicoItem(it)) g.mono += (it.valor_item||0);
+      if (it.tem_st) g.st += (it.valor_item||0);
+    }
+  });
+  for (const k in nt) if (nt[k].tem) { g.real += nt[k].g; g.base += nt[k].b; g.notasG++; }
+  // guarda só as notas com mais de 1 item de gorjeta (diagnóstico DUP) + contagem de notas com gorjeta
+  const dups = {}; let nCh = 0; for (const k in g.chaves) { nCh++; if (g.chaves[k] > 1) dups[k] = g.chaves[k]; }
+  g.chaves = dups; g.nCh = nCh;
+  await idbEach('notas', 'idx_empresa_mes', [emp, mes], n => {
+    if ((n.manifesto||'Aceita') === 'Cancelada') return;
+    if ((n.desconto||0) <= 0) return;
+    if ((n.valor_total||0) >= 0.01) return;
+    g.d100 += (n.desconto||0);
+  });
+  return g;
+}
 async function loadAuditoria() {
   const mes = document.getElementById('audit-mes').value;
   let mets = await idbAll('metricas');
@@ -4199,48 +4280,33 @@ async function loadAuditoria() {
     r.icms_st+=m.icms_st||0; r.pis+=m.pis||0; r.cofins+=m.cofins||0; r.qtd+=m.qtd_notas||0;
   });
 
-  // Calcular monofásico, vendas c/ ST e desconto 100% a partir das notas/itens
-  let itens = await idbAll('itens');
-  if (gr) itens = itens.filter(i => i.grupo === gr);
-
-  // Gorjeta = soma dos itens com código 9999999999997 em notas aceitas (SOMASES da apuração: Cod Produto + Manifesto "Aceita")
-  AUD_GORJ = {}; AUD_ITENS = new Set(); AUD_GDIAG = {};
-  itens.forEach(it => {
-    const k = `${it.empresa}||${it.mes_ref}`;
-    AUD_ITENS.add(k);
-    const dg = AUD_GDIAG[k] || (AUD_GDIAG[k] = {itens:0, g:0, chaves:{}});
-    dg.itens++;
-    if (_gorjCod(it.codigo_produto, it.empresa) && (it.manifesto||'Aceita') === 'Aceita') {
-      AUD_GORJ[k] = (AUD_GORJ[k]||0) + _gorjValor(it);
-      dg.g++; dg.chaves[it.chave_acesso] = (dg.chaves[it.chave_acesso]||0) + 1;
-    }
-  });
-  calcGorjIcms(itens);
-
-  const monoMap = {}, stMap = {};
-  itens.forEach(it => {
-    // Apenas itens de CFOPs de venda entram no cálculo de monofásico e ST
-    if (!isCFOPVenda(it.cfop)) return;
-    const k = `${it.empresa}||${it.mes_ref}`;
-    if (isMonofasicoItem(it)) {
-      monoMap[k] = (monoMap[k]||0) + (it.valor_item||0);
-    }
-    if (it.tem_st) {
-      stMap[k] = (stMap[k]||0) + (it.valor_item||0);
-    }
-  });
-
-  // Desconto 100% (conta assinada): notas aceitas com valor_total = 0 e desconto > 0
-  const desc100Map = {};
+  // Monofásico, ST, gorjeta e desconto 100% por empresa/mês: calculados UMA vez e guardados (cache).
+  // Só recalcula o mês que mudou (planilha nova/removida) ou quando as regras (monofásico/gorjeta) mudam.
+  AUD_GORJ = {}; AUD_ITENS = new Set(); AUD_GDIAG = {}; AUD_GORJ_ICMS = {};
+  const monoMap = {}, stMap = {}, desc100Map = {};
   {
-    let notasAll = await idbAll('notas');
-    if (gr)  notasAll = notasAll.filter(n => n.grupo   === gr);
-    notasAll.forEach(n => {
-      if ((n.manifesto||'Aceita') === 'Cancelada') return;
-      if ((n.desconto||0) <= 0) return;
-      if ((n.valor_total||0) >= 0.01) return;   // só notas com valor_total = 0
-      const k = `${n.empresa}||${n.mes_ref}`;
-      desc100Map[k] = (desc100Map[k]||0) + (n.desconto||0);
+    const arqs = await idbAll('arquivos');
+    const sigDe = (emp, mes) => arqs.filter(a => a.empresa === emp && (a.mes_refs && a.mes_refs.length ? a.mes_refs : [a.mes_ref]).includes(mes))
+                                    .map(a => `${a.drive_id}:${a.loaded_at}:${a.qtd_itens}`).sort().join('|');
+    const cache = audCacheLer();
+    const pend = Object.values(byKey).filter(r => { const c = cache.d[`${r.empresa}||${r.mes_ref}`]; return !c || c.sig !== sigDe(r.empresa, r.mes_ref); });
+    let feitos = 0;
+    for (const r of pend) {
+      audCalcStatus(`Calculando auditoria (só na primeira vez)… ${feitos}/${pend.length} — ${r.empresa} ${r.mes_ref}`);
+      await new Promise(rs => setTimeout(rs, 0));   // deixa a tela respirar
+      const g = await audCalcEmpMes(r.empresa, r.mes_ref); g.sig = sigDe(r.empresa, r.mes_ref);
+      cache.d[`${r.empresa}||${r.mes_ref}`] = g; feitos++;
+      if (feitos % 5 === 0) audCacheGravar(cache);
+    }
+    if (pend.length) { audCacheGravar(cache); audCalcStatus(''); }
+    Object.values(byKey).forEach(r => {
+      const k = `${r.empresa}||${r.mes_ref}`, c = cache.d[k]; if (!c) return;
+      if (c.n) AUD_ITENS.add(k);
+      AUD_GORJ[k] = c.gorj; AUD_GDIAG[k] = {itens: c.n, g: c.gg, chaves: c.chaves, nCh: c.nCh};
+      if (c.notasG) AUD_GORJ_ICMS[k] = {ded:0, real:c.real, base:c.base, notas:c.notasG, emp:r.empresa,
+        integral: gorjIcmsIntegral(r.empresa)};
+      if (AUD_GORJ_ICMS[k]) { const o = AUD_GORJ_ICMS[k]; o.ded = o.integral ? o.real : Math.min(o.real, o.base * gorjLimIcms(o.emp)); }
+      if (c.mono) monoMap[k] = c.mono; if (c.st) stMap[k] = c.st; if (c.d100) desc100Map[k] = c.d100;
     });
   }
 
